@@ -3263,6 +3263,7 @@ Page.Job = class Job extends Page.PageUtils {
 			
 			case 'job_completed':
 				Debug.trace('job', "Job has completed, refreshing page");
+				app.cacheBust = hires_time_now();
 				Nav.refresh();
 			break;
 			
