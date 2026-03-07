@@ -2522,7 +2522,6 @@ Page.Base = class Base extends Page {
 		
 		fields.forEach( function(param, idx) {
 			var elem_value = (param.id in params) ? params[param.id] : param.value;
-			if (!elem_value) elem_value = "";
 			var elem_icon = config.ui.control_type_icons[param.type];
 			var after = '';
 			if (param.type == 'hidden') return;
@@ -2537,6 +2536,7 @@ Page.Base = class Base extends Page {
 						if (param.variant) {
 							var variant_def = find_object( config.ui.text_field_variants, { id: param.variant } );
 							if (variant_def) elem_icon = variant_def.icon;
+							if ((param.variant == 'number') && (elem_value === null)) elem_value = '(None)';
 						}
 						html += '<i class="link mdi mdi-' + elem_icon + '" onClick="$P().copyPluginParamValue(this)" title="Copy to Clipboard">&nbsp;</i>';
 						html += '<span class="data_value">' + encode_entities(elem_value) + '</span>';

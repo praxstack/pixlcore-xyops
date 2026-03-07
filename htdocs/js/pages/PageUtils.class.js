@@ -2574,7 +2574,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 					};
 					if (param.variant == 'number') {
 						text_args.step = 'any';
-						if (!(param.id in params)) text_args.value = '';
+						if (elem_value === null) text_args.value = '';
 					}
 					if (!param.variant || param.variant.match(/^(password|text|tel)$/)) {
 						// only show explorer icon for non-validating text variants
@@ -2828,7 +2828,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 								is_valid = false;
 							} // NaN
 						} // required or length
-						else delete params[ param.id ];
+						else params[ param.id ] = null;
 					} // number
 				break;
 			} // switch param.type
@@ -4350,7 +4350,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 							nice_icon = variant.icon;
 						}
 					}
-					if (param.value.toString().length) pairs.push([ 'Default', '&ldquo;' + strip_html(param.value) + '&rdquo;' ]);
+					if (String(param.value).length && (param.value !== null)) pairs.push([ 'Default', '&ldquo;' + strip_html(param.value) + '&rdquo;' ]);
 					else pairs.push([ "(No default)" ]);
 				break;
 				
@@ -4507,7 +4507,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 				spellcheck: 'false',
 				autocomplete: 'off',
 				class: 'monospace',
-				value: param.value || ''
+				value: str_value(param.value)
 			}),
 			caption: 'Enter the default value for the text field.'
 		});
@@ -4688,7 +4688,10 @@ Page.PageUtils = class PageUtils extends Page.Base {
 					param.value = $('#fe_epa_value_text').val();
 					param.variant = $('#fe_epa_text_variant').val();
 					param.required = !!$('#fe_epa_required').is(':checked');
-					if (param.variant == 'number') param.value = parseFloat(param.value) || 0;
+					if (param.variant == 'number') {
+						if (!param.value.length) param.value = null;
+						else param.value = parseFloat(param.value) || 0;
+					}
 				break;
 				
 				case 'textarea':
@@ -4969,7 +4972,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 					};
 					if (param.variant == 'number') {
 						text_args.step = 'any';
-						if (!(param.id in params)) text_args.value = '';
+						if (elem_value === null) text_args.value = '';
 					}
 					if (!param.variant || param.variant.match(/^(password|text|tel)$/)) {
 						// only show explorer icon for non-validating text variants
@@ -5109,7 +5112,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 							is_valid = false;
 						} // NaN
 					} // required or has length
-					else delete params[ param.id ];
+					else params[ param.id ] = null;
 				} // number
 			} // textish
 		});
