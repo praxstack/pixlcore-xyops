@@ -1,5 +1,13 @@
 # xyOps Changelog
 
+## Version v1.0.23
+
+> March 10, 2026
+
+- [`9b4fd9a`](https://github.com/pixlcore/xyops/commit/9b4fd9a4378dada1073948bc764053c9a4486913): Version 1.0.23
+- [`6a73922`](https://github.com/pixlcore/xyops/commit/6a73922cecc90e0e897fb7d649a4bae238551e75): Satellite API: Allow API keys containing dashes to be substituted for the token (t) parameter.
+- [`75163e2`](https://github.com/pixlcore/xyops/commit/75163e25da3fe84ff30264e9917ece015295536c): Add FUNDING.yml file for GH sponsor button.
+
 ## Version v1.0.22
 
 > March 10, 2026
