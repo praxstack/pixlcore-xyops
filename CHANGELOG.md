@@ -1,5 +1,28 @@
 # xyOps Changelog
 
+## Version v1.0.26
+
+> March 14, 2026
+
+- [`445949c`](https://github.com/pixlcore/xyops/commit/445949c58e030a71bfa1d59a87bb1ad498ebab81): Version 1.0.26
+	- Migrate to new bcryptjs module (v3.0.3).  Remove old bcrypt-node.
+	- Bump jQuery to v3.7.1 for vuln fixes.
+	- Bump pixl-chart to v1.0.27 for fix with toolbar buttons disappearing on click.
+	- Bump pixl-server-api to v1.0.8 for more verbose debug logging.
+	- (MAJOR) Bump pixl-server-user to v2.0.1 for new CSRF Token system.
+	- Bump pixl-xyapp to v2.1.24 for CSRF token support in API calls.
+- [`44fb32d`](https://github.com/pixlcore/xyops/commit/44fb32d79d62de75eed0591340a158416e867007): Security Hardening: Move to new CSRF Token system.
+- [`555aeb8`](https://github.com/pixlcore/xyops/commit/555aeb895f58dcd92d7406469146054853493a86): Colophon Doc: Add bcryptjs and clean-css packages, remove old bcrypt-node.
+- [`01b179b`](https://github.com/pixlcore/xyops/commit/01b179b1f698b8beeb7986b39cdbe2e442972ed2): Storage CLI: Migrate to bcryptjs.
+- [`b789408`](https://github.com/pixlcore/xyops/commit/b789408102d15094764e05ca3e65cce001ea091d): GitHub Meta: Add stale issue auto-bot.
+- [`1d650a7`](https://github.com/pixlcore/xyops/commit/1d650a7a0df75013d3443f0ad3a6273e08e8e1a2): Default Config: Add `exit_on_shutdown` prop to insure process always exits (a stuck socket can hang it).
+- [`0e49793`](https://github.com/pixlcore/xyops/commit/0e49793078eb554f369d344ca9ae559ba89345e9): Doc Update: Remove references to old sqlite3 library, add new better-sqlite3 one.
+- [`f30e307`](https://github.com/pixlcore/xyops/commit/f30e307a5b018cb233b3a74b6a5edfcc2e0acdfd): Triggers Doc: Add clarification on keyboard trigger and internal key codes.
+- [`79df6c0`](https://github.com/pixlcore/xyops/commit/79df6c041679d81e4671b3eb62bee487a15a5cb3): README: Add additional step of generating a test key for local dev installs.
+- [`fdc0dce`](https://github.com/pixlcore/xyops/commit/fdc0dce51aead514db3233dbd610b5e3c7dfe830): WebSocket Maintenance: Auto-close sockets that do not authenticate within 30 seconds.
+- [`2f272df`](https://github.com/pixlcore/xyops/commit/2f272dff54d9df92f36b9eb9e8dfb914b6bd8578): Satellite Reconnect Race Condition: Auto-close stale sockets when a server reconnects and auths.  Fixes #194.
+- [`ef7afe2`](https://github.com/pixlcore/xyops/commit/ef7afe24931eac5fd8c6cf5b24bf2eb01148e231): Alert Action Plugins: Pass in assigned secrets to JSON STDIN (as well as environment vars) to match behavior of Job Action Plugins.
+
 ## Version v1.0.25
 
 > March 13, 2026
