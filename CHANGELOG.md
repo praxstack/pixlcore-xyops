@@ -1,5 +1,18 @@
 # xyOps Changelog
 
+## Version v1.0.29
+
+> March 16, 2026
+
+- [`2539680`](https://github.com/pixlcore/xyops/commit/25396801cbd9b2627d7ee7054a975dde4d61feaa): Version 1.0.29
+- [`8e536f2`](https://github.com/pixlcore/xyops/commit/8e536f289719687b98ce2f7ca93a773de2ccf3f7): CSS: Improve contrast of checkboxes when table row is disabled.
+- [`361c99c`](https://github.com/pixlcore/xyops/commit/361c99c53ce053a146c64897a3967397a7fd5913): Docs: Fix header title disappearing on mobile devices.
+- [`e07e888`](https://github.com/pixlcore/xyops/commit/e07e888186054aa13f24ef5abcfe96534a2cd827): CSS: Fix documentation margins on smaller phones
+- [`441eb42`](https://github.com/pixlcore/xyops/commit/441eb42e5e98ccbde588b87009ea286f4d668c7e): Marketplace UI: Improve icon, allow markdown in product listing descriptions, fix mobile responsive issue with header.
+- [`3604b5f`](https://github.com/pixlcore/xyops/commit/3604b5f013d72e8c00a3e25c329350385ffa1364): Marketplace API: Fix issue with searching on tags that contain spaces or other symbols.
+- [`c5fdbad`](https://github.com/pixlcore/xyops/commit/c5fdbadf1c4bf9a14421b7a41eb85167dff1a566): Update README with details on paid support tiers.
+- [`f65aad1`](https://github.com/pixlcore/xyops/commit/f65aad1189f4f671eaef43db0b449ac8e6e5395e): Delete old unused sample-data.json file.
+
 ## Version v1.0.28
 
 > March 15, 2026
