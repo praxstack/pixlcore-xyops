@@ -2012,7 +2012,7 @@ Page.Job = class Job extends Page.PageUtils {
 			nice_server = this.getNiceUser(row.username);
 		}
 		
-		var nice_msg = row.msg.replace(/\#(\w+)/g, '<code>#$1</code>').replace(/\{(.+?)\}/g, '<code>$1</code>');
+		var nice_msg = encode_entities(row.msg).replace(/\#(\w+)/g, '<code>#$1</code>').replace(/\{(.+?)\}/g, '<code>$1</code>');
 		if (nice_msg.match(/^WARNING\:/)) {
 			nice_msg = nice_msg.replace(/^(WARNING\:)/, '<b>$1</b>');
 			classes.push('warning');
