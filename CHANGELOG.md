@@ -1,5 +1,15 @@
 # xyOps Changelog
 
+## Version v1.0.37
+
+> March 19, 2026
+
+- [`fe32764`](https://github.com/pixlcore/xyops/commit/fe32764b5462393a0f7d40b5d341ed6486fddf3a): Version 1.0.37
+- [`85bd8d6`](https://github.com/pixlcore/xyops/commit/85bd8d67b7ad71399572407b520f512d72e326c6): Feature: Customize sidebar section visibility in the user settings screen.
+- [`6a62b36`](https://github.com/pixlcore/xyops/commit/6a62b36a595d79d5d5853586e3fbbf03ec0c973c): Server Data Explorer: Add hover tooltips for all Plugin IDs, for easier identification.  Fixes #211.
+- [`036a5ca`](https://github.com/pixlcore/xyops/commit/036a5ca44843af72bfb23a86cc4eb5cbe7fd40cf): Welcome Doc: Fix wording to properly describe when the guide auto-disappears.  Fixes #212.
+- [`35d319e`](https://github.com/pixlcore/xyops/commit/35d319e22dd0dc1921792f907fc3fbefb5f5c5f1): CLI Doc: Remove unused section.
+
 ## Version v1.0.36
 
 > March 18, 2026
