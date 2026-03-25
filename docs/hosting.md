@@ -20,6 +20,7 @@ docker run \
 	--hostname "xyops01" \
 	--restart unless-stopped \
 	-v xy-data:/opt/xyops/data \
+	-v /local/path/to/xyops-conf:/opt/xyops/conf \
 	-v /var/run/docker.sock:/var/run/docker.sock \
 	-e XYOPS_xysat_local="true" \
 	-e TZ="America/Los_Angeles" \
