@@ -238,6 +238,7 @@ Make a pull request, and add your Plugin metadata to the `marketplace.json` file
 	"license": "MIT",
 	"tags": ["Stagehand", "Playwright"],
 	"requires": [ "docker" ],
+	"env": { "AI_API_KEY": "" },
 	"created": "2026-01-01",
 	"modified": "2026-01-02"
 }
@@ -257,10 +258,26 @@ Here are descriptions of the properties:
 | `license` | String | The [SPDX Identifier](https://spdx.org/licenses/) for the open-source license your Plugin uses (must be OSI-approved). |
 | `tags` | Array | An array of keyword strings, used for searching. |
 | `requires` | Array | List the CLI requirements to launch your Plugin, e.g. `npx`, `uvx`, `go run` and/or `docker`. |
+| `env` | Object | Optional object containing default secret key names and placeholder values.  See [Secrets](#secrets) below. |
 | `created` | String | Date of first publication, in YYYY-MM-DD format. |
 | `modified` | String | Date of latest version, in YYYY-MM-DD format. |
 
 Note that all Plugin submissions are human-reviewed.  Please be prepared to wait several days before your Plugin is approved.  If your Plugin is denied, a xyOps team member will explain why, and help you to resubmit with the necessary changes to get approved.
+
+## Secrets
+
+If your plugin uses [secrets](secrets.md), you can provide a hint so that xyOps can help the user setup a secret vault.  Simply include an `env` object in your marketplace metadata, formatted like this:
+
+```json
+"env": {
+	"VARIABLE1": "",
+	"VARIABLE2": ""
+}
+```
+
+You can optionally provide default values as well, but leaving them blank is usually best.
+
+By providing this information, xyOps will present the user with a "Secret Vault" button in the top header of your marketplace product page (after installation).  Clicking it will start a new secret vault draft, with the title, plugin and secret variable names pre-populated for the user.  Also, if your Plugin already has a secret vault assigned to it, the button will simply redirect the user to the vault page.
 
 ## Self Distribution
 

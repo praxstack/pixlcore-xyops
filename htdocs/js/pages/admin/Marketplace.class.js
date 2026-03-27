@@ -406,18 +406,26 @@ Page.Marketplace = class Marketplace extends Page.PageUtils {
 		var install_btn_icon = installed ? 'package-up' : 'package-down';
 		var install_btn_class = 'default';
 		
-		if (installed && (installed.marketplace.version == product.versions[0])) install_btn_class = '';
+		if (installed && (installed.marketplace.version == product.versions[0])) install_btn_class = 'secondary';
+		
+		var show_vault = false;
+		var env = installed.env || product.env || null;
+		if (installed && env && first_key(env)) show_vault = true;
 		
 		// summary grid
 		html += '<div class="box">';
 			html += '<div class="box_title">';
 				html += product.title;
 				
-				html += '<div class="button ' + install_btn_class + ' right phone_collapse" title="' + install_btn_text + '" onClick="$P().do_install_select_version()"><i class="mdi mdi-' + install_btn_icon + '">&nbsp;</i><span>' + install_btn_text + '</span></div>';
 				if (installed) {
-					html += '<div class="button right secondary phone_collapse" title="Clone for editing..." onClick="$P().do_clone()"><i class="mdi mdi-file-edit-outline">&nbsp;</i><span>Clone...</span></div>';
+					html += '<div class="button right icon ' + install_btn_class + '" title="' + install_btn_text + '" onClick="$P().do_install_select_version()"><i class="mdi mdi-package-up"></i></div>';
+					html += '<div class="button right secondary icon" title="Clone for editing..." onClick="$P().do_clone()"><i class="mdi mdi-file-edit-outline"></i></div>';
+					if (show_vault) html += '<div class="button right secondary icon" title="Secret Vault..." onClick="$P().go_vault()"><i class="mdi mdi-shield-lock-outline"></i></div>';
 				}
-				html += '<div class="button right danger phone_collapse" title="Report..." onClick="$P().doReport()"><i class="mdi mdi-alert-octagon-outline">&nbsp;</i><span>Report...</span></div>';
+				else {
+					html += '<div class="button ' + install_btn_class + ' right phone_collapse" title="' + install_btn_text + '" onClick="$P().do_install_select_version()"><i class="mdi mdi-' + install_btn_icon + '">&nbsp;</i><span>' + install_btn_text + '</span></div>';
+				}
+				html += '<div class="button right danger icon" title="Report ' + ucfirst(product.type) + '..." onClick="$P().doReport()"><i class="mdi mdi-alert-octagon-outline"></i></div>';
 				html += '<div class="clear"></div>';
 			html += '</div>'; // title
 			
@@ -496,6 +504,30 @@ Page.Marketplace = class Marketplace extends Page.PageUtils {
 		this.expandInlineImages();
 		this.highlightCodeBlocks();
 		this.fixMarketDocumentLinks();
+	}
+	
+	go_vault() {
+		// nav to vault or create new
+		var self = this;
+		var product = this.product;
+		var installed = this.installed;
+		
+		var secret = app.secrets.find( function(secret) {
+			return secret.plugins && secret.plugins.includes(installed.id);
+		} );
+		
+		if (secret) Nav.go('Secrets?sub=edit&id=' + secret.id);
+		else {
+			// create new vault draft
+			var env = installed.env || product.env;
+			$P('Secrets').draft = {
+				title: installed.title + ' Credentials',
+				fields: Object.keys(env).map( function(key) { return { name: key, value: '' + env[key] }; } ),
+				names: Object.keys(env),
+				plugins: [ installed.id ]
+			};
+			Nav.go('Secrets?sub=new');
+		}
 	}
 	
 	gosub(sub) {

@@ -196,6 +196,21 @@ Page.Secrets = class Secrets extends Page.PageUtils {
 		
 		this.fields = []; // start in secret edit mode
 		
+		if (this.draft) {
+			// one time draft import from external page (e.g. marketplace)
+			this.fields = this.draft.fields || [];
+			delete this.draft.fields;
+			
+			merge_hash_into( this.secret, this.draft );
+			delete this.draft;
+			
+			// keep list sorted
+			sort_by(this.fields, 'name');
+			
+			// let user know what is going on
+			app.showMessage('info', "A new secret vault has been started as an unsaved draft.", 8);
+		}
+		
 		html += this.get_secret_edit_html();
 		
 		html += '</div>'; // box_content
@@ -550,7 +565,7 @@ Page.Secrets = class Secrets extends Page.PageUtils {
 			
 			var tds = [
 				'<div class="td_big ellip monospace"><i class="mdi mdi-form-textbox">&nbsp;</i>' + link + '</div>',
-				'<div class="ellip monospace" data-private>' + encode_entities(item.value) + '</div>',
+				'<div class="ellip monospace" data-private>' + (item.value.length ? encode_entities(item.value) : '&nbsp;') + '</div>',
 				'<div class="ellip">' + (links.join(' | ') || '-') + '</div>'
 			];
 			
