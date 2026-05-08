@@ -1,5 +1,20 @@
 # xyOps Changelog
 
+## Version v1.0.53
+
+> May 6, 2026
+
+- [`cd53867`](https://github.com/pixlcore/xyops/commit/cd538674d47a2bbdadd4dc8f0a55e75f99ff8caa): Version 1.0.53
+- [`e0a05cd`](https://github.com/pixlcore/xyops/commit/e0a05cd2bb8359b34a5ee8ca11f0184d2c396f17): Hosting and SSO Docs: Add Docker volume mount for the logs directory, so it can survive container upgrades.
+- [`7642e3d`](https://github.com/pixlcore/xyops/commit/7642e3d6eb3c311ed391268abed9dcff0095459d): Feature: Web Hook Templates for creating web hooks using many popular services.
+- [`cdbae8e`](https://github.com/pixlcore/xyops/commit/cdbae8ec306acf4edf0ba106bc19f985e4be037b): Sample Config: Decrease default db_maint.jobs.max_rows to 100,000.
+- [`958499a`](https://github.com/pixlcore/xyops/commit/958499ae9e28d547cb32fcba1182e3aeaa69dd90): UI Document: Add new doc describing the user interface configuration settings.
+- [`3aa2841`](https://github.com/pixlcore/xyops/commit/3aa2841d6e3c809e2667df73e57270bff4d85477): Sortable Table UI: Fallback default sort settings to global client config, if user pref is not set.
+- [`21b9357`](https://github.com/pixlcore/xyops/commit/21b9357f9e060cf970a1fe8aa9ab8272eb188fd3): Event List UI: Change default table sort to be by category.
+- [`ab055dd`](https://github.com/pixlcore/xyops/commit/ab055dd107701da3e42290c5fa9f19e00510341b): Comparison Doc: Add feature comparisons to major players in the space.
+- [`9d28e78`](https://github.com/pixlcore/xyops/commit/9d28e780dc817720b8baebfcbf2ed911c2c47c5f): README: Add section on our YouTube videos.
+- [`3d5848d`](https://github.com/pixlcore/xyops/commit/3d5848dc2ed5be61b5eb780ef8a9f300d20b845a): Improve UX for underprivileged users: hide appropriate buttons, links, shortcuts, sidebar sections, etc.
+
 ## Version v1.0.52
 
 > May 3, 2026
