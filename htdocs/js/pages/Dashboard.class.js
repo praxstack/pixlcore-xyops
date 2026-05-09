@@ -8,6 +8,7 @@ Page.Dashboard = class Dashboard extends Page.PageUtils {
 	
 	onInit() {
 		// called once at page load
+		this.heavyStatusUpdateDebounce = debounce( this.heavyStatusUpdate.bind(this), 1000 );
 	}
 	
 	onActivate(args) {
@@ -541,24 +542,33 @@ Page.Dashboard = class Dashboard extends Page.PageUtils {
 		Nav.go('Search?event=' + id);
 	}
 	
+	heavyStatusUpdate(data) {
+		// perform a heavy status update when jobs change
+		var self = this;
+		if (!this.active) return;
+		
+		this.updateDashGrid();
+		this.renderActiveJobs();
+		this.getQueueSummary();
+		
+		// recompute upcoming: shift() entries off if they happened
+		this.autoExpireUpcomingJobs();
+		this.renderUpcomingJobs();
+		
+		// update live favorite event status
+		(this.favoriteEvents || []).forEach( function(item, idx) {
+			self.div.find('#d_el_jt_status_' + item.id).html( self.getNiceEventStatus(item) );
+		} );
+	}
+	
 	handleStatusUpdate(data) {
 		// received status update from server, see if major or minor
 		var self = this;
 		var div = this.div;
 		
 		if (data.jobsChanged) {
-			this.updateDashGrid();
-			this.renderActiveJobs();
-			this.getQueueSummary();
-			
-			// recompute upcoming: shift() entries off if they happened
-			this.autoExpireUpcomingJobs();
-			this.renderUpcomingJobs();
-			
-			// update live favorite event status
-			(this.favoriteEvents || []).forEach( function(item, idx) {
-				self.div.find('#d_el_jt_status_' + item.id).html( self.getNiceEventStatus(item) );
-			} );
+			if (document.hidden) this.requestHeavyStatusUpdate = true;
+			else this.heavyStatusUpdateDebounce();
 		}
 		else {
 			// fast update without redrawing entire table
@@ -840,9 +850,18 @@ Page.Dashboard = class Dashboard extends Page.PageUtils {
 		}
 	}
 	
+	onVisibility(visible) {
+		// page visibility changed
+		if (visible && this.requestHeavyStatusUpdate) {
+			this.heavyStatusUpdate();
+			delete this.requestHeavyStatusUpdate;
+		}
+	}
+	
 	onDeactivate() {
 		// called when page is deactivated
 		delete this.favoriteEvents;
+		delete this.requestHeavyStatusUpdate;
 		
 		// destroy charts if applicable (view page)
 		if (this.charts) {

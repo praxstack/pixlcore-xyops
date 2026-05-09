@@ -206,7 +206,7 @@ xyOps offers another way to share data between nodes, including nodes that are n
 { "xy": 1, "workflowData": { "foo": "bar" } }
 ```
 
-The data is shallow-merged into the shared `workflowData` object when the sub-job completes.  Then, any subsequent jobs that launch from the same workflow are passed the updated `workflowData` object.
+The data is shallow-merged into the shared `workflowData` object when the sub-job completes (also, top-level arrays are concatenated together instead of replacing).  Then, any subsequent jobs that launch from the same workflow are passed the updated `workflowData` object.
 
 The `workflowData` object only lasts for the duration of the workflow run.  It is not persistent like [Server User Data](servers.md#user-data), but it works in the same way.
 

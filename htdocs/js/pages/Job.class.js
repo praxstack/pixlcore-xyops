@@ -13,6 +13,7 @@ Page.Job = class Job extends Page.PageUtils {
 		
 		// throttle this API call for dealing with heavy jobs
 		this.getWorkflowQueueSummaryDebounce = debounce( this.getWorkflowQueueSummary.bind(this), 1000 );
+		this.getAdditionalJobsDebounce = debounce( this.getAdditionalJobs.bind(this), 1000 );
 	}
 	
 	onActivate(args) {
@@ -1574,6 +1575,8 @@ Page.Job = class Job extends Page.PageUtils {
 		// get info on possible additional jobs launched as a result of the current job completing
 		var self = this;
 		var job = this.job;
+		
+		if (!this.active || !this.job) return;
 		if (!job.jobs || !job.jobs.length) return;
 		var ids = job.jobs.map( function(item) { return item.id; } );
 		
@@ -3221,7 +3224,7 @@ Page.Job = class Job extends Page.PageUtils {
 	onStatusUpdate(data) {
 		// hook main app status update (every 1s)
 		// use this as a condition to update live job in progress
-		if (this.job && this.job.final && data.jobsChanged) this.getAdditionalJobs();
+		if (this.job && this.job.final && data.jobsChanged) this.getAdditionalJobsDebounce();
 		
 		if (!this.job || (this.job.state == 'complete')) return;
 		

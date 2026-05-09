@@ -9,6 +9,7 @@ Page.Search = class Search extends Page.PageUtils {
 	onInit() {
 		// called once at page load
 		this.bar_width = 200;
+		this.doSearchDebounce = debounce( this.doSearch.bind(this), 1000 );
 	}
 	
 	onActivate(args) {
@@ -425,6 +426,8 @@ Page.Search = class Search extends Page.PageUtils {
 	doSearch() {
 		// actually perform the search
 		var args = this.args;
+		if (!this.active) return;
+		
 		var query = this.getSearchQuery(args);
 		var match = this.div.find('#fe_s_match').val().trim();
 		
@@ -887,8 +890,19 @@ Page.Search = class Search extends Page.PageUtils {
 	
 	onStatusUpdate(data) {
 		// refresh search results if jobsChanged
-		if (data.jobsChanged) this.doSearch();
+		if (data.jobsChanged) {
+			if (document.hidden) this.requestSearch = true;
+			else this.doSearchDebounce();
+		}
 		if (this.jobFileSearch && this.jobFileSearch.id) this.updateJobFileSearchProgress();
+	}
+	
+	onVisibility(visible) {
+		// page visibility changed
+		if (visible && this.requestSearch) {
+			this.doSearch();
+			delete this.requestSearch;
+		}
 	}
 	
 	onPageUpdate(pcmd, pdata) {
@@ -914,6 +928,7 @@ Page.Search = class Search extends Page.PageUtils {
 		delete this.lastSearchResp;
 		delete this.jobs;
 		delete this.jobFileSearch;
+		delete this.requestSearch;
 		this.div.html( '' );
 		return true;
 	}

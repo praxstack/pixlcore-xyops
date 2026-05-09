@@ -339,7 +339,19 @@ To include arbitrary data output from your job, which will be automatically pass
 
 The format of the `data` object is freeform, and can contain whatever content you want.  Note that the above example is pretty-printed for display, but in practice all messages must be sent as single lines, so remember to compact your JSON when serializing it.
 
-Note that if you send multiple messages with `data` properties, the previous data is overwritten (i.e. the latter prevails).
+Note that if you send multiple messages containing `data` within the same job, the top-level data object properties are shallow-merged (the latter prevails on duplicate keys).  Using this you can add data incrementally during a job run.  Additionally, if you are overwriting a top-level array with another array, it will be *concatenated* instead of replaced.  Example:
+
+```json
+{ "xy": 1, "data": { "arr": [0, 1, 2] } }
+```
+
+Then later, in the same job:
+
+```json
+{ "xy": 1, "data": { "arr": [3, 4, 5] } }
+```
+
+This would end up with `[0, 1, 2, 3, 4, 5]` in the final `arr` data array when the job completes.
 
 ##### Output Files
 
@@ -444,9 +456,26 @@ To update the [Server User Data](servers.md#user-data) for the current server fr
 }
 ```
 
-Note that the server data is shallow-merged, so you can specify a sparsely-populated object and it will only add / replace the included top-level properties.
+Note that the server data is shallow-merged, so you can specify a sparsely-populated object and it will only add / replace the included top-level properties.  If your job outputs multiple messages with `serverData` they are all shallow-merged together (the latter prevails on duplicate keys).
 
-The server user data is only updated when the job completes.  If you need to update the server data immediately during a job, use the [update_server_data](api.md#update_server_data) API instead.
+The server user data is only updated when the job completes.  If you need to update the server data *immediately* during a job, use the [update_server_data](api.md#update_server_data) API instead.
+
+##### Workflow Data
+
+To update the [Workflow Data](workflows.md#sharing-data-between-all-nodes) for the current workflow from inside a running job, use the following output format:
+
+```json
+{
+	"xy": 1,
+	"workflowData": {
+		"foo": "bar"
+	}
+}
+```
+
+Note that the workflow data is shallow-merged, so you can specify a sparsely-populated object and it will only add / replace the included top-level properties.  If your job outputs multiple messages with `workflowData` they are all shallow-merged together.  Additionally, top-level arrays are concatenated when merging.
+
+The workflow data is only updated in the parent workflow when the sub-job completes.
 
 ### Action Plugins
 

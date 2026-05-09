@@ -5745,6 +5745,13 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			} );
 			// md += "\n";
 		}
+		if (deps.alerts.length) {
+			// md += `\n#### Alerts:\n\n`;
+			deps.alerts.forEach( function(id) {
+				md += '- **' + self.getNiceAlert(id, true) + "**\n";
+			} );
+			// md += "\n";
+		}
 		
 		return md;
 	}
@@ -5756,6 +5763,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		var events = {};
 		var cats = {};
 		var groups = {};
+		var alerts = {};
 		
 		if (!plugin) plugin = this.plugin;
 		if (!plugin.type.match(/^(action|event|scheduler)$/)) return false;
@@ -5768,13 +5776,17 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			
 			if (plugin.type == 'scheduler') {
 				(event.triggers || []).forEach( function(trigger) {
-					if (trigger.enabled && (trigger.type == 'plugin') && (trigger.plugin_id == plugin.id)) events[ event.id ] = 1;
+					if ((trigger.type == 'plugin') && (trigger.plugin_id == plugin.id)) {
+						if (event.workflow) flows[ event.id ] = 1; else events[ event.id ] = 1;
+					}
 				} );
 			}
 			
 			if (plugin.type == 'action') {
 				(event.actions || []).forEach( function(action) {
-					if (action.enabled && (action.type == 'plugin') && (action.plugin_id == plugin.id)) events[ event.id ] = 1;
+					if ((action.type == 'plugin') && (action.plugin_id == plugin.id)) {
+						if (event.workflow) flows[ event.id ] = 1; else events[ event.id ] = 1;
+					}
 				} );
 			}
 			
@@ -5784,11 +5796,15 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			} );
 		} ); // foreach event
 		
+		app.alerts.forEach( function(alert) {
+			if (find_object(alert.actions || [], { type: 'plugin', plugin_id: plugin.id })) alerts[ alert.id ] = 1;
+		} );
+		
 		// categories
 		if (plugin.type == 'action') {
 			app.categories.forEach( function(cat) {
 				(cat.actions || []).forEach( function(action) {
-					if (action.enabled && (action.type == 'plugin') && (action.plugin_id == plugin.id)) cats[ cat.id ] = 1;
+					if ((action.type == 'plugin') && (action.plugin_id == plugin.id)) cats[ cat.id ] = 1;
 				} );
 			} );
 		}
@@ -5797,7 +5813,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		if (plugin.type == 'action') {
 			app.groups.forEach( function(group) {
 				(group.alert_actions || []).forEach( function(action) {
-					if (action.enabled && (action.type == 'plugin') && (action.plugin_id == plugin.id)) groups[ group.id ] = 1;
+					if ((action.type == 'plugin') && (action.plugin_id == plugin.id)) groups[ group.id ] = 1;
 				} );
 			} );
 		}
@@ -5806,10 +5822,11 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			events: Object.keys(events),
 			workflows: Object.keys(flows),
 			categories: Object.keys(cats),
-			groups: Object.keys(groups)
+			groups: Object.keys(groups),
+			alerts: Object.keys(alerts)
 		};
 		
-		if (!info.events.length && !info.workflows.length && !info.categories.length && !info.groups.length) return false;
+		if (!info.events.length && !info.workflows.length && !info.categories.length && !info.groups.length && !info.alerts.length) return false;
 		else return info;
 	}
 	

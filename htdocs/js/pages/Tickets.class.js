@@ -10,6 +10,8 @@ Page.Tickets = class Tickets extends Page.PageUtils {
 		// called once at page load
 		this.default_sub = 'search';
 		this.bar_width = 100;
+		
+		this.getTicketJobsDebounce = debounce( this.getTicketJobs.bind(this), 1000 );
 	}
 	
 	onActivate(args) {
@@ -1579,6 +1581,7 @@ Page.Tickets = class Tickets extends Page.PageUtils {
 		// fetch jobs that reference this ticket
 		var self = this;
 		var ticket = this.ticket;
+		if (!this.active || !this.ticket) return;
 		
 		var opts = {
 			query: 'tickets:' + ticket.id,
@@ -2655,7 +2658,10 @@ Page.Tickets = class Tickets extends Page.PageUtils {
 		// hook main app status update (every 1s)
 		if (this.args.sub != 'view') return;
 		
-		if (data.jobsChanged) this.getTicketJobs();
+		if (data.jobsChanged) {
+			if (document.hidden) this.requestGetTicketJobs = true;
+			else this.getTicketJobsDebounce();
+		}
 		else this.updateTicketJobs();
 	}
 	
@@ -2683,6 +2689,14 @@ Page.Tickets = class Tickets extends Page.PageUtils {
 		}
 	}
 	
+	onVisibility(visible) {
+		// page visibility changed
+		if (visible && this.requestGetTicketJobs) {
+			this.getTicketJobs();
+			delete this.requestGetTicketJobs;
+		}
+	}
+	
 	onDeactivate() {
 		// called when page is deactivated
 		
@@ -2700,6 +2714,7 @@ Page.Tickets = class Tickets extends Page.PageUtils {
 		delete this.files;
 		delete this.alerts;
 		delete this.events;
+		delete this.requestGetTicketJobs;
 		
 		return true;
 	}

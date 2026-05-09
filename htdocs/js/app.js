@@ -212,6 +212,7 @@ app.extend({
 		
 		window.addEventListener( "scroll", this.onScroll.bind(this), false );
 		window.addEventListener( "scroll", debounce(this.onScrollDelay.bind(this), 250), false );
+		document.addEventListener( "visibilitychange", this.onVisibility.bind(this), false );
 		
 		this.cacheBust = time_now();
 		this.page_manager = new PageManager( always_array(config.Page) );
@@ -273,7 +274,7 @@ app.extend({
 	
 	presortTables: function() {
 		// pre-sort tables by sort order, or by title
-		['groups', 'plugins', 'categories', 'events', 'channels', 'monitors', 'alerts', 'tags', 'secrets'].forEach( function(key) {
+		['groups', 'plugins', 'categories', 'events', 'channels', 'monitors', 'alerts', 'tags', 'secrets', 'web_hooks'].forEach( function(key) {
 			if (app[key].length && ('sort_order' in app[key][0])) {
 				app[key].sort( function(a, b) {
 					return (a.sort_order < b.sort_order) ? -1 : 1;
@@ -735,14 +736,14 @@ app.extend({
 			self.comm.disconnect();
 			
 			if (resp.redirect) {
-				Debug.trace("Redirecting for external logout: " + resp.redirect);
+				Debug.trace('nav', "Redirecting for external logout: " + resp.redirect);
 				location.href = resp.redirect;
 				return;
 			}
 			
 			Dialog.hideProgress();
 			
-			Debug.trace("User session cookie was deleted, redirecting to login page");
+			Debug.trace('nav', "User session cookie was deleted, redirecting to login page");
 			Dialog.hideProgress();
 			Nav.go('Login');
 			
@@ -799,6 +800,15 @@ app.extend({
 			var page = app.page_manager.find(app.page_manager.current_page_id);
 			if (page && page.onScrollDelay) page.onScrollDelay();
 			if (page && page.updateBoxButtonFloaterState) page.updateBoxButtonFloaterState();
+		}
+	},
+	
+	onVisibility() {
+		// document was hidden or shown
+		Debug.trace( 'page', "Document is now: " + document.visibilityState );
+		if (app.page_manager && app.page_manager.current_page_id) {
+			var page = app.page_manager.find(app.page_manager.current_page_id);
+			if (page && page.onVisibility) page.onVisibility( !document.hidden );
 		}
 	},
 	
@@ -1142,13 +1152,13 @@ app.extend({
 		if (!this.secure) return; // nope
 		
 		if (Notification.permission === "granted") {
-			Debug.trace("Notification permissions already granted");
+			Debug.trace( 'system', "Notification permissions already granted" );
 		}
 		else if (Notification.permission !== "denied") {
-			Debug.trace("Asking user for notification permissions...");
+			Debug.trace( 'system', "Asking user for notification permissions..." );
 			
 			Notification.requestPermission().then(permission => {
-				if (permission === "granted") Debug.trace("User granted notification permissions.");
+				if (permission === "granted") Debug.trace( 'system', "User granted notification permissions." );
 				else app.showMessage('warning', "Notification permissions have been denied.");
 			});
 		}
@@ -1210,11 +1220,11 @@ app.extend({
 			if (context.state === 'suspended') {
 				context.resume().then(() => {
 					allowed = true;
-					Debug.trace('Audio context unlocked (via Web Audio API)');
+					Debug.trace( 'audio', 'Audio context unlocked (via Web Audio API)');
 				});
 			} else {
 				allowed = true;
-				Debug.trace('Audio context unlocked (via Web Audio API)');
+				Debug.trace( 'audio', 'Audio context unlocked (via Web Audio API)');
 			}
 		};
 		
@@ -1231,14 +1241,14 @@ app.extend({
 		
 		if (track) {
 			// track already loaded, replay
-			Debug.trace("Replaying loaded sound: " + name);
+			Debug.trace( 'audio', "Replaying loaded sound: " + name);
 			track.volume = volume;
 			if (!track.paused) track.currentTime = 0;
 			else track.play();
 		}
 		else {
 			// new track, load and play
-			Debug.trace("Loading and playing sound: " + name);
+			Debug.trace( 'audio', "Loading and playing sound: " + name);
 			track = new Audio();
 			
 			track.autoplay = true;

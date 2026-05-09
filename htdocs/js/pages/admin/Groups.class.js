@@ -16,6 +16,7 @@ Page.Groups = class Groups extends Page.ServerUtils {
 		this.renderContainerTableDebounce = debounce( this.renderGroupContainerTable.bind(this), 1000 );
 		this.renderProcessTableDebounce = debounce( this.renderGroupProcessTable.bind(this), 1000 );
 		this.renderConnectionTableDebounce = debounce( this.renderGroupConnectionTable.bind(this), 1000 );
+		this.heavyStatusUpdateViewDebounce = debounce( this.heavyStatusUpdateView.bind(this), 1000 );
 	}
 	
 	onActivate(args) {
@@ -1495,6 +1496,26 @@ Page.Groups = class Groups extends Page.ServerUtils {
 		}); // foreach mon
 	}
 	
+	heavyStatusUpdateView() {
+		// refresh some heavy things
+		var self = this;
+		if (!this.active) return;
+		
+		this.renderActiveJobs();
+		
+		// recompute upcoming jobs
+		this.autoExpireUpcomingJobs();
+		this.renderUpcomingJobs();
+		
+		this.servers.forEach( function(item, idx) {
+			var nice_jobs = 'Idle';
+			var num_jobs = find_objects( app.activeJobs, { server: item.id } ).length;
+			if (num_jobs > 0) nice_jobs = '<i class="mdi mdi-autorenew mdi-spin">&nbsp;</i><b>' + num_jobs + '</b>';
+			
+			self.div.find('#d_vg_server_jobs_' + item.id).html( nice_jobs );
+		} );
+	}
+	
 	handleStatusUpdateView(data) {
 		// received status update from server, called every second
 		var self = this;
@@ -1505,19 +1526,8 @@ Page.Groups = class Groups extends Page.ServerUtils {
 		
 		// only redraw status fields if jobs changed
 		if (data.jobsChanged) {
-			this.renderActiveJobs();
-			
-			// recompute upcoming jobs
-			this.autoExpireUpcomingJobs();
-			this.renderUpcomingJobs();
-			
-			this.servers.forEach( function(item, idx) {
-				var nice_jobs = 'Idle';
-				var num_jobs = find_objects( app.activeJobs, { server: item.id } ).length;
-				if (num_jobs > 0) nice_jobs = '<i class="mdi mdi-autorenew mdi-spin">&nbsp;</i><b>' + num_jobs + '</b>';
-				
-				self.div.find('#d_vg_server_jobs_' + item.id).html( nice_jobs );
-			} );
+			if (document.hidden) this.requestHeavyViewStatusUpdate = true;
+			else this.heavyStatusUpdateViewDebounce();
 		}
 		else {
 			// fast update without redrawing entire table
@@ -1754,6 +1764,14 @@ Page.Groups = class Groups extends Page.ServerUtils {
 		}
 	}
 	
+	onVisibility(visible) {
+		// page visibility changed
+		if (visible && this.requestHeavyViewStatusUpdate) {
+			this.heavyStatusUpdateView();
+			delete this.requestHeavyViewStatusUpdate;
+		}
+	}
+	
 	onDeactivate() {
 		// called when page is deactivated
 		delete this.visibleServerIDs;
@@ -1771,6 +1789,7 @@ Page.Groups = class Groups extends Page.ServerUtils {
 		delete this.quickmonEnabled;
 		delete this.tables;
 		delete this.actions;
+		delete this.requestHeavyViewStatusUpdate;
 		
 		// destroy charts if applicable (view page)
 		if (this.charts) {

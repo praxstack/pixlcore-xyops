@@ -40,7 +40,7 @@ Running an event produces a job. Here is the lifecycle from trigger to execution
 	- It is assigned a unique `job.id`, and `job.event` is set to the event's ID. 
 	- Category-defined actions/limits and system defaults are merged in. 
 3. **Parameters resolved**
-	- `event.params` and any prompted `fields` are merged and can use `{{ macros }}` that resolve against the job context (including `input.data` and `input.files` if present).
+	- `event.params` and any prompted `fields` are merged and can use `{{ macros }}` that resolve against the job context.  See [Parameter Macro Expansion](#parameter-macro-expansion) for details and examples.
 4. **Target selection**
 	- The system collects candidate servers from targets (servers and/or groups), filters to enabled, online servers, and optionally removes servers under active job-limiting alerts. 
 	- If no servers are available, a queue limit (if configured) may place the job in a queue; otherwise the job aborts and may be eligible for retry. 
@@ -145,6 +145,49 @@ Every non-workflow event references an Event Plugin via `plugin`, which defines 
 - **Input**: Jobs may include structured `input.data` and uploaded `input.files` when launched from the UI/API. Actions like "Bucket Fetch" can also populate inputs before your code runs.
 
 See [Event Plugins](plugins.md#event-plugins) for plugin parameters, and lifecycle details.
+
+### Parameter Macro Expansion
+
+All string values in an event's `params` object support inline macro expansion using `{{ ... }}` syntax.  This includes regular Plugin parameter values, plus any user field values that are collected when manually launching the event, because those fields are merged into `params` before the job runs.
+
+When these macros are evaluated, the context is the [Job](data.md#job) object itself.  This means you can reference job properties directly, without a `job.` prefix.  For example:
+
+| Macro | Description |
+|-------|-------------|
+| `{{ id }}` | The current [Job.id](data.md#job-id). |
+| `{{ event }}` | The [Event.id](data.md#event-id) that spawned the job. |
+| `{{ server }}` | The selected [Server.id](data.md#server-id). |
+| `{{ params.NAME }}` | A Plugin parameter or user field value named `NAME`. |
+| `{{ workflow.params.NAME }}` | A workflow launch parameter, for sub-jobs inside workflows. |
+| `{{ parent.job }}` | The parent job ID, when this job was launched by another job. |
+| `{{ data.NAME }}` | A convenience alias for `input.data.NAME`, if input data was supplied. |
+| `{{ files[0].filename }}` | A convenience alias for `input.files[0].filename`, if input files were supplied. |
+
+This is only a quick list of common paths.  For the complete set of available properties, see the [Job](data.md#job) object reference.
+
+The most common pattern is to reference one parameter from another.  For example, if your event has a user field named `region`, another text parameter can include it like this:
+
+```text
+Deploying to {{ params.region }}
+```
+
+Input data from workflows, API launches, and actions can also be inserted directly.  The full path is `input.data`, but xyOps also exposes `data` at the top level for convenience:
+
+```text
+Process account {{ data.account_id }} from {{ data.source }}
+```
+
+Similarly, input files are available as both `input.files` and `files`:
+
+```text
+First uploaded file: {{ files[0].filename }}
+```
+
+Macros use the same JavaScript-style expression syntax and helper functions described in [xyOps Expression Format](xyexp.md), so simple expressions are allowed as well:
+
+```text
+Retry attempt {{ retry_count + 1 }} for {{ params.target }}
+```
 
 ## Limits
 

@@ -1265,7 +1265,8 @@ Page.Events = class Events extends Page.PageUtils {
 		var div = this.div;
 		
 		if (data.jobsChanged) {
-			this.handleJobsChangedViewDebounce();
+			if (document.hidden) this.requestHeavyViewStatusUpdate = true;
+			else this.handleJobsChangedViewDebounce();
 		}
 		else {
 			// fast update without redrawing entire table
@@ -4269,6 +4270,14 @@ Page.Events = class Events extends Page.PageUtils {
 		if (this.wfZoom) this.renderWFConnections();
 	}
 	
+	onVisibility(visible) {
+		// page visibility changed
+		if (visible && this.requestHeavyViewStatusUpdate) {
+			this.handleJobsChangedView();
+			delete this.requestHeavyViewStatusUpdate;
+		}
+	}
+	
 	onDeactivate() {
 		// called when page is deactivated
 		delete this.jobs;
@@ -4294,6 +4303,8 @@ Page.Events = class Events extends Page.PageUtils {
 		delete this.originTab;
 		
 		delete this.saving;
+		
+		delete this.requestHeavyViewStatusUpdate;
 		
 		// destroy charts if applicable (view page)
 		if (this.charts) {

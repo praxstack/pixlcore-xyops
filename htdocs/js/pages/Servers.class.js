@@ -10,6 +10,8 @@ Page.Servers = class Servers extends Page.ServerUtils {
 		// called once at page load
 		this.default_sub = 'list';
 		this.dom_prefix = 'es';
+		
+		this.heavyStatusUpdateViewDebounce = debounce( this.heavyStatusUpdateView.bind(this), 1000 );
 	}
 	
 	onActivate(args) {
@@ -1960,17 +1962,26 @@ Page.Servers = class Servers extends Page.ServerUtils {
 		this.updateWatchButton();
 	}
 	
+	heavyStatusUpdateView() {
+		// refresh some heavy things
+		if (!this.active) return;
+		
+		this.renderActiveJobs();
+		
+		// recompute upcoming jobs
+		this.autoExpireUpcomingJobs();
+		this.renderUpcomingJobs();
+	}
+	
 	handleStatusUpdateView(data) {
 		// update live job data
 		var self = this;
 		var div = this.div;
 		
 		if (data.jobsChanged) {
-			this.renderActiveJobs();
-			
-			// recompute upcoming jobs
-			this.autoExpireUpcomingJobs();
-			this.renderUpcomingJobs();
+			// heavy
+			if (document.hidden) this.requestHeavyViewStatusUpdate = true;
+			else this.heavyStatusUpdateViewDebounce();
 		}
 		else {
 			// fast update without redrawing entire table
@@ -2049,6 +2060,14 @@ Page.Servers = class Servers extends Page.ServerUtils {
 		}
 	}
 	
+	onVisibility(visible) {
+		// page visibility changed
+		if (visible && this.requestHeavyViewStatusUpdate) {
+			this.heavyStatusUpdateView();
+			delete this.requestHeavyViewStatusUpdate;
+		}
+	}
+	
 	onDeactivate() {
 		// called when page is deactivated
 		delete this.servers;
@@ -2063,6 +2082,7 @@ Page.Servers = class Servers extends Page.ServerUtils {
 		delete this.upcomingJobs;
 		delete this.upcomingOffset;
 		delete this.tables;
+		delete this.requestHeavyViewStatusUpdate;
 		
 		// destroy charts if applicable (view page)
 		if (this.charts) {
