@@ -112,7 +112,7 @@ These are the magical "trusted headers" that xyOps will use to automatically log
 
 ## Configuration
 
-All the SSO settings for xyOps are contained in the `/opt/xyops/conf/sso.json` file.  The default configuration looks like this:
+All the SSO settings for xyOps are contained in the `./xyops-conf/sso.json` file, assuming you are using the Docker Compose examples in this guide.  This maps to `/opt/xyops/conf/sso.json` inside the container.  The default configuration looks like this:
 
 ```json
 {
@@ -197,7 +197,7 @@ These complications are why it's important to first follow the initial [Setup](#
 
 ### Default User Privileges
 
-When users are first created via SSO, a default set of privileges is applied (unless `replace_privileges` is set -- see below).  This is configured in the main `/opt/xyops/conf/config.json` file in the [default_user_privileges](config.md#default_user_privileges) property.  The default set is:
+When users are first created via SSO, a default set of privileges is applied (unless `replace_privileges` is set -- see below).  This is configured in the main `./xyops-conf/config.json` file in the [default_user_privileges](config.md#default_user_privileges) property.  The default set is:
 
 ```json
 "default_user_privileges": {
@@ -335,8 +335,12 @@ services:
       XYOPS_hostname: "xyops.yourcompany.com"
       TZ: America/Los_Angeles
     volumes:
+      - xy-data:/opt/xyops/data
       - "./xyops-conf:/opt/xyops/conf"
       - "./xyops-logs:/opt/xyops/logs"
+
+volumes:
+  xy-data:
 ```
 
 A few things to note here:
@@ -346,7 +350,7 @@ A few things to note here:
 - You'll need to point a domain at the proxy, and add it to `OAUTH2_PROXY_WHITELIST_DOMAINS` (as well as your IdP domain).
 - Generate your TLS certificate files, and place them where Docker can find them (see below).
 
-For the xyOps container, it needs several configuration files.  We are bind mapping a local host directory in the example above (`./xyops-conf`).  Please change this path to an appropriate location on the host where you want these files stored.  Launch the container once, and it will generate all config files for you.  Then, see the [xyOps Configuration Guide](config.md) for details on how to customize the files.  The TLS cert files also live in this directory.
+For the xyOps container, it needs several persistent volumes.  The `xy-data` Docker volume stores the xyOps database and file data.  We are also bind mapping local host directories for configuration and logs (`./xyops-conf` and `./xyops-logs`).  Please change those paths to appropriate locations on the host where you want these files stored.  Launch the container once, and it will generate all config files for you.  Then, see the [xyOps Configuration Guide](config.md) for details on how to customize the files.  The TLS cert files also live in this directory.
 
 At the very least, make sure you set the [base_app_url](config.md#base_app_url) property to the domain that routes to the proxy (which sits in front), with a `https://` prefix.  You should also set the `XYOPS_hostname` to the same hostname (without the protocol prefix).  This is what xyOps uses to advertise itself to the server cluster, and generate URLs for new servers to connect.
 
@@ -368,7 +372,7 @@ For a load balanced multi-conductor setup with Nginx w/TLS and OAuth-Proxy for S
 
 A few prerequisites for this setup:
 
-- For multi-conductor setups, **you must have an external storage backend**, such as S3, or S3-compatible (MinIO, etc.).
+- For multi-conductor setups, **you must have a central external storage backend**, such as [MinIO](storage.md#minio), [RustFS](storage.md#rustfs), or a [Hybrid storage](storage.md#hybrid-configurations) setup.  Do not use local Docker data volumes for multi-conductor.
 - You will need a custom domain configured and TLS certs created and ready to attach.
 - You have your xyOps configuration files customized and ready to go ([config.json](https://github.com/pixlcore/xyops/blob/main/sample_conf/config.json) and [sso.json](https://github.com/pixlcore/xyops/blob/main/sample_conf/sso.json)) (see below for details).
 - And of course you should have a pretested SSO configuration for OAuth2-Proxy, so you are confident that piece works before integrating it here.
@@ -436,7 +440,7 @@ Next is the OAuth2-Proxy setup (we use the official Docker image here).  Configu
 - `OAUTH2_PROXY_SET_XAUTHREQUEST` is set to `true`.  This returns the set of trusted headers in auth_request mode.
 - `OAUTH2_PROXY_SKIP_AUTH_ROUTES` has been removed, as OAuth2-Proxy doesn't actually do any routing in this configuration.
 
-Once you have those two components running, we can fire up the xyOps backend.  This is listed separately as you'll usually want to run these on dedicated servers.  Here is the multi-conductor configuration as a single Docker compose file.  For additional conductor servers you can simply duplicate this and change the hostname:
+Once you have those two components running, we can fire up the xyOps backend.  This is listed separately as you'll usually want to run these on dedicated servers.  Before starting multiple conductors, configure xyOps to use a central storage engine as described in the [Storage Setup Guide](storage.md).  Here is the multi-conductor configuration as a single Docker compose file.  For additional conductor servers you can duplicate this service, change the hostname, and point each conductor at the same central storage configuration:
 
 ```yaml
 services:
@@ -460,9 +464,10 @@ A few things to note here:
 - We're using our official xyOps Docker image, but you can always [build your own from source](https://github.com/pixlcore/xyops/blob/main/Dockerfile).
 - All conductor server hostnames need to be listed in the `XYOPS_masters` environment variable, comma-separated.
 - All conductor servers need to be able to route to each other via their hostnames, so they can self-negotiate and hold elections.
+- All conductor servers must share the same central storage backend.  Do not mount separate local `/opt/xyops/data` volumes per conductor, as that will create split-brain data.
 - The timezone (`TZ`) should be set to your company's main timezone, so things like midnight log rotation and daily stat resets work as expected.
 
-For the xyOps container, it needs several configuration files.  We are bind mapping a local host directory in the example above (`./xyops-conf`).  Please change this path to an appropriate location on the host where you want these files stored.  Launch the container once, and it will generate all the config files for you.  Then, see the [xyOps Configuration Guide](config.md) for details on how to customize the files.  Specifically though, let's talk about `sso.conf` for this configuration.  This file is largely discussed above (see [Configuration](#configuration) above), but the [Header Map](#header-map) in particular is going to be different for Nginx + OAuth2-Proxy: 
+For the xyOps container, we are bind mapping local host directories for configuration and logs (`./xyops-conf` and `./xyops-logs`).  Please change those paths to appropriate locations on the host where you want these files stored.  Launch the container once, and it will generate all the config files for you.  Then configure a central storage engine in `./xyops-conf/config.json` before bringing up multiple conductors.  See the [xyOps Configuration Guide](config.md) and [Storage Setup Guide](storage.md) for details.  Specifically though, let's talk about `sso.conf` for this configuration.  This file is largely discussed above (see [Configuration](#configuration) above), but the [Header Map](#header-map) in particular is going to be different for Nginx + OAuth2-Proxy:
 
 ```json
 "header_map": {
@@ -500,6 +505,328 @@ This will allow xyOps to log much more information about the SSO process, includ
 ```
 /opt/xyops/logs/SSO.log
 ```
+
+## Authentik
+
+[Authentik](https://goauthentik.io/) is another excellent option for xyOps SSO.  It can act as both your identity provider and your front-door authentication proxy.  In this setup, users connect to Authentik first, Authentik authenticates them, then its Proxy Provider forwards the request to xyOps with trusted headers attached.
+
+Authentik also supports advanced authentication features such as MFA / 2FA, TOTP authenticator apps, static recovery tokens, SMS and Duo stages, WebAuthn / FIDO2 / Passkeys, security keys such as YubiKey, platform authenticators such as Touch ID, Face ID and Windows Hello, passwordless login, and passkey autofill in supported browsers.  These features are configured in Authentik's flows and stages, and they all happen before xyOps receives the authenticated request.
+
+This section focuses on the simple single-conductor setup, with Authentik directly in front of xyOps using the embedded proxy outpost.  No Nginx is required for this version.  Authentik has more advanced forward-auth and external outpost modes too, but those are best handled as a separate advanced deployment.
+
+### How It Works
+
+The request flow looks like this:
+
+1. Users browse to your xyOps external URL, such as `https://xyops.yourcompany.com/`.
+2. That domain points to the Authentik server container, not directly to xyOps.
+3. Authentik's embedded proxy outpost detects that the host belongs to the xyOps application.
+4. If the user is not logged in, Authentik redirects them through its login flow.
+5. After login, Authentik proxies the request to xyOps (`xyops1:5522` in our example).
+6. Authentik injects trusted headers such as `x-authentik-username`, `x-authentik-email`, `x-authentik-name`, and `x-authentik-groups`.
+7. xyOps maps those headers to a local user account and starts its own session.
+
+The important thing to understand is that Authentik is the public-facing web server in this setup.  xyOps is only reachable on the private Docker network, and it only trusts the headers coming from Authentik.
+
+You will typically have two browser-reachable hostnames:
+
+- `xyops.yourcompany.com` is the public xyOps application URL.  Users bookmark this URL, and Authentik proxies it to the private xyOps container.
+- `auth.yourcompany.com` is Authentik's own URL.  Users are redirected here for login flows, and admins use it to configure Authentik.
+
+This is similar to using a separate external identity provider, such as Okta or Google.  The difference is that you are self-hosting that identity provider too, so it needs its own hostname.  Trying to use only `xyops.yourcompany.com` for both xyOps and the Authentik admin/login UI is possible only with more advanced path-based routing, and that usually means bringing in Nginx or another reverse proxy.  For this simple no-Nginx setup, use two hostnames.
+
+### Docker Compose
+
+Here is a complete Docker Compose example for running Authentik and xyOps together.  This is based on Authentik's official Docker Compose layout, plus one xyOps container.  For production, pin `AUTHENTIK_TAG` to a specific Authentik release instead of using whatever happens to be current when you copy this file.
+
+Create a `.env` file next to your compose file:
+
+```bash
+PG_PASS=_GENERATE_A_LONG_RANDOM_PASSWORD_
+AUTHENTIK_SECRET_KEY=_GENERATE_A_LONG_RANDOM_SECRET_
+AUTHENTIK_TAG=2026.2.2
+
+# Optional: expose Authentik on normal HTTP/HTTPS ports.
+# For local testing, you can leave these unset and use 9000/9443 instead.
+COMPOSE_PORT_HTTP=80
+COMPOSE_PORT_HTTPS=443
+```
+
+The `COMPOSE_PORT_HTTP` and `COMPOSE_PORT_HTTPS` names are used by Authentik's official Docker Compose file.  They are Docker Compose substitution variables for the exposed host ports, not Authentik application settings.  Authentik itself still listens inside the container on ports `9000` for HTTP and `9443` for HTTPS unless you separately change its internal configuration.
+
+You can generate the secrets with `openssl`:
+
+```bash
+echo "PG_PASS=$(openssl rand -base64 36 | tr -d '\n')" >> .env
+echo "AUTHENTIK_SECRET_KEY=$(openssl rand -base64 60 | tr -d '\n')" >> .env
+```
+
+Then create `compose.yml`:
+
+```yaml
+services:
+  postgresql:
+    image: docker.io/library/postgres:16-alpine
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_DB: ${PG_DB:-authentik}
+      POSTGRES_PASSWORD: ${PG_PASS:?database password required}
+      POSTGRES_USER: ${PG_USER:-authentik}
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}
+      start_period: 20s
+      interval: 30s
+      retries: 5
+      timeout: 5s
+    volumes:
+      - database:/var/lib/postgresql/data
+
+  authentik:
+    image: ghcr.io/goauthentik/server:${AUTHENTIK_TAG:-2026.2.2}
+    command: server
+    restart: unless-stopped
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      AUTHENTIK_POSTGRESQL__HOST: postgresql
+      AUTHENTIK_POSTGRESQL__NAME: ${PG_DB:-authentik}
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${PG_PASS}
+      AUTHENTIK_POSTGRESQL__USER: ${PG_USER:-authentik}
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY:?secret key required}
+    ports:
+      # Authentik listens internally on HTTP 9000 and HTTPS 9443.
+      # Set COMPOSE_PORT_HTTP=80 and COMPOSE_PORT_HTTPS=443 in .env for production.
+      - ${COMPOSE_PORT_HTTP:-9000}:9000
+      - ${COMPOSE_PORT_HTTPS:-9443}:9443
+    volumes:
+      - ./authentik-data:/data
+      - ./authentik-custom-templates:/templates
+
+  authentik-worker:
+    image: ghcr.io/goauthentik/server:${AUTHENTIK_TAG:-2026.2.2}
+    command: worker
+    restart: unless-stopped
+    depends_on:
+      postgresql:
+        condition: service_healthy
+    env_file:
+      - .env
+    environment:
+      AUTHENTIK_POSTGRESQL__HOST: postgresql
+      AUTHENTIK_POSTGRESQL__NAME: ${PG_DB:-authentik}
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${PG_PASS}
+      AUTHENTIK_POSTGRESQL__USER: ${PG_USER:-authentik}
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY:?secret key required}
+    user: root
+    volumes:
+      # Authentik uses the Docker socket for managed outposts.
+      # The embedded outpost used here does not strictly require it,
+      # but this keeps the compose file aligned with Authentik's official setup.
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./authentik-data:/data
+      - ./authentik-certs:/certs
+      - ./authentik-custom-templates:/templates
+
+  xyops1:
+    image: ghcr.io/pixlcore/xyops:latest
+    restart: unless-stopped
+    init: true
+    environment:
+      # This should be the public xyOps hostname users browse to.
+      XYOPS_hostname: xyops.yourcompany.com
+      TZ: America/Los_Angeles
+    volumes:
+      - xy-data:/opt/xyops/data
+      - ./xyops-conf:/opt/xyops/conf
+      - ./xyops-logs:/opt/xyops/logs
+    expose:
+      # Only expose xyOps to the private Docker network.
+      # Authentik will proxy requests to this port.
+      - "5522"
+
+volumes:
+  xy-data:
+  database:
+    driver: local
+```
+
+Start everything with:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+Then open the Authentik initial setup URL:
+
+```
+http://auth.yourcompany.com/if/flow/initial-setup/
+```
+
+For local testing on the default mapped port, use separate hostnames for Authentik and xyOps, so Authentik can route based on the `Host` header.  You can add something like this to `/etc/hosts`:
+
+```
+127.0.0.1 auth.localhost xyops.localhost
+```
+
+Then open:
+
+```
+http://auth.localhost:9000/if/flow/initial-setup/
+```
+
+Create the initial `akadmin` password, then log into the Authentik admin UI.
+
+### Authentik Application Setup
+
+In Authentik, create a new application and proxy provider for xyOps:
+
+1. Go to **Applications**, then **Applications**, then click **Create**.
+2. Enter a name such as `xyOps`.
+3. Enter a slug such as `xyops`.
+4. For **Provider**, choose **Create new Provider**.
+5. Select **Proxy Provider**.
+6. Set **Name** to `xyOps Proxy`.
+7. Set **Mode** to **Proxy**.
+8. Set **External host** to your public xyOps URL:
+
+```
+https://xyops.yourcompany.com
+```
+
+For local HTTP testing, use:
+
+```
+http://xyops.localhost:9000
+```
+
+9. Set **Internal host** to the Docker network URL for xyOps:
+
+```
+http://xyops1:5522
+```
+
+10. If your internal host is plain HTTP, leave **Internal host SSL Validation** disabled or irrelevant.
+11. In **Unauthenticated Paths**, add the xyOps paths that should bypass Authentik:
+
+```regex
+^/api(/|$)
+^/files(/|$)
+^/health(/|$)
+^/images(/|$)
+^/js(/|$)
+^/css(/|$)
+^/fonts(/|$)
+^/sounds(/|$)
+^/codemirror(/|$)
+^/manifest\.webmanifest$
+```
+
+These are the Authentik equivalent of OAuth2-Proxy's `OAUTH2_PROXY_SKIP_AUTH_ROUTES`.  The `/api` path is especially important, because xyOps API keys, worker server tokens, and other non-browser requests are handled by xyOps itself.
+
+After saving the provider and application, make sure the application is assigned to an outpost:
+
+1. Go to **Applications**, then **Outposts**.
+2. Edit **authentik Embedded Outpost**.
+3. Under **Applications**, add your `xyOps` application.
+4. Check the outpost configuration and make sure `authentik_host` is a full URL for your Authentik install, such as:
+
+```
+https://auth.yourcompany.com/
+```
+
+For local testing:
+
+```
+http://auth.localhost:9000/
+```
+
+Save the outpost.  Authentik should now route requests for the provider's external host through the embedded outpost and onward to xyOps.
+
+### xyOps SSO Configuration
+
+Authentik's Proxy Provider sends the trusted headers xyOps needs, but the header names are different from OAuth2-Proxy.  Configure `./xyops-conf/sso.json` like this:
+
+```json
+{
+	"enabled": true,
+	"whitelist": ["172.16.0.0/12"],
+	"header_map": {
+		"username": "x-authentik-username",
+		"full_name": "x-authentik-name",
+		"email": "x-authentik-email",
+		"groups": "x-authentik-groups"
+	},
+	"cleanup_username": false,
+	"cleanup_full_name": false,
+	"group_role_separator": "|",
+	"group_role_map": {},
+	"group_privilege_map": {},
+	"replace_roles": false,
+	"replace_privileges": false,
+	"admin_bootstrap": "akadmin",
+	"logout_url": "/outpost.goauthentik.io/sign_out",
+	"command": "",
+	"preset": ""
+}
+```
+
+A few important notes:
+
+- Header names are case-insensitive in HTTP, but xyOps stores them as lower-case internally, so use lower-case names in `header_map`.
+- Authentik sends groups separated by pipe characters, such as `engineering|platform|admins`, so set `group_role_separator` to `|`.
+- `admin_bootstrap` is optional, but it is handy for the first login.  Set it to your exact Authentik username, log in once, configure roles and privileges, then remove it.
+- `logout_url` points to Authentik's proxy sign-out endpoint.  When users click logout in xyOps, they will be sent there so Authentik can clear its proxy session too.
+- The `whitelist` above trusts Docker private network addresses.  For production, tighten this to the actual Authentik container or proxy network range if you can.  See [Live Production](#live-production) below for details.
+
+Also make sure `./xyops-conf/config.json` has [base_app_url](config.md#base_app_url) set to the same public URL you used in Authentik's **External host**:
+
+```json
+"base_app_url": "https://xyops.yourcompany.com"
+```
+
+Restart xyOps after changing `sso.json` or `config.json`:
+
+```bash
+docker compose restart xyops1
+```
+
+### Testing Authentik
+
+Once Authentik and xyOps are configured, browse to:
+
+```
+https://xyops.yourcompany.com/
+```
+
+You should be redirected to Authentik, prompted to log in, and then forwarded back into xyOps.  xyOps should create or update your user account from the Authentik headers.
+
+If you have trouble, turn up xyOps SSO debugging:
+
+```
+XYOPS_debug_level: 9
+```
+
+Then watch:
+
+```
+/opt/xyops/logs/SSO.log
+```
+
+On the Authentik side, check the `authentik` server container logs.  If you need to inspect exactly what the outpost is doing, set the embedded outpost log level to `trace` temporarily.  Authentik also provides a quick outpost health check endpoint:
+
+```
+https://xyops.yourcompany.com/outpost.goauthentik.io/ping
+```
+
+A healthy outpost should return an empty `204` success response.
 
 ## SAML
 
