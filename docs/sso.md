@@ -512,6 +512,8 @@ This will allow xyOps to log much more information about the SSO process, includ
 
 Authentik also supports advanced authentication features such as MFA / 2FA, TOTP authenticator apps, static recovery tokens, SMS and Duo stages, WebAuthn / FIDO2 / Passkeys, security keys such as YubiKey, platform authenticators such as Touch ID, Face ID and Windows Hello, passwordless login, and passkey autofill in supported browsers.  These features are configured in Authentik's flows and stages, and they all happen before xyOps receives the authenticated request.
 
+**Resource Note:** Authentik is a full identity provider and authentication platform, so it is more resource-heavy than a lightweight auth proxy.  Authentik's official Docker Compose requirements currently recommend at least 2 CPU cores and 2 GB of RAM.  For single-user or very small-team self-hosted xyOps installs, this may be more overhead than you want.  In that case, OAuth2-Proxy, Authelia, Tailscale, or another simpler trusted-header proxy may be a better fit.
+
 This section focuses on the simple single-conductor setup, with Authentik directly in front of xyOps using the embedded proxy outpost.  No Nginx is required for this version.  Authentik has more advanced forward-auth and external outpost modes too, but those are best handled as a separate advanced deployment.
 
 ### How It Works
