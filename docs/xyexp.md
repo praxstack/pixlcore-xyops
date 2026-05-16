@@ -37,9 +37,15 @@ In addition to the standard JEXL operators, the following custom functions are a
 | `ceil` | `ceil(1.2) == 2` | See [Math.ceil](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/ceil). |
 | `round` | `round(1.2) == 1` | See [Math.round](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/round). |
 | `clamp` | `clamp(50, 0, 100) == 50` | Clamps a numerical value between a lower and upper limit. |
+| `count` | `count(array)` | Returns the number of items in an array (as JEXL arrays don't have a `length` inside expressions). |
+
+### Searching
+
+| Function | Usage | Description |
+|----------|-------|-------------|
 | `find` | `find(array, key, value)` | Finds objects in an array using a named property and a substring match. |
 | `includes` | `includes(array, key)` | Find a substring in a string, or an element in an array. |
-| `count` | `count(array)` | Returns the number of items in an array (as JEXL arrays don't have a `length` inside expressions). |
+| `match` | `match(string, pattern)` | Perform a regex match on a string.  The pattern itself must also be a string. |
 
 ### String Formatting
 
@@ -50,13 +56,13 @@ In addition to the standard JEXL operators, the following custom functions are a
 | `pct` | `pct(0.5, 1.0) == "50%"` | Returns a human-friendly percentage given a value and a maximum. |
 | `integer` | `integer("1abc") == "1"` | Attempts to coerce an integer out of a string. |
 | `float` | `float(1.33333333) == "1.33"` | Shortens a float to a maximum of 2 digits after the decimal. |
-| `encode` | `encode("a b") == "a%20b` | Calls [encodeURIComponent](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent) to encode a string. |
-| `stringify` | `stringify(obj) == "{...}"` | Calls [JSON.stringify](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify) to serialize an object into a string. |
 
-### Other
+### Misc
 
 | Function | Usage | Description |
 |----------|-------|-------------|
+| `encode` | `encode("a b") == "a%20b` | Calls [encodeURIComponent](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/encodeURIComponent) to encode a string. |
+| `stringify` | `stringify(obj) == "{...}"` | Calls [JSON.stringify](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify) to serialize an object into a string. |
 | `server` | `server("smog7ph67nvh6891z") == "myhostname.domain.com"` | Resolve a server ID to a label or hostname. |
 
 ## See Also

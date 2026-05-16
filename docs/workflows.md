@@ -80,13 +80,27 @@ Controllers implement flow control. They generally have input and output poles a
 
 #### Split Controller
 
-The Split controller fans out work by taking an input list and launching one sub-job per item. Provide a dot-path to the list in the previous job context, such as `data.rows`. The engine resolves the path and expects an array; if the value is a string it is trimmed and split by newline.   A special case is `files`, which splits the incoming files array so that each sub-job receives exactly one file. 
+The Split controller fans out work by taking an input list and launching one sub-job per item. Provide an [expression](xyexp.md) to the list in the previous job context, such as `data.rows`. The engine resolves the path and expects an array; if the value is a string it is trimmed and split by newline.   A special case is `files`, which splits the incoming files array so that each sub-job receives exactly one file. 
 
 In the UI, the split controller configuration dialog provides an "Expression Builder" button, which allows you to explore output data from recently completed jobs, and pick out a specific JSON key path to use for the expression string.
 
 Each individual sub-job will receive one item from the split data.  It will arrive in the job's [Job.input](data.md#job-input), either in `data` as a property named `item`, or as a [File](data.md#file) in the `files` array.
 
 Split requires exactly one output connection to the Event or Job node it will run per item. Concurrency and queuing are governed by the limits attached to that node. After all items complete, you can continue the flow using a `continue` wire from the controlled node. The controller includes a "continue percentage" setting so you can require that at least N% of the sub-jobs succeed before continuing.
+
+##### Split Item Filter
+
+You can optionally filter out items from your split array, by including a special item filter expression.  In this context use the special `item` keyword to refer to the item being filtered.  If your expression evaluates to true, the item will be included in the set.  Otherwise, it will be left out.  Here is an example using a property inside the item:
+
+```js
+item.random < 0.5
+```
+
+Also available in context here is `index` (the 0-based index of the current item in the set), `workflow.params` (all workflow-level user fields), and `workflowData` (shared workflow data object).  For example, here is how to filter out all odd items, and only keep the even ones, using the modulo operator:
+
+```js
+index % 2 == 0
+```
 
 #### Join Controller
 
@@ -167,13 +181,31 @@ The editor defaults new wires from Event/Job outputs to success, and you can cha
 
 ## Continue After Controllers
 
-Repeat, Multiplex and Split support a "continue after controller" flow:
+[Repeat](#repeat-controller), [Multiplex](#multiplex-controller) and [Split](#split-controller) are special because they launch the same Event or Job node multiple times.  For example, Repeat may run the same job 10 times, Multiplex may run it once per server in the target group, and Split may run it once per item or file.
 
-- Configure the controller's "continue percentage" (0-100). This is the minimum percentage of successful sub-jobs required to proceed.
-- Solder wires out of the controlled Event/Job node with the `continue` condition to define what happens next.
-- When all iterations complete, if successes meet or exceed the threshold, all `continue` wires from that Event/Job fire. Otherwise nothing continues and the workflow may finish if no other nodes are active.
+This creates an important distinction for outgoing wires from the controlled event/job node:
 
-Example: Event A → Repeat (x10) → Event A has a `continue` wire → Event B. After all 10 runs of Event A finish, if at least N% succeed (per controller), Event B runs.
+- "On Success", "On Complete", "On Any Error" and tag conditions are evaluated for *each individual sub-job*.  If you wire another node using "On Success" or "On Complete", it may run many times, once for each matching sub-job.
+- "On Continue" is evaluated *only once* for the controller as a whole.  It fires only after all the jobs launched by that Repeat, Multiplex or Split controller have finished.
+
+Use "On Continue" when you want a single next step after the whole controlled set is done.  For example:
+
+```text
++-----------+     +-------+      -------------      +-------+
+| Multiplex | --> | Job A | --> | On Continue | --> | Job B |
++-----------+     +-------+      -------------      +-------+
+```
+
+The "On Continue" wire is soldered from the controlled Event or Job node, not from the controller itself.
+
+In this example, `Job A` runs multiple times, once per selected server.  `Job B` runs only once, and only after every multiplexed `Job A` has completed.  If the wire condition was changed to `On Success` or `On Complete`, then `Job B` would run once for every matching `Job A` instead.
+
+The controller's "continue percentage" setting controls whether the "On Continue" wire is allowed to fire.  It is a number from 0 to 100, representing the minimum percentage of controlled sub-jobs that must succeed.  After the last sub-job finishes, xyOps checks the success percentage:
+
+- If the success percentage meets or exceeds the controller setting, all "On Continue" wires from the controlled Event or Job node fire.
+- If the success percentage is below the controller setting, the "On Continue" wires do not fire, and the workflow may finish if no other nodes are active.
+
+Each "On Continue" condition is scoped to the specific controller and Event/Job node pair it is attached to.  You can have multiple controller sections in the same workflow, and each one waits for its own controlled jobs before firing its own "On Continue" wires.
 
 
 ## Passing Data Between Nodes

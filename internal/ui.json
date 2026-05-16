@@ -583,11 +583,15 @@
 			},
 			"d_wfd_split": {
 				"label": "Split Expression:",
-				"caption": "Specify the path to the array for splitting, using `dot.path.notation`.  Use the special `files` keyword to split the input files."
+				"caption": "Specify the path to the array for splitting, using [XYEXP](#Docs/xyexp), e.g. `data.items`.  Use the special `files` keyword to split the input files."
+			},
+			"d_wfd_split_filter": {
+				"label": "Item Filter:",
+				"caption": "Optionally enter an expression to filter items, e.g. `item.random > 0.5`.  If false, the item will be excluded from the set.  [Learn More](#Docs/workflows/split-item-filter)"
 			},
 			"d_wfd_if": {
 				"label": "Expression:",
-				"caption": "Enter the expression to evaluate using dot.path.notation, e.g. `data.random > 0.5`.  If true, control will pass onto the next node."
+				"caption": "Enter the expression to evaluate using [XYEXP](#Docs/xyexp), e.g. `data.random > 0.5`.  If true, control will pass onto the next node."
 			},
 			"d_wfd_title": {
 				"label": "Custom Title:",
@@ -1038,6 +1042,7 @@
 		"checkbox": "Checkbox",
 		"select": "Menu",
 		"bucket": "Bucket Menu",
+		"system": "System Menu",
 		"hidden": "Hidden",
 		"toolset": "Toolset"
 	},
@@ -1050,6 +1055,7 @@
 		"checkbox": "checkbox-marked-outline",
 		"select": "form-dropdown",
 		"bucket": "pail-outline",
+		"system": "list-box-outline",
 		"hidden": "eye-off-outline",
 		"toolset": "tools"
 	},

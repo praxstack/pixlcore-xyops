@@ -400,9 +400,6 @@ See [Plugins](plugins.md) for more details on plugins.
 
 ### Suspend Job
 
-> [!NOTE]
-> This action can only be used inside of a workflow.
-
 Suspend the running job until a user resumes it in the UI. Optionally notify users and/or fire a web hook about the suspension.
 
 Parameters:

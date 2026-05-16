@@ -130,6 +130,48 @@ Launch jobs at local sunrise and sunset with optional offsets. Useful for energy
 - To avoid dependency on external APIs, embed sunrise calculations in the plugin. Any language is fine.
 - Provide an optional test mode that forces a launch to validate the graph end to end.
 
+## Server Offline Notifications
+
+Notify your team when any server disconnects from the xyOps network. This uses a [System Hook](syshooks.md), which runs in the background when matching activity is logged.
+
+### How It Works
+
+Add a `server_remove` hook into the [hooks](config.md#hooks) section in your `config.json`. This activity fires when a server disconnects from the network. See [Activity.action](data.md#activity-action) for the full list of hookable activity action IDs.
+
+Simple web hook example:
+
+```json
+"hooks": {
+	"server_remove": {
+		"url": "https://alerts.mycompany.com/api/xyops-server-offline"
+	}
+}
+```
+
+Email example:
+
+```json
+"hooks": {
+	"server_remove": {
+		"email": "oncall-pager@mycompany.com"
+	}
+}
+```
+
+You can also use a configured xyOps web hook ID if you want custom headers, request body templates, or other delivery options:
+
+```json
+"hooks": {
+	"server_remove": {
+		"web_hook": "wmkd2yx4yw4ihh7lu"
+	}
+}
+```
+
+### Notes
+
+- The `server_remove` activity fires whenever a server disconnects, including planned upgrades, service restarts, network maintenance, and other expected outages. It does not always mean the server crashed.
+
 ## Daylight Savings Time
 
 Run a job safely during the Daylight Savings Time changeover window without duplicates or missed runs.  During DST transitions, local clocks jump between 1:00 and 3:00 AM. Two effects occur in many regions:

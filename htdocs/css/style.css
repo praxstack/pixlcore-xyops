@@ -1622,11 +1622,11 @@ body.dark .box_buttons.floater {
 	background: var(--shadow-color);
 }
 
-.plugin_param_editor_cont select {
+.plugin_param_editor_cont select, .plugin_param_editor_cont .multiselect.single {
 	background: var(--shadow-color) !important;
 }
 
-body.dark .plugin_param_editor_cont textarea, body.dark .plugin_param_editor_cont input, body.dark .plugin_param_editor_cont select {
+body.dark .plugin_param_editor_cont textarea, body.dark .plugin_param_editor_cont input, body.dark .plugin_param_editor_cont select, body.dark .plugin_param_editor_cont .multiselect.single {
 	background: var(--border-color) !important;
 }
 body.dark .plugin_param_editor_cont div.button {
@@ -1653,7 +1653,7 @@ body.dark .plugin_param_editor_cont div.button.danger:hover {
 body.dark .dialog .plugin_param_editor_cont {
 	background: rgba(255, 255, 255, 0.02);
 }
-.dialog .plugin_param_editor_cont textarea, .dialog .plugin_param_editor_cont input, .dialog .plugin_param_editor_cont select {
+.dialog .plugin_param_editor_cont textarea, .dialog .plugin_param_editor_cont input, .dialog .plugin_param_editor_cont select, .dialog .plugin_param_editor_cont .multiselect.single {
 	background: var(--shadow-color);
 }
 

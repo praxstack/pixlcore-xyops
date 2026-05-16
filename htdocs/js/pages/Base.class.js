@@ -587,6 +587,7 @@ Page.Base = class Base extends Page {
 		var self = this;
 		if (!glue) glue = ', ';
 		if (!targets || !targets.length) return '(None)';
+		if (typeof(targets) == 'string') targets = targets.split(/\,\s*/);
 		return targets.map( function(target) { return self.getNiceTarget(target, link); } ).join(glue);
 	}
 	
@@ -2658,6 +2659,11 @@ Page.Base = class Base extends Page {
 						html += '<span class="data_value">' + encode_entities( elem_value ) + '</span>';
 					}
 					else html += self.getNiceBucket(param.bucket_id);
+				break;
+				
+				case 'system':
+					html += '<i class="link mdi mdi-' + elem_icon + '" onClick="$P().copyPluginParamValue(this)" title="Copy to Clipboard">&nbsp;</i>';
+					html += '<span class="data_value">' + encode_entities( elem_value.toString() || '(None)' ) + '</span>';
 				break;
 				
 				case 'toolset':

@@ -2040,7 +2040,9 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			show_condition: true,
 			
 			action_type_filter: function(item) { 
-				return !item.id.match(/^(suspend)$/); 
+				// JH 2026-05-12 experiment: allowing suspend at the event level
+				// return !item.id.match(/^(suspend)$/); 
+				return true;
 			},
 			
 			callback: function(action) {
@@ -2652,7 +2654,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 				
 				case 'select':
 					elem_value = (param.id in params) ? params[param.id] : param.value.replace(/\,.*$/, '').replace(/^.+\[([\w\-\.]+)\]\s*$/, '$1');
-					html += self.getFormMenu({ id: elem_id, value: elem_value, options: self.csvToMenuItems(param.value), disabled: elem_dis });
+					html += self.getFormMenuSingle({ id: elem_id, value: elem_value, options: self.csvToMenuItems(param.value), disabled: elem_dis, title: param.title });
 				break;
 				
 				case 'bucket':
@@ -2660,11 +2662,16 @@ Page.PageUtils = class PageUtils extends Page.Base {
 					if (bucket) {
 						elem_value = (param.id in params) ? params[param.id] : '';
 						var menu_opts = self.getBucketMenuItems(bucket.id, param.bucket_path, elem_id, elem_value);
-						html += self.getFormMenu({ id: elem_id, value: elem_value, options: menu_opts, disabled: elem_dis });
+						html += self.getFormMenuSingle({ id: elem_id, value: elem_value, options: menu_opts, disabled: elem_dis, title: param.title });
 					}
 					else {
-						html += self.getFormMenu({ id: elem_id, value: '', options: [ { id: '', title: "(Bucket Not Found)" } ], disabled: elem_dis });
+						html += self.getFormMenuSingle({ id: elem_id, value: '', options: [ { id: '', title: "(Bucket Not Found)" } ], disabled: elem_dis, title: param.title });
 					}
+				break;
+				
+				case 'system':
+					elem_value = (param.id in params) ? params[param.id] : '';
+					html += self.getFormMenuSingle({ id: elem_id, value: elem_value, options: self.getSystemMenuItems(param.list_id), disabled: elem_dis, title: param.title });
 				break;
 				
 				case 'toolset':
@@ -2686,7 +2693,14 @@ Page.PageUtils = class PageUtils extends Page.Base {
 						elem_value = tool.id;
 					}
 					
-					html += self.getFormMenu({ id: elem_id, value: elem_value, options: tools, disabled: elem_dis, onChange: `$P().changePluginParamTool('${plugin_id}','${param.id}',${explore})` });
+					html += self.getFormMenuSingle({ 
+						id: elem_id, 
+						value: elem_value, 
+						options: tools, 
+						disabled: elem_dis, 
+						title: param.title,
+						onChange: `$P().changePluginParamTool('${plugin_id}','${param.id}',${explore})` 
+					});
 					
 					html += `<fieldset id="fs_toolset_${plugin_id}_${param.id}" class="info_fieldset">`;
 					html += `<legend>${strip_html(tool.title)}</legend>`;
@@ -2728,7 +2742,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			var $menu = $('#' + dom_id);
 			if (!$menu.length) return; // sanity
 			
-			$menu.html( render_menu_options( items, elem_value, false ) );
+			$menu.html( render_menu_options( items, elem_value, false ) ).trigger('change');
 		}); // api.get
 		
 		return [ { id: '', title: "..." } ];
@@ -2873,9 +2887,9 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		return (''+csv).split(/\,\s*/).map( function(item) {
 			if (item.match(re)) {
 				var id = RegExp.$1;
-				return { id, title: item.replace(re, '').trim() };
+				return { id, title: item.replace(re, '').trim() || '(None)' };
 			}
-			else return { id: item, title: item };
+			else return { id: item, title: item || '(None)' };
 		} );
 	}
 	
@@ -3677,7 +3691,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 				break;
 				
 				case 'code':
-					if (elem_value.toString().length) {
+					if (String(elem_value).length) {
 						html += '<i class="mdi mdi-' + elem_icon + '">&nbsp;</i>';
 						html += '<span class="monospace">' + strip_html(elem_value) + '</span>';
 					}
@@ -3699,15 +3713,20 @@ Page.PageUtils = class PageUtils extends Page.Base {
 				
 				case 'select':
 					html += '<i class="mdi mdi-' + elem_icon + '">&nbsp;</i>';
-					html += strip_html( elem_value.toString().replace(/\,.*$/, '').replace(/^.+\[([\w\-\.]+)\]\s*$/, '$1') );
+					html += strip_html( str_value(elem_value).replace(/\,.*$/, '').replace(/^.+\[([\w\-\.]+)\]\s*$/, '$1') );
 				break;
 				
 				case 'bucket':
-					if (elem_value.toString().length) {
+					if (str_value(elem_value).length) {
 						html += '<i class="mdi mdi-' + elem_icon + '">&nbsp;</i>';
 						html += strip_html( elem_value );
 					}
 					else html += self.getNiceBucket( param.bucket_id );
+				break;
+				
+				case 'system':
+					html += '<i class="mdi mdi-' + elem_icon + '">&nbsp;</i>';
+					html += strip_html( str_value(elem_value) || '(None)' );
 				break;
 				
 				case 'toolset':
@@ -4520,6 +4539,10 @@ Page.PageUtils = class PageUtils extends Page.Base {
 					pairs.push([ self.getNiceBucket(param.bucket_id) ]);
 				break;
 				
+				case 'system':
+					pairs.push([ self.getNiceSystemList(param.list_id) ]);
+				break;
+				
 				case 'toolset':
 					if (param.data && param.data.tools && param.data.tools.length) pairs.push([ commify(param.data.tools.length) + " tools in set" ]);
 					else pairs.push([ "(No tools in set)" ]);
@@ -4573,7 +4596,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		var old_param = param;
 		
 		// prepare control type menu
-		var ctypes = (this.controlTypes || ['checkbox', 'code', 'json', 'hidden', 'select', 'bucket', 'text', 'textarea']).map (function(key) { 
+		var ctypes = (this.controlTypes || ['checkbox', 'code', 'json', 'hidden', 'select', 'bucket', 'system', 'text', 'textarea']).map (function(key) { 
 			return { 
 				id: key, 
 				title: config.ui.control_type_labels[key],
@@ -4726,6 +4749,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			caption: 'Enter JSON data describing the toolset.  [Learn More](#Docs/plugins/toolset)'
 		});
 		
+		// bucket menu
 		html += this.getFormRow({
 			id: 'd_epa_bucket_id',
 			label: 'Storage Bucket:',
@@ -4749,6 +4773,20 @@ Page.PageUtils = class PageUtils extends Page.Base {
 				value: param.bucket_path || ''
 			}),
 			caption: 'Optionally enter a `dot.delimited.path` to the array within the bucket data record.  If omitted, the array should be at the top-level of the bucket data.'
+		});
+		
+		// system menu
+		html += this.getFormRow({
+			id: 'd_epa_list_id',
+			label: 'System Menu:',
+			content: this.getFormMenuSingle({
+				id: 'fe_epa_list_id',
+				title: 'Select System List',
+				options: this.getSystemListMenuItems(),
+				value: param.list_id || '',
+				default_icon: ''
+			}),
+			caption: 'Select an internal list of items to populate the system menu.  No item will be selected by default.  [Learn More](#Docs/plugins/system-menu)'
 		});
 		
 		// caption
@@ -4860,6 +4898,11 @@ Page.PageUtils = class PageUtils extends Page.Base {
 					delete param.required;
 				break;
 				
+				case 'system':
+					param.list_id = $('#fe_epa_list_id').val();
+					delete param.required;
+				break;
+				
 				case 'hidden':
 					param.value = $('#fe_epa_value_hidden').val();
 					delete param.required;
@@ -4895,12 +4938,13 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		} ); // Dialog.confirm
 		
 		var change_param_type = function(new_type) {
-			$('#d_epa_value_text, #d_epa_value_textarea, #d_epa_value_code, #d_epa_value_json, #d_epa_value_checkbox, #d_epa_value_select, #d_epa_value_hidden, #d_epa_value_toolset, #d_epa_bucket_id, #d_epa_bucket_path').hide();
+			$('#d_epa_value_text, #d_epa_value_textarea, #d_epa_value_code, #d_epa_value_json, #d_epa_value_checkbox, #d_epa_value_select, #d_epa_value_hidden, #d_epa_value_toolset, #d_epa_bucket_id, #d_epa_bucket_path, #d_epa_list_id').hide();
 			$('#d_epa_value_' + new_type).show();
 			$('#d_epa_required').toggle( !!new_type.match(/^(text|textarea|code)$/) );
 			$('#d_epa_text_variant').toggle( !!new_type.match(/^(text)$/) );
 			$('#d_epa_locked').toggle( !new_type.match(/^(toolset)$/) );
 			$('#d_epa_bucket_id, #d_epa_bucket_path').toggle( !!new_type.match(/^(bucket)$/) );
+			$('#d_epa_list_id').toggle( !!new_type.match(/^(system)$/) );
 			Dialog.autoResize();
 		}; // change_action_type
 		
@@ -4912,7 +4956,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		
 		if (idx == -1) $('#fe_epa_id').focus();
 		
-		SingleSelect.init( $('#fe_epa_type, #fe_epa_text_variant, #fe_epa_bucket_id') );
+		SingleSelect.init( $('#fe_epa_type, #fe_epa_text_variant, #fe_epa_bucket_id, #fe_epa_list_id') );
 		Dialog.autoResize();
 	}
 	
@@ -4940,6 +4984,94 @@ Page.PageUtils = class PageUtils extends Page.Base {
 				$('#fe_epa_value_json').val( new_value );
 			}
 		});
+	}
+	
+	getNiceSystemList(list_id) {
+		// get formatted list title with icon
+		var item = find_object( this.getSystemListMenuItems(), { id: list_id } );
+		if (!item) return '(None)';
+		
+		var html = '<span class="nowrap" title="' + encode_attrib_entities(item.title) + '">';
+		var icon = '<i class="mdi mdi-' + item.icon + '"></i>';
+		
+		html += icon + item.title;
+		html += '</span>';
+		
+		return html;
+	}
+	
+	getSystemListMenuItems() {
+		// get menu of all lists (excluding a few)
+		var items = config.ui.list_list.filter( function(item) {
+			return !item.id.match(/^(api_keys|secrets)$/);
+		} );
+		
+		items = items.concat([
+			{
+				"id": "servers",
+				"title": "Servers",
+				"icon": "router-network"
+			},
+			{
+				"id": "groups",
+				"title": "Groups",
+				"icon": "server-network"
+			},
+			{
+				"id": "targets",
+				"title": "Targets",
+				"icon": "lan"
+			},
+			{
+				"id": "algos",
+				"title": "Algorithms",
+				"icon": "dice-5-outline"
+			}
+		]);
+		
+		sort_by( items, 'title' );
+		return items;
+	}
+	
+	getSystemMenuItems(list_id) {
+		// get items for menu given list id
+		var items = [];
+		var list_def = find_object( config.ui.list_list, { id: list_id } );
+		
+		switch (list_id) {
+			case 'events':
+				items = this.getCategorizedEvents();
+			break;
+			
+			case 'servers':
+				items = this.getCategorizedServers(true);
+			break;
+			
+			case 'targets':
+				items = [].concat(
+					this.buildOptGroup(app.groups, "Groups:", 'server-network'),
+					this.buildServerOptGroup("Servers:", 'router-network')
+				);
+			break;
+			
+			case 'algos':
+				items = config.ui.event_target_algo_menu;
+			break;
+			
+			case 'users':
+				items = app.users.map( function(user) { return { id: user.username, title: user.full_name, icon: user.icon || 'account' }; } );
+			break;
+			
+			default: 
+				if (list_def && app[list_id]) {
+					items = app[list_id].map( function(item) { return { id: item.id, title: item.title, icon: list_def.icon }; } );
+				}
+				else items = app[list_id] || []; 
+			break;
+		}
+		
+		items.unshift({ "id": "", "title": "(None)" });
+		return items;
 	}
 	
 	deleteParam(idx) {
@@ -5155,7 +5287,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 				
 				case 'select':
 					elem_value = (param.id in params) ? params[param.id] : param.value.replace(/\,.*$/, '').replace(/^.+\[([\w\-\.]+)\]\s*$/, '$1');
-					html += self.getFormMenu({ id: elem_id, value: elem_value, options: self.csvToMenuItems(param.value), disabled: elem_dis });
+					html += self.getFormMenuSingle({ id: elem_id, value: elem_value, options: self.csvToMenuItems(param.value), disabled: elem_dis, title: param.title });
 				break;
 				
 				case 'bucket':
@@ -5163,11 +5295,16 @@ Page.PageUtils = class PageUtils extends Page.Base {
 					if (bucket) {
 						elem_value = (param.id in params) ? params[param.id] : '';
 						var menu_opts = self.getBucketMenuItems(bucket.id, param.bucket_path, elem_id, elem_value);
-						html += self.getFormMenu({ id: elem_id, value: elem_value, options: menu_opts, disabled: elem_dis });
+						html += self.getFormMenuSingle({ id: elem_id, value: elem_value, options: menu_opts, disabled: elem_dis, title: param.title });
 					}
 					else {
-						html += self.getFormMenu({ id: elem_id, value: '', options: [ { id: '', title: "(Bucket Not Found)" } ], disabled: elem_dis });
+						html += self.getFormMenuSingle({ id: elem_id, value: '', options: [ { id: '', title: "(Bucket Not Found)" } ], disabled: elem_dis, title: param.title });
 					}
+				break;
+				
+				case 'system':
+					elem_value = (param.id in params) ? params[param.id] : '';
+					html += self.getFormMenuSingle({ id: elem_id, value: elem_value, options: self.getSystemMenuItems(param.list_id), disabled: elem_dis, title: param.title });
 				break;
 				
 			} // switch type

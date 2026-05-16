@@ -1,5 +1,27 @@
 # xyOps Changelog
 
+## Version v1.0.55
+
+> May 15, 2026
+
+- [`da767a54`](https://github.com/pixlcore/xyops/commit/da767a544fa5f0e677afb8667e6f4f95a8830ced): Version 1.0.55
+- [`ea727ab5`](https://github.com/pixlcore/xyops/commit/ea727ab5a36560da6b340a235baac417d0d0dd0e): Feature: Allow special `_xy_override_` prefixed event param IDs to override job props at runtime (i.e. targets, algo).
+- [`2a1f7c07`](https://github.com/pixlcore/xyops/commit/2a1f7c075a317d422e9e5f14b3a706fa28962f6b): Actions Doc: Remove note about suspend only working within workflows (it now works everywhere).
+- [`51116eb6`](https://github.com/pixlcore/xyops/commit/51116eb63d91f9604589ead74de2e11e05d37a2b): Feature: New plugin/event param type: "System Menu", pre-populated with various xyOps internal system list items.
+- [`72279f53`](https://github.com/pixlcore/xyops/commit/72279f5309b915261bee870df4eb3dc6b9bc64dc): Recipes Doc: Add recipe for using system hooks to send notification for any server going offline.
+- [`aee647fd`](https://github.com/pixlcore/xyops/commit/aee647fdd56f834a60ed84f86d68dd8c53600dbf): Workflows Doc: Rewrite "Continue After Controllers" section to be much more clear.
+- [`cc612696`](https://github.com/pixlcore/xyops/commit/cc61269612b88135c8a2e97792c0716f427f6de8): Bug Fix: Various UI issues with the new fancy searchable plugin/event param menus.
+- [`d9863fea`](https://github.com/pixlcore/xyops/commit/d9863fea7eea0b05c4d24f19515aaca87eba0291): Bug Fix: Sidebar: Shortcuts and admin sections couldn not be user-hidden in some cases.  Fixes #293.
+- [`784f9aac`](https://github.com/pixlcore/xyops/commit/784f9aac7a19c3f628b2afd91a4fc4a5e4e94242): Feature: Workflow Split controllers now offer an optional "item filter" expression, to filter out specific items based on their properties, or array index, or other.  Fixes #298.
+- [`049beffb`](https://github.com/pixlcore/xyops/commit/049beffba7fe38cc8a268a1d0f1bb415c9c1e3ae): Feature: Add JEXL macro function: `match` (regular expression match on a string property).
+- [`0e70e730`](https://github.com/pixlcore/xyops/commit/0e70e7306b711dff5731e4d90dd21b1e98a09828): Bug Fix: Workflows: On abort, make sure ALL controllers are deactivated, to prevent UI animation from running after completion.
+- [`5cfe53b4`](https://github.com/pixlcore/xyops/commit/5cfe53b4fac3629ae55b15ed4a2e14c016bf89fe): Bug Fix: Workflows: Ensure split controller is only ever wired to an event or job node (match behavior of all other job control nodes).
+- [`e7d6ddc2`](https://github.com/pixlcore/xyops/commit/e7d6ddc20163630c343d3da04214bc584074b72e): Feature: Plugin and event param drop-down menus are now searchable.
+- [`19072ec9`](https://github.com/pixlcore/xyops/commit/19072ec91d5ce4abdcb05c5e470f917fb65be5e2): Feature: Allow suspend action to be attached to regular events (outside of workflows).
+- [`6ddeb11d`](https://github.com/pixlcore/xyops/commit/6ddeb11dd3e31da1137f9adb47b6fb4d43e3d2d3): SSO Doc: Add section on RAM requirements with Authentik.
+- [`b92adf34`](https://github.com/pixlcore/xyops/commit/b92adf344fca80b0e4ffb6773adbf0f2a817b8b5): SSO Doc: Add section on Authentik, and fix a number of errors.
+- [`a9d67ebe`](https://github.com/pixlcore/xyops/commit/a9d67ebe1afddc06e3cb43f1a9a07e0695236d7f): README: Add community section with links to Reddit, Discord, and social media.
+
 ## Version v1.0.54
 
 > May 8, 2026

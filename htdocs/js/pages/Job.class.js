@@ -613,7 +613,9 @@ Page.Job = class Job extends Page.PageUtils {
 		if (!job) return; // sanity
 		
 		if (!job.suspended) return; // sanity -- this is for suspended jobs only
-		if (!job.workflow || !job.workflow.job) return; // sanity -- must be wf sub-job
+		
+		// JH 2026-05-12 experiment: allowing suspend at the event level
+		// if (!job.workflow || !job.workflow.job) return; // sanity -- must be wf sub-job
 		
 		var $toast = $('div.toast.suspended');
 		if ($toast.length && !$toast.is(':animated')) $toast.fadeOut( 250, function() { $(this).remove(); } );
@@ -2749,6 +2751,7 @@ Page.Job = class Job extends Page.PageUtils {
 		// called from onStatusUpdate (every 1s)
 		var job = this.job;
 		var timelines = job.timelines;
+		if (!job.updated || !job.procs) return; // sanity
 		
 		// second
 		var last_second = timelines.second.length ? timelines.second[timelines.second.length - 1].epoch : 0;

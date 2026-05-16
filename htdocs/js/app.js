@@ -534,12 +534,20 @@ app.extend({
 		if (!this.hasPrivilege('add_servers')) $('#tab_NewServer').removeClass('enabled').hide();
 		
 		// possibly hide entire admin section
-		if ($('#d_sidebar_admin_group > .section > .section_item.enabled').length) $('#d_sidebar_admin_group').show();
-		else $('#d_sidebar_admin_group').hide();
+		if ($('#d_sidebar_admin_group > .section > .section_item.enabled').length && user_sections.includes('admin')) {
+			$('#d_sidebar_admin_group').show();
+		}
+		else {
+			$('#d_sidebar_admin_group').hide();
+		}
 		
 		// possibly hide entire shortcuts section if all items are hidden
-		if ($('.sidebar > .section.sbs_shortcuts > .section_item.enabled').length) $('.sidebar > .section_title.sbs_shortcuts, .sidebar > .section.sbs_shortcuts').show();
-		else $('.sidebar > .section_title.sbs_shortcuts, .sidebar > .section.sbs_shortcuts').hide();
+		if ($('.sidebar > .section.sbs_shortcuts > .section_item.enabled').length && user_sections.includes('shortcuts')) {
+			$('.sidebar > .section_title.sbs_shortcuts, .sidebar > .section.sbs_shortcuts').show();
+		}
+		else {
+			$('.sidebar > .section_title.sbs_shortcuts, .sidebar > .section.sbs_shortcuts').hide();
+		}
 		
 		// add hint to body tag for admin UI hints
 		if (this.isAdmin()) $('body').addClass('admin');
@@ -1291,6 +1299,13 @@ app.extend({
 		// add aria roles and keyboard handlers to all buttons inside container
 		if (!sel) sel = '.button, .form_suffix_icon';
 		$cont.find(sel).attr({ role: 'button', tabindex: '0', onkeypress: 'app.buttonKey(this,event)' });
+		
+		// also menuize plugin / event params
+		var $param_editor_cont = ($cont.hasClass('plugin_param_editor_cont') || $cont.hasClass('info_fieldset')) ? $cont : $cont.find('div.plugin_param_editor_cont');
+		if ($param_editor_cont.length) {
+			SingleSelect.init( $param_editor_cont.find('select:not([multiple])') );
+			MultiSelect.init( $param_editor_cont.find('select[multiple]') );
+		}
 	},
 	
 	initAccessibility() {

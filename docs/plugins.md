@@ -1068,6 +1068,46 @@ Finally, you can define groups of items in the menu by including an object with 
 }
 ```
 
+### System Menu
+
+A "system menu" is a dynamically populated menu, similar to a [Bucket Menu](#bucket-menu), but the menu items are pulled from xyOps itself.  This is useful when a Plugin needs the user to select an existing xyOps object, such as an event, category, server, server group, plugin, user, role, web hook or monitor.
+
+When you add your parameter and select the "System Menu" field type, you will need to select the internal xyOps list to use for the menu.  The menu is populated automatically from the current system data, and xyOps adds a `(None)` item at the top so no item is selected by default.
+
+When the user selects an item, the selected item's ID is stored in [Job.params](data.md#job-params) and passed to the Plugin.  For example, if you define a parameter with ID `custom_event`, point it at the Events system list, and the user selects an event with ID `emp6dulft42zjevn8`, the Plugin would receive this:
+
+```json
+{
+	"custom_event": "emp6dulft42zjevn8"
+}
+```
+
+Most system menus store the selected item's normal `id` property.  The Users menu is a special case, and stores the selected user's `username`.
+
+The following system lists are available:
+
+| List | Stored Value |
+|------|--------------|
+| Alerts | Alert ID |
+| Algorithms | Target algorithm ID |
+| Buckets | Bucket ID |
+| Categories | Category ID |
+| Channels | Channel ID |
+| Events | Event ID |
+| Groups | Server group ID |
+| Monitors | Monitor ID |
+| Plugins | Plugin ID |
+| Roles | Role ID |
+| Servers | Server ID |
+| Tags | Tag ID |
+| Targets | Server group ID or server ID |
+| Users | Username |
+| Web Hooks | Web Hook ID |
+
+The "Targets" menu is a combined list which includes both server groups and individual servers, arranged into menu sections.  This is handy for Plugin parameters that should accept either kind of job target.  The Algorithms menu contains the built-in event target selection algorithms, such as Random.
+
+API Keys and Secrets are intentionally not offered as system menu sources.
+
 ### Checkbox
 
 A checkbox is displayed with a label, and the "checked" state is stored as a Boolean parameter value (`true` or `false`).
@@ -1342,4 +1382,3 @@ To use a pre-existing Docker image such as `ubuntu`, you can set the launch comm
 ## Plugin Marketplace
 
 xyOps has an integrated Plugin Marketplace, so you can expand the app's feature set by leveraging Plugins published both by PixlCore (the makers of xyOps), as well as the developer community.  For more on this, please see the [Marketplace Guide](marketplace.md).
-
