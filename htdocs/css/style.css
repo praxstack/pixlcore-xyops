@@ -1647,6 +1647,10 @@ body.dark .plugin_param_editor_cont div.button.danger:hover {
 	border-color: var(--red);
 }
 
+body.dark .plugin_param_editor_cont .multiselect.multi {
+	background: var(--form-background-color);
+}
+
 .dialog .plugin_param_editor_cont {
 	background: rgba(233, 236, 240, 0.3);
 }

@@ -492,6 +492,11 @@ function interval_hits_per_minute(trigger, epoch) {
 	return hits;
 };
 
+function always_string(thing) {
+	// convert thing to string -- if array, grab first element
+	return Array.isArray(thing) ? String(thing[0]) : String(thing);
+}
+
 CodeMirror.defineMode("mustache", function(config, parserConfig) {
 	// define custom mode for double-curly-brace "mustache" syntax to use as overlay
 	var mustacheOverlay = {

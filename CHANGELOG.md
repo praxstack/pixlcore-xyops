@@ -1,5 +1,18 @@
 # xyOps Changelog
 
+## Version v1.0.56
+
+> May 17, 2026
+
+- [`613f2e2c`](https://github.com/pixlcore/xyops/commit/613f2e2caa6be04edc4f72e18401669be167d547): Version 1.0.56
+- [`9ee387e4`](https://github.com/pixlcore/xyops/commit/9ee387e4f2ccf22f9b3d6eb9b63e9c6d608d0559): Feature: Multi-select menus in plugin and event parameters.
+- [`8ebe888b`](https://github.com/pixlcore/xyops/commit/8ebe888bc1ab0589b0475657b65f53d946b3f3a8): Docs: Update SSO documentation with new OIDC Plugin, including header mapping and configuration details.
+- [`c789f8e9`](https://github.com/pixlcore/xyops/commit/c789f8e9ebbf08745b2fab57dd9d1e8faf6a81dd): SSO: Enhance custom command to include base_app_url and query parameters, and support redirection
+- [`181cb7e3`](https://github.com/pixlcore/xyops/commit/181cb7e399698737df5e7dd57ecc2117e5d8e946): Bug Fix: Search Page: Do not auto-refresh search results on jobsChanged event if user has performed a job FILE search.
+- [`172fa793`](https://github.com/pixlcore/xyops/commit/172fa793ee27cc0fff19608fc4fc728cf30c2b60): Recipes Doc: Enhance server hooks documentation to include server_add notifications
+- [`860392d5`](https://github.com/pixlcore/xyops/commit/860392d56f6634a96ea564f0b9a54e5bebc33317): Feature: Add job source types filer for suspension actions and update UI accordingly
+- [`0efe89f4`](https://github.com/pixlcore/xyops/commit/0efe89f4f4453069943addeb8c030e60fd29d549): xySat Windows Install/Upgrade Scripts: Improve error handling.
+
 ## Version v1.0.55
 
 > May 15, 2026

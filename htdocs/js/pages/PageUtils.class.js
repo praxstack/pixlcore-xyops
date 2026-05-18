@@ -2107,6 +2107,22 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			caption: 'Select the desired action type.'
 		});
 		
+		// suspend sources
+		html += this.getFormRow({
+			id: 'd_eja_suspend_sources',
+			label: 'Job Sources:',
+			content: this.getFormMenuMulti({
+				id: 'fe_eja_suspend_sources',
+				title: 'Select Job Sources',
+				placeholder: '(Always Suspend)',
+				options: config.ui.job_source_types.filter( (item) => { return item.id != 'workflow'; } ),
+				values: action.sources || [],
+				default_icon: '',
+				'data-hold': 1,
+			}),
+			caption: 'Select which job sources should trigger the suspension action.'
+		});
+		
 		// email
 		html += this.getFormRow({
 			id: 'd_eja_users',
@@ -2421,6 +2437,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 				break;
 				
 				case 'suspend':
+					action.sources = $('#fe_eja_suspend_sources').val();
 					action.users = $('#fe_eja_users').val();
 					action.email = $('#fe_eja_email').val();
 					action.web_hook = $('#fe_eja_web_hook').val();
@@ -2445,7 +2462,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		} ); // Dialog.confirm
 		
 		var change_action_type = function(new_type) {
-			$('#d_eja_email, #d_eja_users, #d_eja_body, #d_eja_web_hook, #d_eja_web_hook_text, #d_eja_run_job, #d_eja_target_server, #d_eja_clear_alert, #d_eja_event_params, #d_eja_channel, #d_eja_bucket, #d_eja_bucket_sync, #d_eja_bucket_glob, #d_nt_type, #d_nt_assignees, #d_nt_tags, #d_eja_tags, #d_eja_plugin, #d_eja_plugin_params').hide();
+			$('#d_eja_email, #d_eja_users, #d_eja_body, #d_eja_web_hook, #d_eja_web_hook_text, #d_eja_run_job, #d_eja_target_server, #d_eja_clear_alert, #d_eja_event_params, #d_eja_channel, #d_eja_bucket, #d_eja_bucket_sync, #d_eja_bucket_glob, #d_nt_type, #d_nt_assignees, #d_nt_tags, #d_eja_tags, #d_eja_suspend_sources, #d_eja_plugin, #d_eja_plugin_params').hide();
 			
 			switch (new_type) {
 				case 'email':
@@ -2488,6 +2505,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 				break;
 				
 				case 'suspend':
+					$('#d_eja_suspend_sources').show();
 					$('#d_eja_email').show();
 					$('#d_eja_users').show();
 					$('#d_eja_web_hook').show();
@@ -2533,7 +2551,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			Dialog.autoResize();
 		}); // event change
 		
-		MultiSelect.init( $('#fe_eja_users, #fe_nt_assignees, #fe_nt_tags, #fe_eja_tags') );
+		MultiSelect.init( $('#fe_eja_users, #fe_nt_assignees, #fe_nt_tags, #fe_eja_tags, #fe_eja_suspend_sources') );
 		SingleSelect.init( $('#fe_eja_condition, #fe_eja_type, #fe_eja_event, #fe_eja_channel, #fe_eja_web_hook, #fe_eja_plugin, #fe_eja_bucket, #fe_eja_bucket_sync, #fe_nt_type') );
 		
 		Dialog.autoResize();
@@ -2653,25 +2671,44 @@ Page.PageUtils = class PageUtils extends Page.Base {
 				break;
 				
 				case 'select':
-					elem_value = (param.id in params) ? params[param.id] : param.value.replace(/\,.*$/, '').replace(/^.+\[([\w\-\.]+)\]\s*$/, '$1');
-					html += self.getFormMenuSingle({ id: elem_id, value: elem_value, options: self.csvToMenuItems(param.value), disabled: elem_dis, title: param.title });
+					if (param.multiple) {
+						elem_value = (param.id in params) ? always_array(params[param.id]) : [];
+						html += self.getFormMenuMulti({ id: elem_id, values: elem_value, options: self.csvToMenuItems(param.value), disabled: elem_dis, title: param.title, placeholder: '(None)', 'data-hold': 1, 'data-select-all': 1 });
+					}
+					else {
+						elem_value = (param.id in params) ? always_string(params[param.id]) : '';
+						html += self.getFormMenuSingle({ id: elem_id, value: elem_value, options: self.csvToMenuItems(param.value), disabled: elem_dis, title: param.title });
+					}
 				break;
 				
 				case 'bucket':
 					var bucket = find_object( app.buckets, { id: param.bucket_id } );
 					if (bucket) {
-						elem_value = (param.id in params) ? params[param.id] : '';
-						var menu_opts = self.getBucketMenuItems(bucket.id, param.bucket_path, elem_id, elem_value);
-						html += self.getFormMenuSingle({ id: elem_id, value: elem_value, options: menu_opts, disabled: elem_dis, title: param.title });
+						if (param.multiple) {
+							elem_value = (param.id in params) ? always_array(params[param.id]) : [];
+							var menu_opts = self.getBucketMenuItems(bucket.id, param.bucket_path, elem_id, elem_value);
+							html += self.getFormMenuMulti({ id: elem_id, values: elem_value, options: menu_opts, disabled: elem_dis, title: param.title, placeholder: '(None)', 'data-hold': 1, 'data-select-all': 1 });
+						}
+						else {
+							elem_value = (param.id in params) ? always_string(params[param.id]) : '';
+							var menu_opts = self.getBucketMenuItems(bucket.id, param.bucket_path, elem_id, elem_value);
+							html += self.getFormMenuSingle({ id: elem_id, value: elem_value, options: menu_opts, disabled: elem_dis, title: param.title });
+						}
 					}
 					else {
-						html += self.getFormMenuSingle({ id: elem_id, value: '', options: [ { id: '', title: "(Bucket Not Found)" } ], disabled: elem_dis, title: param.title });
+						html += `<input type="hidden" id="${elem_id}" value="">(Bucket Not Found)`;
 					}
 				break;
 				
 				case 'system':
-					elem_value = (param.id in params) ? params[param.id] : '';
-					html += self.getFormMenuSingle({ id: elem_id, value: elem_value, options: self.getSystemMenuItems(param.list_id), disabled: elem_dis, title: param.title });
+					if (param.multiple) {
+						elem_value = (param.id in params) ? always_array(params[param.id]) : [];
+						html += self.getFormMenuMulti({ id: elem_id, value: elem_value, options: self.getSystemMenuItems(param.list_id, 'multi'), disabled: elem_dis, title: param.title, placeholder: '(None)', 'data-hold': 1, 'data-select-all': 1 });
+					}
+					else {
+						elem_value = (param.id in params) ? always_string(params[param.id]) : '';
+						html += self.getFormMenuSingle({ id: elem_id, value: elem_value, options: self.getSystemMenuItems(param.list_id), disabled: elem_dis, title: param.title });
+					}
 				break;
 				
 				case 'toolset':
@@ -3680,6 +3717,12 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			html += '<div class="info_label">' + (param.locked ? '<i class="mdi mdi-lock-outline">&nbsp;</i>' : '') + strip_html(param.title) + '</div>';
 			html += '<div class="info_value">';
 			
+			if (param.type.match(/^(select|bucket|system)$/)) {
+				// special value handling for menus
+				if (param.multiple) elem_value = (param.id in params) ? always_array(params[param.id]).join(', ') : '';
+				else elem_value = (param.id in params) ? always_string(params[param.id]) : '';
+			}
+			
 			switch (param.type) {
 				case 'text':
 				case 'textarea':
@@ -3713,20 +3756,20 @@ Page.PageUtils = class PageUtils extends Page.Base {
 				
 				case 'select':
 					html += '<i class="mdi mdi-' + elem_icon + '">&nbsp;</i>';
-					html += strip_html( str_value(elem_value).replace(/\,.*$/, '').replace(/^.+\[([\w\-\.]+)\]\s*$/, '$1') );
+					html += encode_entities( str_value(elem_value) || '(None)');
 				break;
 				
 				case 'bucket':
 					if (str_value(elem_value).length) {
 						html += '<i class="mdi mdi-' + elem_icon + '">&nbsp;</i>';
-						html += strip_html( elem_value );
+						html += encode_entities( str_value(elem_value) || '(None)')
 					}
 					else html += self.getNiceBucket( param.bucket_id );
 				break;
 				
 				case 'system':
 					html += '<i class="mdi mdi-' + elem_icon + '">&nbsp;</i>';
-					html += strip_html( str_value(elem_value) || '(None)' );
+					html += encode_entities( str_value(elem_value) || '(None)');
 				break;
 				
 				case 'toolset':
@@ -4804,6 +4847,18 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		
 		// required
 		html += this.getFormRow({
+			id: 'd_epa_multiple',
+			label: 'Menu Options:',
+			content: this.getFormCheckbox({
+				id: 'fe_epa_multiple',
+				label: 'Multi-Select Menu',
+				checked: !!param.multiple
+			}),
+			caption: 'Check this box to enable multi-select in the menu (param value will be an array).'
+		});
+		
+		// required
+		html += this.getFormRow({
 			id: 'd_epa_required',
 			label: 'Enforce:',
 			content: this.getFormCheckbox({
@@ -4888,6 +4943,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 				
 				case 'select':
 					param.value = $('#fe_epa_value_select').val();
+					param.multiple = !!$('#fe_epa_multiple').is(':checked');
 					delete param.required;
 				break;
 				
@@ -4895,11 +4951,13 @@ Page.PageUtils = class PageUtils extends Page.Base {
 					param.bucket_id = $('#fe_epa_bucket_id').val();
 					if (!param.bucket_id) return app.badField('#fe_epa_bucket_id', "Please select a storage bucket containing the menu items.");
 					param.bucket_path = $('#fe_epa_bucket_path').val();
+					param.multiple = !!$('#fe_epa_multiple').is(':checked');
 					delete param.required;
 				break;
 				
 				case 'system':
 					param.list_id = $('#fe_epa_list_id').val();
+					param.multiple = !!$('#fe_epa_multiple').is(':checked');
 					delete param.required;
 				break;
 				
@@ -4945,6 +5003,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			$('#d_epa_locked').toggle( !new_type.match(/^(toolset)$/) );
 			$('#d_epa_bucket_id, #d_epa_bucket_path').toggle( !!new_type.match(/^(bucket)$/) );
 			$('#d_epa_list_id').toggle( !!new_type.match(/^(system)$/) );
+			$('#d_epa_multiple').toggle( !!new_type.match(/^(select|bucket|system)$/) );
 			Dialog.autoResize();
 		}; // change_action_type
 		
@@ -5033,7 +5092,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		return items;
 	}
 	
-	getSystemMenuItems(list_id) {
+	getSystemMenuItems(list_id, multi) {
 		// get items for menu given list id
 		var items = [];
 		var list_def = find_object( config.ui.list_list, { id: list_id } );
@@ -5070,7 +5129,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			break;
 		}
 		
-		items.unshift({ "id": "", "title": "(None)" });
+		if (!multi) items.unshift({ "id": "", "title": "(None)" });
 		return items;
 	}
 	
@@ -5286,25 +5345,44 @@ Page.PageUtils = class PageUtils extends Page.Base {
 				break;
 				
 				case 'select':
-					elem_value = (param.id in params) ? params[param.id] : param.value.replace(/\,.*$/, '').replace(/^.+\[([\w\-\.]+)\]\s*$/, '$1');
-					html += self.getFormMenuSingle({ id: elem_id, value: elem_value, options: self.csvToMenuItems(param.value), disabled: elem_dis, title: param.title });
+					if (param.multiple) {
+						elem_value = (param.id in params) ? always_array(params[param.id]) : [];
+						html += self.getFormMenuMulti({ id: elem_id, values: elem_value, options: self.csvToMenuItems(param.value), disabled: elem_dis, title: param.title, placeholder: '(None)', 'data-hold': 1, 'data-select-all': 1 });
+					}
+					else {
+						elem_value = (param.id in params) ? always_string(params[param.id]) : '';
+						html += self.getFormMenuSingle({ id: elem_id, value: elem_value, options: self.csvToMenuItems(param.value), disabled: elem_dis, title: param.title });
+					}
 				break;
 				
 				case 'bucket':
 					var bucket = find_object( app.buckets, { id: param.bucket_id } );
 					if (bucket) {
-						elem_value = (param.id in params) ? params[param.id] : '';
-						var menu_opts = self.getBucketMenuItems(bucket.id, param.bucket_path, elem_id, elem_value);
-						html += self.getFormMenuSingle({ id: elem_id, value: elem_value, options: menu_opts, disabled: elem_dis, title: param.title });
+						if (param.multiple) {
+							elem_value = (param.id in params) ? always_array(params[param.id]) : [];
+							var menu_opts = self.getBucketMenuItems(bucket.id, param.bucket_path, elem_id, elem_value);
+							html += self.getFormMenuMulti({ id: elem_id, values: elem_value, options: menu_opts, disabled: elem_dis, title: param.title, placeholder: '(None)', 'data-hold': 1, 'data-select-all': 1 });
+						}
+						else {
+							elem_value = (param.id in params) ? always_string(params[param.id]) : '';
+							var menu_opts = self.getBucketMenuItems(bucket.id, param.bucket_path, elem_id, elem_value);
+							html += self.getFormMenuSingle({ id: elem_id, value: elem_value, options: menu_opts, disabled: elem_dis, title: param.title });
+						}
 					}
 					else {
-						html += self.getFormMenuSingle({ id: elem_id, value: '', options: [ { id: '', title: "(Bucket Not Found)" } ], disabled: elem_dis, title: param.title });
+						html += `<input type="hidden" id="${elem_id}" value="">(Bucket Not Found)`;
 					}
 				break;
 				
 				case 'system':
-					elem_value = (param.id in params) ? params[param.id] : '';
-					html += self.getFormMenuSingle({ id: elem_id, value: elem_value, options: self.getSystemMenuItems(param.list_id), disabled: elem_dis, title: param.title });
+					if (param.multiple) {
+						elem_value = (param.id in params) ? always_array(params[param.id]) : [];
+						html += self.getFormMenuMulti({ id: elem_id, value: elem_value, options: self.getSystemMenuItems(param.list_id, 'multi'), disabled: elem_dis, title: param.title, placeholder: '(None)', 'data-hold': 1, 'data-select-all': 1 });
+					}
+					else {
+						elem_value = (param.id in params) ? always_string(params[param.id]) : '';
+						html += self.getFormMenuSingle({ id: elem_id, value: elem_value, options: self.getSystemMenuItems(param.list_id), disabled: elem_dis, title: param.title });
+					}
 				break;
 				
 			} // switch type

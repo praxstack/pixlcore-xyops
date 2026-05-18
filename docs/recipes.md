@@ -136,7 +136,7 @@ Notify your team when any server disconnects from the xyOps network. This uses a
 
 ### How It Works
 
-Add a `server_remove` hook into the [hooks](config.md#hooks) section in your `config.json`. This activity fires when a server disconnects from the network. See [Activity.action](data.md#activity-action) for the full list of hookable activity action IDs.
+Add a `server_remove` hook into the [hooks](config.md#hooks) section in your `config.json`. This activity fires when a server disconnects from the network. See [Activity.action](data.md#activity-action) for the full list of activity action IDs that can trigger System Hooks.
 
 Simple web hook example:
 
@@ -168,9 +168,23 @@ You can also use a configured xyOps web hook ID if you want custom headers, requ
 }
 ```
 
+To notify when a server comes back online, or when a new server is added to the network, add a `server_add` hook as well:
+
+```json
+"hooks": {
+	"server_remove": {
+		"email": "oncall-pager@mycompany.com"
+	},
+	"server_add": {
+		"email": "oncall-pager@mycompany.com"
+	}
+}
+```
+
 ### Notes
 
 - The `server_remove` activity fires whenever a server disconnects, including planned upgrades, service restarts, network maintenance, and other expected outages. It does not always mean the server crashed.
+- The `server_add` activity fires whenever a server connects to the network. This means a previously offline server returned, or a brand new server was added.
 
 ## Daylight Savings Time
 

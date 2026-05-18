@@ -965,6 +965,8 @@ Alpha [a1], Beta [b2], Gamma [c3]
 
 This would show only the labels in the menu ("Alpha", "Beta", "Gamma"), but in the data the values would be specified instead (`a1`, `b2`, `c3`).  Note that the values may only contain alphanumerics, underscores, dashes and dots, and when this feature is used the visual labels are **not** passed into the data at all.
 
+Note that if you check the "Multi-Select" checkbox when configuring the menu field, your parameter value will be an array of selected values, as opposed to a string for a single-select menu.
+
 ### Bucket Menu
 
 A "bucket menu" is a dynamically populated menu, which automatically loads its items from a global [Storage Bucket](buckets.md) that you configure.  Using this feature you can have menus across multiple Plugins or events that all share the same item pool.
@@ -1068,6 +1070,8 @@ Finally, you can define groups of items in the menu by including an object with 
 }
 ```
 
+Note that if you check the "Multi-Select" checkbox when configuring the bucket menu field, your parameter value will be an array of selected values, as opposed to a string for a single-select menu.
+
 ### System Menu
 
 A "system menu" is a dynamically populated menu, similar to a [Bucket Menu](#bucket-menu), but the menu items are pulled from xyOps itself.  This is useful when a Plugin needs the user to select an existing xyOps object, such as an event, category, server, server group, plugin, user, role, web hook or monitor.
@@ -1107,6 +1111,8 @@ The following system lists are available:
 The "Targets" menu is a combined list which includes both server groups and individual servers, arranged into menu sections.  This is handy for Plugin parameters that should accept either kind of job target.  The Algorithms menu contains the built-in event target selection algorithms, such as Random.
 
 API Keys and Secrets are intentionally not offered as system menu sources.
+
+Note that if you check the "Multi-Select" checkbox when configuring the system menu field, your parameter value will be an array of selected values, as opposed to a string for a single-select menu.
 
 ### Checkbox
 
