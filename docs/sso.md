@@ -231,6 +231,9 @@ OAUTH2_PROXY_WHITELIST_DOMAINS: ".yourcompany.com,.github.com"
 
 ## xyOps OIDC Plugin
 
+> [!IMPORTANT]
+> This feature requires xyOps v1.0.57 or newer.
+
 The [xyplug-sso-oidc](https://github.com/pixlcore/xyplug-sso-oidc) plugin is an xyOps SSO command that performs a direct [OpenID Connect](https://openid.net/developers/how-connect-works/) login flow.  It redirects the browser to your identity provider, handles the callback, validates the OIDC tokens, fetches user profile data, and emits trusted headers back to xyOps.
 
 This keeps the deployment simple: xyOps talks to the plugin, and the plugin talks to your IdP.  You do not need to run a separate OAuth2-Proxy, Authentik, AWS ALB, or reverse proxy just to complete the OIDC browser flow.
@@ -364,7 +367,16 @@ This lets the plugin work with providers that use slightly different claim names
 
 ### Provider Notes
 
-The [OIDC plugin documentation](https://github.com/pixlcore/xyplug-sso-oidc) includes more complete provider examples for [Okta](https://github.com/pixlcore/xyplug-sso-oidc#okta), [Auth0](https://github.com/pixlcore/xyplug-sso-oidc#auth0), [Microsoft Entra ID](https://github.com/pixlcore/xyplug-sso-oidc#microsoft-entra-id), [Keycloak](https://github.com/pixlcore/xyplug-sso-oidc#keycloak), [AWS Cognito Hosted UI](https://github.com/pixlcore/xyplug-sso-oidc#aws-cognito-hosted-ui), and [SAML via SSOReady](https://github.com/pixlcore/xyplug-sso-oidc#saml-via-ssoready).  Please use those examples as your main provider-specific reference.
+The [xyOps OIDC Plugin Documentation](https://github.com/pixlcore/xyplug-sso-oidc) includes setup guides for several popular providers:
+
+- [Okta Guide](https://github.com/pixlcore/xyplug-sso-oidc#okta)
+- [Auth0 Guide](https://github.com/pixlcore/xyplug-sso-oidc#auth0)
+- [Microsoft Entra ID Guide](https://github.com/pixlcore/xyplug-sso-oidc#microsoft-entra-id)
+- [Keycloak Guide](https://github.com/pixlcore/xyplug-sso-oidc#keycloak)
+- [AWS Cognito Guide](https://github.com/pixlcore/xyplug-sso-oidc#aws-cognito-hosted-ui)
+- [SAML via SSOReady](https://github.com/pixlcore/xyplug-sso-oidc#saml-via-ssoready).
+
+Please use those as your main provider-specific reference.
 
 Here are a few universal setup tips:
 

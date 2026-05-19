@@ -1,5 +1,13 @@
 # xyOps Changelog
 
+## Version v1.0.57
+
+> May 18, 2026
+
+- [`2285e4b3`](https://github.com/pixlcore/xyops/commit/2285e4b3cd48a988d83ba8c1ba9f836ff951cbab): Version 1.0.57
+	- Bump pixl-xyapp to v2.1.28 for bug fix in menu handling.  Fixes #299.
+- [`3a0b46b0`](https://github.com/pixlcore/xyops/commit/3a0b46b0b5b9942feba1ca975b6e5359c92a65ad): Bug Fix: Workflows: If split item filter returns zero items, workflow job hangs.
+
 ## Version v1.0.56
 
 > May 17, 2026
