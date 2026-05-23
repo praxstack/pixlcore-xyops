@@ -78,7 +78,7 @@ A few notes:
 
 Note that in order to add worker servers, the container needs to be *addressable on your network* by its hostname.  Typically this is done by adding the hostname to your local DNS, Tailscale, or using a `/etc/hosts` file.  See [Adding Servers](servers.md#adding-servers) for more details.
 
-### Configuration
+### Main Configuration
 
 The xyOps main configuration file is located at `/opt/xyops/conf/config.json`, but there are other useful files in the `/opt/xyops/conf` directory as well.  For e.g. if any configuration properties are updated via the UI, they are written to an `/opt/xyops/conf/overrides.json` file.  If you intend to use the Docker container long term, it is best to map the entire `/opt/xyops/conf` directory.  You can do this as a volume, or bind mount it to a host directory (recommended):
 
@@ -383,7 +383,7 @@ For more details, see the [Storage Setup Guide](storage.md).
 
 For instructions on how to install xySat, see [Adding Servers](servers.md#adding-servers).
 
-### Configuration
+### Satellite Configuration
 
 xySat is configured automatically via the xyOps conductor server.  The [satellite.config](config.md#satellite-config) object is automatically sent to each server after it connects and authenticates, so you can keep a conductor version of the xySat configuration which is auto-synced to all servers.  Here is the default config:
 
@@ -425,7 +425,7 @@ Here are descriptions of the configuration properties:
 | `monitoring_enabled` | Boolean | Enable or disable the monitoring subsystem (i.e. send monitoring metrics every minute). |
 | `quickmon_enabled` | Boolean | Enable or disable the quick monitors, which send lightweight metrics every second. |
 
-#### Overriding The Connect URL
+### Overriding The Connect URL
 
 When xySat is first installed, it is provided an array of hosts to connect to, which becomes a `hosts` array in the xySat config file on each server.  When xySat starts up, it connects to a *random host* from this array, and figures out which conductor is primary, and reconnects to that host.  If the conductor cluster changes, a new `hosts` array is automatically distributed to all servers by the current conductor.
 
@@ -441,7 +441,7 @@ Note that you should **not** add a `host` property into the [satellite.config](c
 
 When both `hosts` and `host` exist in the config file, `host` takes precedence.
 
-#### Customizing Managed Keys
+### Customizing Managed Keys
 
 By default, the entire satellite configuration object from the primary conductor server is distributed out to all remote servers when they connect, and that configuration block *overwrites* whatever is in their local `/opt/xyops/satellite/config.json` files.  This is by design, so you can maintain a single, central satellite configuration, change it at any time, and have it automatically sync to all your servers.
 

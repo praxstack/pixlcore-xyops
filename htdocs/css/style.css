@@ -1665,6 +1665,10 @@ body.dark .dialog .plugin_param_editor_cont {
 	resize: none;
 }
 
+.dialog .plugin_param_editor_cont .multiselect.multi {
+	background: transparent;
+}
+
 .form_row_compact {
 	display: grid;
 	grid-template-columns: auto 20px;
@@ -1673,6 +1677,11 @@ body.dark .dialog .plugin_param_editor_cont {
 }
 .form_row_compact .form_suffix_icon {
 	left: 4px;
+}
+
+.form_row input[type="color"] {
+	padding-top: 0;
+	padding-bottom: 0;
 }
 
 /* Job Details Page */

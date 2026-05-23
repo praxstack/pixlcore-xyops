@@ -925,7 +925,7 @@ A "text" parameter type is presented to the user as a single-line text field.
 
 An optional "variant" property may be included, which changes the visible UI control in the browser: `color`, `date`, `datetime-local`, `email`, `number`, `password`, `text`, `time`, `tel` or `url`.
 
-Note that the parameter value is almost always set to a string -- the "variant" only controls the visual UI control and behavior.  However, the "number" variant is a special case, where the value will actually be parsed and stored in the parameters as an actual JavaScript Number.
+Note that the parameter value is almost always set to a string -- the "variant" only controls the visual UI control and behavior.  However, the "number" variant is a special case, where the value will actually be parsed and stored in the parameters as an actual JavaScript Number.  Also, if the number variant field is empty its value will be `null`.
 
 ### Textarea
 
@@ -1187,6 +1187,12 @@ The toolset "data" is entered in JSON format, and describes all the tools and su
 In this fictional example, the toolset menu would show two tools: "Upload Files" and "List Files".  When "Upload Files" was selected in the menu, three new sub-parameters would appear in a box under the menu: "Local Path", "Filename Pattern" and "Remote Path".  If the user selected a different tool, e.g. "List Files", then the sub-parameters would change, and a different set would be shown.
 
 Note that when all the parameter values are collected from the user, they are "flattened" into a single-level object.
+
+### Group
+
+Use the `group` control type to automatically group all controls below into a fieldset (a visual box).  The group will encompass all controls until the end of the parameter list, or until another group is defined.
+
+Groups are visual separators only, and do not change any functionality, parameter names, etc.
 
 ## Macro Expansion
 

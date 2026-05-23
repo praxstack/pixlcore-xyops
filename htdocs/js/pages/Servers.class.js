@@ -212,6 +212,7 @@ Page.Servers = class Servers extends Page.ServerUtils {
 		this.applyTableFilters();
 		this.addPageDescription();
 		this.checkAllSatelliteVersions();
+		this.setupBoxButtonFloater();
 		
 		SingleSelect.init( this.div.find('#fe_es_filter') );
 		
@@ -2097,6 +2098,8 @@ Page.Servers = class Servers extends Page.ServerUtils {
 			cancelAnimationFrame(this.raf);
 			this.raf = false;
 		}
+		
+		this.cleanupBoxButtonFloater();
 		
 		this.div.html( '' );
 		return true;

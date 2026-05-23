@@ -1,5 +1,21 @@
 # xyOps Changelog
 
+## Version v1.0.58
+
+> May 22, 2026
+
+- [`2a9e2be7`](https://github.com/pixlcore/xyops/commit/2a9e2be7fa230a3629217564847bdefeb426ae77): Version 1.0.58
+- [`ccacf56a`](https://github.com/pixlcore/xyops/commit/ccacf56ab93daa3a7b6409d8274a16b4853701d0): Feature: Custom regular expression validation for text / textarea / code plugin and event params.  Fixes #300.
+- [`6751dde3`](https://github.com/pixlcore/xyops/commit/6751dde3e93f85b54b00c8946207f681bfde2a25): Hosting Doc: Renamed some sections to fix issues with the TOC.
+- [`1e7570d0`](https://github.com/pixlcore/xyops/commit/1e7570d0aace54466075e6fe7b21eb30e588698c): Bug Fix: When a browser reconnects after losing a WebSocket connection, push a full data update to resync.  Ref #302
+- [`fb266b6e`](https://github.com/pixlcore/xyops/commit/fb266b6ea6eb65ffe897c097095797cb20d877a1): Bug FIx: Another tweak for toolset number variant behavior.
+- [`1e2e7503`](https://github.com/pixlcore/xyops/commit/1e2e75034032fdf0feb8fbf4133b0e665eaa88b7): CSS: Fix "color" input type, so it renders properly in safari.
+- [`e26e0bfe`](https://github.com/pixlcore/xyops/commit/e26e0bfe326e689d89988388b8e9d74f9e1ad4e6): Feature: Event and plugin params can now be grouped into custom named sections.
+- [`e4a24e99`](https://github.com/pixlcore/xyops/commit/e4a24e99cc39e293e5ae24cfd90a89b3b782fba7): Bug Fix: Allow toolset number variant text fields to have a null (unset) default value.
+- [`fc359a5d`](https://github.com/pixlcore/xyops/commit/fc359a5d7e40f625a1d5142f8a382f8960d71dba): Multi-Menu UI: Show "(Multi)" suffix in menu type descriptions.
+- [`d2314afc`](https://github.com/pixlcore/xyops/commit/d2314afce47bac06d2075103fa56b672da0b059f): System Menus: Add icon menu, and add monitors to algo menu.
+- [`0be452ff`](https://github.com/pixlcore/xyops/commit/0be452ffd31352f426c34bf357406daa7136ffb9): SSO Doc: Add note about minimum xyOps version, and reformat links to OIDC provider guides.
+
 ## Version v1.0.57
 
 > May 18, 2026

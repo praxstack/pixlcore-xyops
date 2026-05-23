@@ -1055,7 +1055,8 @@
 		"bucket": "Bucket Menu",
 		"system": "System Menu",
 		"hidden": "Hidden",
-		"toolset": "Toolset"
+		"toolset": "Toolset",
+		"group": "Group"
 	},
 	
 	"control_type_icons": {
@@ -1068,7 +1069,8 @@
 		"bucket": "pail-outline",
 		"system": "list-box-outline",
 		"hidden": "eye-off-outline",
-		"toolset": "tools"
+		"toolset": "tools",
+		"group": "folder-text-outline"
 	},
 	
 	"text_field_variants": [

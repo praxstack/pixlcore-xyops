@@ -2596,12 +2596,22 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			explore_end = `</div><div class="form_suffix_icon mdi mdi-database-search-outline" title="Open Job Data Explorer..." onClick="$P().openJobDataExplorer(this)"></div></div>`;
 		}
 		
+		var in_group = false;
+		
 		plugin.params.forEach( function(param) {
 			var elem_id = 'fe_pp_' + plugin_id + '_' + param.id;
 			var elem_value = (param.id in params) ? params[param.id] : param.value;
 			var elem_dis = (param.locked && !app.isAdmin()) ? 'disabled' : undefined; 
 			var elem_icon = config.ui.control_type_icons[param.type];
 			if (param.type == 'hidden') return;
+			
+			if (param.type == 'group') {
+				if (in_group) html += `</fieldset>`;
+				html += `<fieldset class="info_fieldset">`;
+				html += `<legend>${strip_html(param.title)}</legend>`;
+				in_group = true;
+				return;
+			}
 			
 			if (param.type != 'checkbox') {
 				if (elem_dis) html += '<div class="info_label" style="color:var(--red)"><i class="mdi mdi-lock">&nbsp;</i>' + param.title + ' (Admin Locked)</div>';
@@ -2752,6 +2762,8 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			
 			html += '</div>';
 		} ); // foreach param
+		
+		if (in_group) html += `</fieldset>`;
 		
 		return html;
 	}
@@ -2910,6 +2922,11 @@ Page.PageUtils = class PageUtils extends Page.Base {
 						} // required or length
 						else params[ param.id ] = null;
 					} // number
+					
+					if (param.regex && str_value(params[ param.id ]).length && !str_value(params[ param.id ]).match( new RegExp(param.regex) )) {
+						app.badField('#fe_pp_' + plugin_id + '_' + CSS.escape(param.id), "The &ldquo;" + param.title + "&rdquo; field is invalid.");
+						is_valid = false;
+					}
 				break;
 			} // switch param.type
 		}); // foreach param
@@ -3712,6 +3729,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			var elem_icon = config.ui.control_type_icons[param.type];
 			var append_html = '';
 			if (param.type == 'hidden') return;
+			if (param.type == 'group') return;
 			
 			html += '<div>'; // grid unit
 			html += '<div class="info_label">' + (param.locked ? '<i class="mdi mdi-lock-outline">&nbsp;</i>' : '') + strip_html(param.title) + '</div>';
@@ -4531,6 +4549,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			actions.push( '<button class="link" onClick="$P().editParam('+idx+')"><b>Edit</b></button>' );
 			actions.push( '<button class="link danger" onClick="$P().deleteParam('+idx+')"><b>Delete</b></button>' );
 			
+			var nice_id = item.id;
 			var nice_type = config.ui.control_type_labels[item.type];
 			var nice_icon = config.ui.control_type_icons[item.type];
 			var nice_label_icon = item.locked ? 'lock' : 'cube-outline';
@@ -4576,19 +4595,27 @@ Page.PageUtils = class PageUtils extends Page.Base {
 				
 				case 'select':
 					pairs.push([ 'Items', '(' + strip_html(param.value) + ')' ]);
+					if (param.multiple) nice_type += ' (Multi)';
 				break;
 				
 				case 'bucket':
 					pairs.push([ self.getNiceBucket(param.bucket_id) ]);
+					if (param.multiple) nice_type += ' (Multi)';
 				break;
 				
 				case 'system':
 					pairs.push([ self.getNiceSystemList(param.list_id) ]);
+					if (param.multiple) nice_type += ' (Multi)';
 				break;
 				
 				case 'toolset':
 					if (param.data && param.data.tools && param.data.tools.length) pairs.push([ commify(param.data.tools.length) + " tools in set" ]);
 					else pairs.push([ "(No tools in set)" ]);
+				break;
+				
+				case 'group':
+					pairs.push([ '-' ]);
+					nice_id = '-';
 				break;
 			}
 			for (var idy = 0, ley = pairs.length; idy < ley; idy++) {
@@ -4599,7 +4626,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			return [
 				'<div class="td_drag_handle" draggable="true" title="Drag to reorder"><i class="mdi mdi-menu"></i></div>',
 				'<div class="td_big nowrap"><button class="link" onClick="$P().editParam('+idx+')"><i class="mdi mdi-' + nice_label_icon + '"></i>' + item.title + '</button></div>',
-				'<div class="ellip mono">' + item.id + '</div>',
+				'<div class="ellip mono">' + nice_id + '</div>',
 				'<div class="ellip"><i class="mdi mdi-' + nice_icon + '">&nbsp;</i>' + nice_type + '</div>',
 				'<div class="ellip">' + pairs.join(', ') + '</div>',
 				'<div class="">' + actions.join(' | ') + '</div>'
@@ -4637,9 +4664,10 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		var title = (idx > -1) ? "Editing Parameter" : "New Parameter";
 		var btn = (idx > -1) ? ['check-circle', "Accept"] : ['plus-circle', "Add Param"];
 		var old_param = param;
+		var show_lock = !!(this.pluginType === 'event');
 		
 		// prepare control type menu
-		var ctypes = (this.controlTypes || ['checkbox', 'code', 'json', 'hidden', 'select', 'bucket', 'system', 'text', 'textarea']).map (function(key) { 
+		var ctypes = (this.controlTypes || ['checkbox', 'code', 'json', 'hidden', 'select', 'bucket', 'system', 'text', 'textarea', 'group']).map (function(key) { 
 			return { 
 				id: key, 
 				title: config.ui.control_type_labels[key],
@@ -4652,6 +4680,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		
 		// id
 		html += this.getFormRow({
+			id: 'd_epa_id',
 			label: 'Param ID:',
 			content: this.getFormText({
 				id: 'fe_epa_id',
@@ -4722,6 +4751,18 @@ Page.PageUtils = class PageUtils extends Page.Base {
 				value: (param.value || '').toString()
 			}),
 			caption: "Enter the default value for the text box."
+		});
+		html += this.getFormRow({
+			id: 'd_epa_value_regex',
+			label: 'Validate Pattern:',
+			content: this.getFormText({
+				id: 'fe_epa_value_regex',
+				spellcheck: 'false',
+				autocomplete: 'off',
+				class: 'monospace',
+				value: str_value(param.regex)
+			}),
+			caption: 'Optionally enter a regular expression to validate the text value.'
 		});
 		html += this.getFormRow({
 			id: 'd_epa_value_code',
@@ -4834,6 +4875,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		
 		// caption
 		html += this.getFormRow({
+			id: 'd_epa_caption',
 			label: 'Caption:',
 			content: this.getFormTextarea({
 				id: 'fe_epa_caption',
@@ -4845,7 +4887,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			caption: 'Optionally enter a caption for the parameter, which will be displayed below it.'
 		});
 		
-		// required
+		// multiple
 		html += this.getFormRow({
 			id: 'd_epa_multiple',
 			label: 'Menu Options:',
@@ -4888,8 +4930,10 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			
 			// start a fresh param object so we don't taint the original on errors
 			param = {};
+			param.type = $('#fe_epa_type').val();
 			
 			param.id = $('#fe_epa_id').val().trim();
+			if (!param.id.length && (param.type == 'group')) param.id = get_short_id('d');
 			if (!param.id.length) return app.badField('#fe_epa_id', "The ID field is required.");
 			if (!param.id.match(/^[\w\-\.]+$/)) return app.badField('#fe_epa_id', `The ID field must contain only alphanumerics, underscore, dash and period.`);
 			if (!param.id.match(/^[A-Za-z_]/)) return app.badField('#fe_epa_id', `The ID field must begin with an alpha character or underscore.`);
@@ -4906,7 +4950,6 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			param.title = strip_html( $('#fe_epa_title').val().trim() );
 			if (!param.title.length) return app.badField('#fe_epa_title', "The Title field is required.");
 			
-			param.type = $('#fe_epa_type').val();
 			param.caption = $('#fe_epa_caption').val();
 			param.locked = !!$('#fe_epa_locked').is(':checked');
 			
@@ -4919,16 +4962,19 @@ Page.PageUtils = class PageUtils extends Page.Base {
 						if (!param.value.length) param.value = null;
 						else param.value = parseFloat(param.value) || 0;
 					}
+					param.regex = $('#fe_epa_value_regex').val().trim();
 				break;
 				
 				case 'textarea':
 					param.value = $('#fe_epa_value_textarea').val();
 					param.required = !!$('#fe_epa_required').is(':checked');
+					param.regex = $('#fe_epa_value_regex').val().trim();
 				break;
 				
 				case 'code':
 					param.value = $('#fe_epa_value_code').val();
 					param.required = !!$('#fe_epa_required').is(':checked');
+					param.regex = $('#fe_epa_value_regex').val().trim();
 				break;
 				
 				case 'json':
@@ -4977,10 +5023,26 @@ Page.PageUtils = class PageUtils extends Page.Base {
 					delete param.value;
 					delete param.locked;
 				break;
-			} // switch action.type
+				
+				case 'group':
+					delete param.required;
+					delete param.value;
+					delete param.locked;
+					delete param.caption;
+				break;
+			} // switch param.type
+			
+			if (param.regex) try { new RegExp(param.regex); }
+			catch (err) { return app.badField('#fe_epa_value_regex', "Invalid regular expression: " + err); }
+			
+			// validate default value with regex
+			if (param.regex && str_value(param.value).length && !str_value(param.value).match( new RegExp(param.regex) )) {
+				return app.badField('#fe_epa_value_' + param.type, "The default value does not match the validation pattern.");
+			}
 			
 			if (param.type != 'text') delete param.variant;
 			if (param.type != 'toolset') delete param.data;
+			if (!show_lock) delete param.locked;
 			
 			// see if we need to add or replace
 			if (idx == -1) {
@@ -4996,11 +5058,14 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		} ); // Dialog.confirm
 		
 		var change_param_type = function(new_type) {
-			$('#d_epa_value_text, #d_epa_value_textarea, #d_epa_value_code, #d_epa_value_json, #d_epa_value_checkbox, #d_epa_value_select, #d_epa_value_hidden, #d_epa_value_toolset, #d_epa_bucket_id, #d_epa_bucket_path, #d_epa_list_id').hide();
+			$('#d_epa_value_text, #d_epa_value_textarea, #d_epa_value_regex, #d_epa_value_code, #d_epa_value_json, #d_epa_value_checkbox, #d_epa_value_select, #d_epa_value_hidden, #d_epa_value_toolset, #d_epa_bucket_id, #d_epa_bucket_path, #d_epa_list_id').hide();
 			$('#d_epa_value_' + new_type).show();
+			$('#d_epa_value_regex').toggle( !!new_type.match(/^(text|textarea|code)$/) );
+			$('#d_epa_id').toggle( !new_type.match(/^(group)$/) );
+			$('#d_epa_caption').toggle( !new_type.match(/^(group)$/) );
 			$('#d_epa_required').toggle( !!new_type.match(/^(text|textarea|code)$/) );
 			$('#d_epa_text_variant').toggle( !!new_type.match(/^(text)$/) );
-			$('#d_epa_locked').toggle( !new_type.match(/^(toolset)$/) );
+			$('#d_epa_locked').toggle( !new_type.match(/^(toolset|group)$/) && show_lock );
 			$('#d_epa_bucket_id, #d_epa_bucket_path').toggle( !!new_type.match(/^(bucket)$/) );
 			$('#d_epa_list_id').toggle( !!new_type.match(/^(system)$/) );
 			$('#d_epa_multiple').toggle( !!new_type.match(/^(select|bucket|system)$/) );
@@ -5085,6 +5150,11 @@ Page.PageUtils = class PageUtils extends Page.Base {
 				"id": "algos",
 				"title": "Algorithms",
 				"icon": "dice-5-outline"
+			},
+			{
+				"id": "icons",
+				"title": "Icons",
+				"icon": "emoticon-happy-outline"
 			}
 		]);
 		
@@ -5114,11 +5184,17 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			break;
 			
 			case 'algos':
-				items = config.ui.event_target_algo_menu;
+				items = config.ui.event_target_algo_menu.concat(
+					this.buildOptGroup( app.monitors, "Least Monitor Value:", 'chart-line', 'monitor:' )
+				);
 			break;
 			
 			case 'users':
 				items = app.users.map( function(user) { return { id: user.username, title: user.full_name, icon: user.icon || 'account' }; } );
+			break;
+			
+			case 'icons':
+				items = iconFontNames.map( function(name) { return { id: name, title: name, icon: name }; } );
 			break;
 			
 			default: 
@@ -5227,11 +5303,19 @@ Page.PageUtils = class PageUtils extends Page.Base {
 					if (typeof(field.value) != 'object') { err_msg = `Tool '${tool.id}' field '${field.id}' has an invalid JSON value (must be an object).`; is_valid = false; return; }
 				}
 				else if ((field.type == 'text') && (field.variant == 'number')) {
-					if (typeof(field.value) != 'number') { err_msg = `Tool '${tool.id}' field '${field.id}' has an invalid numeric value (must be a number).`; is_valid = false; return; }
+					if ((typeof(field.value) != 'number') && (field.value !== null)) { 
+						err_msg = `Tool '${tool.id}' field '${field.id}' has an invalid numeric value (must be a number or null).`; 
+						is_valid = false; 
+						return; 
+					}
 				}
 				else {
 					if (typeof(field.value) != 'string') { err_msg = `Tool '${tool.id}' field '${field.id}' has an invalid text value (must be a string).`; is_valid = false; return; }
 				}
+				
+				// regex
+				if (field.regex) try { new RegExp(field.regex); }
+				catch (err) { err_msg = `Tool '${tool.id}' field '${field.id}' has an invalid regular expression: ${err}`; is_valid = false; return; }
 			}); // foreach field
 		} ); // foreach tool
 		
@@ -5270,12 +5354,22 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			explore_end = `</div><div class="form_suffix_icon mdi mdi-database-search-outline" title="Open Job Data Explorer..." onClick="$P().openJobDataExplorer(this)"></div></div>`;
 		}
 		
+		var in_group = false;
+		
 		fields.forEach( function(param) {
 			var elem_id = 'fe_uf_' + param.id;
 			var elem_value = (param.id in params) ? params[param.id] : param.value;
 			var elem_dis = (param.locked && !app.isAdmin()) ? 'disabled' : undefined;
 			var elem_icon = config.ui.control_type_icons[param.type];
 			if (param.type == 'hidden') return;
+			
+			if (param.type == 'group') {
+				if (in_group) html += `</fieldset>`;
+				html += `<fieldset class="info_fieldset">`;
+				html += `<legend>${strip_html(param.title)}</legend>`;
+				in_group = true;
+				return;
+			}
 			
 			if (param.type != 'checkbox') {
 				if (elem_dis) html += '<div class="info_label" style="color:var(--red)"><i class="mdi mdi-lock">&nbsp;</i>' + param.title + ' (Admin Locked)</div>';
@@ -5393,6 +5487,8 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			html += '</div>';
 		} ); // foreach param
 		
+		if (in_group) html += `</fieldset>`;
+		
 		return html;
 	}
 	
@@ -5463,6 +5559,11 @@ Page.PageUtils = class PageUtils extends Page.Base {
 					} // required or has length
 					else params[ param.id ] = null;
 				} // number
+				
+				if (param.regex && str_value(params[ param.id ]).length && !str_value(params[ param.id ]).match( new RegExp(param.regex) )) {
+					app.badField('#fe_uf_' + CSS.escape(param.id), "The &ldquo;" + param.title + "&rdquo; field is invalid.");
+					is_valid = false;
+				}
 			} // textish
 		});
 		

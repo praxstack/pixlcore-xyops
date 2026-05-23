@@ -9,6 +9,7 @@ app.comm = {
 	statusTimeoutSec: 60,
 	socket: null,
 	commandQueue: [],
+	attempt: 0,
 	
 	init: function() {
 		// connect to server via socket.io
@@ -42,6 +43,7 @@ app.comm = {
 		this.disconnect();
 		
 		Debug.trace('comm', "WebSocket Connect: " + url);
+		this.attempt++;
 		
 		// custom socket abstraction layer
 		var socket = this.socket = {
@@ -78,7 +80,7 @@ app.comm = {
 			Debug.trace('comm', "WebSocket connected successfully");
 			
 			// authenticate websocket now
-			socket.emit( 'authenticate', {} );
+			socket.emit( 'authenticate', { attempt: self.attempt } );
 		};
 		
 		socket.ws.onmessage = function (event) {

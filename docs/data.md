@@ -1094,8 +1094,8 @@ A set of custom parameters to pass to the plugin when it is executed (for non-mo
 |---------------|------|-------------|
 | `id` | String | A lowercase alphanumeric ID for the parameter (can also contain underscores). |
 | `title` | String | A visual title for the parameter, displayed in the UI. |
-| `type` | String | The parameter type ID, which should be one of: `text`, `textarea`, `code`, `checkbox`, `select`, `hidden`, or `toolset`. |
-| `variant` | String | For `text` type controls, you can optionally set a UI input variant: `color`, `date`, `datetime-local`, `email`, `number`, `password`, `text`, `time`, `tel` or `url`. |
+| `type` | String | The parameter type ID, which should be one of: `text`, `textarea`, `code`, `json`, `checkbox`, `select`, `bucket`, `system`, `hidden`, `toolset`, or `group`. |
+| `variant` | String | For `text` type controls, you can optionally set a UI input variant: `color`, `date`, `datetime-local`, `email`, `number`, `text`, `time`, `tel`, or `url`. |
 | `value` | Mixed | The default value for the parameter. |
 | `data` | Object | Specifically for the `toolset` type, this contains all the tool details. |
 | `caption` | String | Optionally display a caption under the UI control. |

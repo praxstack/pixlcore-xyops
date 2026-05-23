@@ -2598,6 +2598,7 @@ Page.Base = class Base extends Page {
 			var elem_icon = config.ui.control_type_icons[param.type];
 			var after = '';
 			if (param.type == 'hidden') return;
+			if (param.type == 'group') return;
 			
 			html += '<div>'; // grid unit
 			html += '<div class="info_label">' + (param.locked ? '<i class="mdi mdi-lock-outline">&nbsp;</i>' : '') + strip_html(param.title) + '</div>';

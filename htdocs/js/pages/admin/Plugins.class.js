@@ -10,7 +10,7 @@ Page.Plugins = class Plugins extends Page.PageUtils {
 		// called once at page load
 		this.default_sub = 'list';
 		this.dom_prefix = 'ep';
-		this.controlTypes = ['checkbox', 'code', 'json', 'hidden', 'select', 'bucket', 'text', 'textarea', 'toolset'];
+		this.controlTypes = ['checkbox', 'code', 'json', 'hidden', 'select', 'bucket', 'text', 'textarea', 'toolset', 'group'];
 	}
 	
 	onActivate(args) {
@@ -1251,7 +1251,7 @@ Page.Plugins = class Plugins extends Page.PageUtils {
 	
 	setPluginType() {
 		// swap out the plugin type dynamic caption
-		var plugin_type = $('#fe_ep_type').val();
+		var plugin_type = this.pluginType = $('#fe_ep_type').val();
 		var md = config.ui.plugin_type_descriptions[ plugin_type ];
 		this.div.find('#s_ep_plugin_type_desc').html( inline_marked(md) );
 		
@@ -1335,6 +1335,7 @@ Page.Plugins = class Plugins extends Page.PageUtils {
 		delete this.plugins;
 		delete this.plugin;
 		delete this.params;
+		delete this.pluginType;
 		this.cleanupRevHistory();
 		this.cleanupBoxButtonFloater();
 		this.div.html( '' );

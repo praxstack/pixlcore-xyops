@@ -51,7 +51,9 @@
 							"id": "nizewm42",
 							"type": "job",
 							"data": {
-								"params": {},
+								"params": {
+									"script": "#!/bin/sh\n\necho \"Hi\"\n"
+								},
 								"targets": [
 									"main"
 								],
