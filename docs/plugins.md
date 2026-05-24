@@ -1264,6 +1264,22 @@ This would allow xyOps to show a graphical progress bar in the UI, and estimate 
 > [!TIP]
 > The Shell Plugin actually supports any interpreted scripting language, including Node.js, PHP, Perl, Python, and more.  Basically, any language that supports a [Shebang](https://en.wikipedia.org/wiki/Shebang_%28Unix%29) line will work in the Shell Plugin.  Just change the `#!/bin/sh` to point to your interpreter of choice.
 
+#### Shell Data Passthrough
+
+The Shell Plugin has a legacy feature called "Data Passthrough", which is a checkbox you will see when configuring the plugin on an event.  When checked, this will cause the Shell Plugin to read all input data for the job, and pass it through to the output, just as if you did it manually in code like this:
+
+```js
+#!/usr/bin/node
+
+const chunks = [];
+for await (const chunk of process.stdin) chunks.push(chunk);
+let job = JSON.parse( chunks.join('') );
+
+console.log( JSON.stringify({ xy: 1, data: job.input.data }) );
+```
+
+This was requested by a user before the [Workflow Data](#Docs/workflows/sharing-data-between-all-nodes) feature was introduced.  It is largely obsolete now, and kept around for legacy purposes only.
+
 ### HTTP Request Plugin
 
 xyOps ships with a built-in "HTTP Request" Plugin, which you can use to send simple GET, HEAD or POST requests to any URL, and log the response.  You can specify custom HTTP request headers, and also supply regular expressions to match a successful response based on the content.

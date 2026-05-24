@@ -1,5 +1,12 @@
 # xyOps Changelog
 
+## Version v1.0.59
+
+> May 23, 2026
+
+- [`0a41a7ce`](https://github.com/pixlcore/xyops/commit/0a41a7ced59422627621955186f62faee640e61c): Version 1.0.59
+	- Bump pixl-xyapp to v2.1.29 for regression bug fix with multi-menus not showing correct items selected.  Fixes #304.
+
 ## Version v1.0.58
 
 > May 22, 2026
