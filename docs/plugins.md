@@ -925,7 +925,9 @@ A "text" parameter type is presented to the user as a single-line text field.
 
 An optional "variant" property may be included, which changes the visible UI control in the browser: `color`, `date`, `datetime-local`, `email`, `number`, `password`, `text`, `time`, `tel` or `url`.
 
-Note that the parameter value is almost always set to a string -- the "variant" only controls the visual UI control and behavior.  However, the "number" variant is a special case, where the value will actually be parsed and stored in the parameters as an actual JavaScript Number.  Also, if the number variant field is empty its value will be `null`.
+Note that the parameter value is almost always set to a string -- the "variant" only controls the visual UI control and behavior.  However, the "number" variant is a special case, where the value will actually be parsed and stored in the parameters as an actual JavaScript Number, or `null` when empty.
+
+The "number" variant is also special in that you can specify a `range` property (string), which limits the minimum, maximum, and step increment for the value.  The range should be in the format: `MIN - MAX / STEP`.  So for example, to limit the number range from 0 to 100 with increments of 5, use `0 - 100 / 5`.  Floats and negatives are allowed, and the step can be the special keyword `any` (for no enforced step increment).
 
 ### Textarea
 
@@ -1190,9 +1192,26 @@ Note that when all the parameter values are collected from the user, they are "f
 
 ### Group
 
-Use the `group` control type to automatically group all controls below into a fieldset (a visual box).  The group will encompass all controls until the end of the parameter list, or until another group is defined.
+Use the `group` control type to automatically group all controls below into a fieldset (a visual box), with a custom label and an optional Markdown-formatted caption.  The group will encompass all controls below it, until one of the following is encountered:
+
+- Another named group
+- A toolset parameter
+- The end of the parameter list
 
 Groups are visual separators only, and do not change any functionality, parameter names, etc.
+
+Example group:
+
+```json
+{
+	"id": "group_resize",
+	"title": "Resize",
+	"type": "group",
+	"caption": "Optionally resize each input image before any other operations are applied."
+}
+```
+
+Groups also need a locally unique `id` (alphanumeric).
 
 ## Macro Expansion
 

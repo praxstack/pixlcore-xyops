@@ -1610,6 +1610,13 @@ body.dark .box_buttons.floater {
 	color: var(--theme-color);
 }
 
+.plugin_param_editor_cont .tool_desc a {
+	color: var(--blue);
+}
+.plugin_param_editor_cont .tool_desc a:hover {
+	color: var(--theme-color);
+}
+
 .plugin_param_editor_cont textarea {
 	/* resize:vertical; font-family:monospace; line-height:16px; */
 	/* font-family: var(--font-family-monospace);
@@ -1682,6 +1689,8 @@ body.dark .dialog .plugin_param_editor_cont {
 .form_row input[type="color"] {
 	padding-top: 0;
 	padding-bottom: 0;
+	padding-left: 10px;
+	padding-right: 10px;
 }
 
 /* Job Details Page */

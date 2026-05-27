@@ -3098,19 +3098,19 @@ Page.Job = class Job extends Page.PageUtils {
 		// clense new job of previous running context
 		var new_job = deep_copy_object(job);
 		for (var key in new_job) {
-			if (!key.match(/^(type|event|category|plugin|targets|algo|workflow|input|params|parent|source|username|api_key|actions|limits|icon|label|test|retry_count|tags|now)$/)) delete new_job[key];
+			if (!key.match(/^(type|event|category|plugin|targets|algo|workflow|input|params|parent|source|username|api_key|icon|label|test|retry_count|tags|now)$/)) delete new_job[key];
 		}
 		
 		// run_event API expects event ID in "id" prop
 		new_job.id = job.event;
 		
-		// cleanse tainted actions which ran
-		(new_job.actions || []).forEach( function(action) {
-			delete action.code;
-			delete action.description;
-			delete action.details;
-			delete action.loc;
-		} );
+		// locate original event
+		var event = find_object( app.events, { id: job.event } );
+		if (!event) return app.doError("The original event could not be found: " + job.event);
+		
+		// we must reset actions and limits to the event versions, as inherited ones are added server-side
+		new_job.actions = deep_copy_object( event.actions || [] );
+		new_job.limits = deep_copy_object( event.limits || [] );
 		
 		// remove workflow running context (state, etc.)
 		if (new_job.workflow) {
@@ -3121,6 +3121,7 @@ Page.Job = class Job extends Page.PageUtils {
 		}
 		
 		// remove system tags from new job
+		// FUTURE: tags that were added dynamically during the previous job run will be included in the new job
 		new_job.tags = (new_job.tags || []).filter( function(tag) { return !tag.match(/^_/); } );
 		
 		Dialog.showProgress( 1.0, "Launching Job..." );

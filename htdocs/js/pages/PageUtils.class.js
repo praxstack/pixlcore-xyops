@@ -2609,9 +2609,13 @@ Page.PageUtils = class PageUtils extends Page.Base {
 				if (in_group) html += `</fieldset>`;
 				html += `<fieldset class="info_fieldset">`;
 				html += `<legend>${strip_html(param.title)}</legend>`;
+				if (param.caption) html += `<div class="tool_desc">${inline_marked(strip_html(param.caption))}</div>`;
 				in_group = true;
 				return;
 			}
+			
+			// toolset breaks out of a previous group
+			if ((param.type == 'toolset') && in_group) { html += `</fieldset>`; in_group = false; }
 			
 			if (param.type != 'checkbox') {
 				if (elem_dis) html += '<div class="info_label" style="color:var(--red)"><i class="mdi mdi-lock">&nbsp;</i>' + param.title + ' (Admin Locked)</div>';
@@ -2633,6 +2637,11 @@ Page.PageUtils = class PageUtils extends Page.Base {
 					};
 					if (param.variant == 'number') {
 						text_args.step = 'any';
+						if (param.range && String(param.range).replace(/\s+/g, '').match(/^(-?\d*\.?\d+)-(-?\d*\.?\d+)\/(any|-?\d*\.?\d+)$/i)) {
+							text_args.min = RegExp.$1;
+							text_args.max = RegExp.$2;
+							text_args.step = RegExp.$3;
+						}
 						if (elem_value === null) text_args.value = '';
 					}
 					if (!param.variant || param.variant.match(/^(password|text|tel)$/)) {
@@ -2749,16 +2758,20 @@ Page.PageUtils = class PageUtils extends Page.Base {
 						onChange: `$P().changePluginParamTool('${plugin_id}','${param.id}',${explore})` 
 					});
 					
+					if (param.caption) html += '<div class="info_caption">' + inline_marked( strip_html(param.caption) ) + '</div>';
+					
 					html += `<fieldset id="fs_toolset_${plugin_id}_${param.id}" class="info_fieldset">`;
 					html += `<legend>${strip_html(tool.title)}</legend>`;
-					html += `<div class="tool_desc">${strip_html(tool.description)}</div>`;
+					if (tool.description) html += `<div class="tool_desc">${inline_marked(strip_html(tool.description))}</div>`;
 					if (tool.fields && tool.fields.length) html += self.getParamEditor(tool.fields, params, explore);
 					html += `</fieldset>`;
 				break;
 			} // switch type
 			
-			if (param.caption) html += '<div class="info_caption">' + inline_marked( strip_html(param.caption) ) + '</div>';
-			else if (elem_dis) html += '<div class="info_caption">This parameter is locked, and only editable by administrators.</div>';
+			if (param.type != 'toolset') {
+				if (param.caption) html += '<div class="info_caption">' + inline_marked( strip_html(param.caption) ) + '</div>';
+				else if (elem_dis) html += '<div class="info_caption">This parameter is locked, and only editable by administrators.</div>';
+			}
 			
 			html += '</div>';
 		} ); // foreach param
@@ -2818,7 +2831,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		var html = '';
 		
 		html += `<legend>${strip_html(tool.title)}</legend>`;
-		html += `<div class="tool_desc">${strip_html(tool.description)}</div>`;
+		if (tool.description) html += `<div class="tool_desc">${inline_marked(strip_html(tool.description))}</div>`;
 		if (tool.fields && tool.fields.length) html += this.getParamEditor(tool.fields, {}, explore);
 		
 		$fieldset.html(html).buttonize();
@@ -4753,6 +4766,18 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			caption: "Enter the default value for the text box."
 		});
 		html += this.getFormRow({
+			id: 'd_epa_value_range',
+			label: 'Number Range:',
+			content: this.getFormText({
+				id: 'fe_epa_value_range',
+				spellcheck: 'false',
+				autocomplete: 'off',
+				class: 'monospace',
+				value: str_value(param.range)
+			}),
+			caption: 'Optionally enter a number range and a step increment, in the format `MIN - MAX / STEP`.  For example, to limit the number range from 0 to 100 with increments of 5, use `0 - 100 / 5`.'
+		});
+		html += this.getFormRow({
 			id: 'd_epa_value_regex',
 			label: 'Validate Pattern:',
 			content: this.getFormText({
@@ -4961,6 +4986,11 @@ Page.PageUtils = class PageUtils extends Page.Base {
 					if (param.variant == 'number') {
 						if (!param.value.length) param.value = null;
 						else param.value = parseFloat(param.value) || 0;
+						
+						param.range = $('#fe_epa_value_range').val().trim();
+						if (param.range && !param.range.replace(/\s+/g, '').match(/^(-?\d*\.?\d+)-(-?\d*\.?\d+)\/(any|-?\d*\.?\d+)$/i)) {
+							return app.badField('#fe_epa_value_range', "The range format is invalid.  Please use: MIN - MAX / STEP.");
+						}
 					}
 					param.regex = $('#fe_epa_value_regex').val().trim();
 				break;
@@ -5028,7 +5058,6 @@ Page.PageUtils = class PageUtils extends Page.Base {
 					delete param.required;
 					delete param.value;
 					delete param.locked;
-					delete param.caption;
 				break;
 			} // switch param.type
 			
@@ -5057,14 +5086,21 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			self.triggerEditChange();
 		} ); // Dialog.confirm
 		
+		$('#fe_epa_text_variant').on('change', function() {
+			var new_type = $('#fe_epa_type').val();
+			var new_variant = $('#fe_epa_text_variant').val();
+			$('#d_epa_value_range').toggle( (new_type == 'text') && (new_variant == 'number') );
+			Dialog.autoResize();
+		}); // type change
+		
 		var change_param_type = function(new_type) {
 			$('#d_epa_value_text, #d_epa_value_textarea, #d_epa_value_regex, #d_epa_value_code, #d_epa_value_json, #d_epa_value_checkbox, #d_epa_value_select, #d_epa_value_hidden, #d_epa_value_toolset, #d_epa_bucket_id, #d_epa_bucket_path, #d_epa_list_id').hide();
 			$('#d_epa_value_' + new_type).show();
 			$('#d_epa_value_regex').toggle( !!new_type.match(/^(text|textarea|code)$/) );
 			$('#d_epa_id').toggle( !new_type.match(/^(group)$/) );
-			$('#d_epa_caption').toggle( !new_type.match(/^(group)$/) );
 			$('#d_epa_required').toggle( !!new_type.match(/^(text|textarea|code)$/) );
 			$('#d_epa_text_variant').toggle( !!new_type.match(/^(text)$/) );
+			$('#d_epa_value_range').toggle( (new_type == 'text') && ($('#fe_epa_text_variant').val() == 'number') );
 			$('#d_epa_locked').toggle( !new_type.match(/^(toolset|group)$/) && show_lock );
 			$('#d_epa_bucket_id, #d_epa_bucket_path').toggle( !!new_type.match(/^(bucket)$/) );
 			$('#d_epa_list_id').toggle( !!new_type.match(/^(system)$/) );
@@ -5367,6 +5403,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 				if (in_group) html += `</fieldset>`;
 				html += `<fieldset class="info_fieldset">`;
 				html += `<legend>${strip_html(param.title)}</legend>`;
+				if (param.caption) html += `<div class="tool_desc">${inline_marked(strip_html(param.caption))}</div>`;
 				in_group = true;
 				return;
 			}
@@ -5391,6 +5428,11 @@ Page.PageUtils = class PageUtils extends Page.Base {
 					};
 					if (param.variant == 'number') {
 						text_args.step = 'any';
+						if (param.range && String(param.range).replace(/\s+/g, '').match(/^(-?\d*\.?\d+)-(-?\d*\.?\d+)\/(any|-?\d*\.?\d+)$/i)) {
+							text_args.min = RegExp.$1;
+							text_args.max = RegExp.$2;
+							text_args.step = RegExp.$3;
+						}
 						if (elem_value === null) text_args.value = '';
 					}
 					if (!param.variant || param.variant.match(/^(password|text|tel)$/)) {
