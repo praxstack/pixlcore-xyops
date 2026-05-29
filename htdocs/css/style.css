@@ -254,6 +254,15 @@ body.dark .button.delete {
 	border: 1px solid var(--pink-highlight);
 }
 
+button.link.outdated {
+	color: var(--orange);
+	font-weight: bold;
+}
+button.link.outdated:hover {
+	color: var(--orange-highlight);
+	font-weight: bold;
+}
+
 #d_logo_overlay {
 	position: absolute;
 	top: 0;
@@ -1196,10 +1205,36 @@ div.td_big {
 }
 
 .section_item {
+	position: relative;
 	padding-left: 37px;
 }
 .section_item.filtered {
 	color: var(--icon-color);
+}
+
+.section_item.outdated {
+	padding-right: 30px;
+}
+.section_item.outdated:not(.active) {
+	color: var(--orange);
+}
+.section_item.outdated:not(.active):hover {
+	color: var(--orange-highlight);
+}
+
+.section_item > i.section_badge {
+	position: absolute;
+	left: 100%;
+	top: 0;
+	margin-left: -29px;
+	padding-right: 0 !important;
+	height: 25px;
+	line-height: 25px;
+	font-size: 14px;
+	display: none;
+}
+.section_item.outdated > i.section_badge {
+	display: block;
 }
 
 .multiselect > .item {

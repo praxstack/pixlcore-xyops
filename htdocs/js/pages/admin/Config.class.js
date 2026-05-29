@@ -34,7 +34,7 @@ Page.Config = class Config extends Page.PageUtils {
 		// receive config from server
 		var self = this;
 		this.lastResp = resp;
-		var { config, overrides, markdown } = resp;
+		var { config, overrides, sample, markdown } = resp;
 		
 		// parse markdown into sections
 		var rows = [];
@@ -73,9 +73,14 @@ Page.Config = class Config extends Page.PageUtils {
 				else row.value = get_path( config, path );
 				
 				if (row.value === undefined) {
-					// should never happen, but who knows
-					row = null;
-					return;
+					// try sample config
+					row.value = get_path( sample, path );
+					
+					if (row.value === undefined) {
+						// should never happen, but who knows
+						row = null;
+						return;
+					}
 				}
 				
 				row.type = typeof(row.value);

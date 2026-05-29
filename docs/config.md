@@ -400,6 +400,11 @@ See [JobHookData](data.md#jobhookdata) and [AlertHookData](data.md#alerthookdata
 
 This section configures the multi-server subsystem.
 
+### multi.enable_version_checks
+<!-- Title: Enable Version Checks -->
+
+When set to `true`, xyOps will check for version updates of the core app, which will make external web requests to the Release Metadata URL.
+
 ### multi.list_url
 <!-- Title: Release Metadata URL -->
 
@@ -433,11 +438,6 @@ Default:
 { "rejectUnauthorized": false }
 ```
 
-### multi.disable_version_checks
-<!-- Title: Disable Version Checks -->
-
-When set to `true`, this boolean will disable all remote version checks for xyOps software.
-
 
 
 ## satellite
@@ -445,6 +445,11 @@ When set to `true`, this boolean will disable all remote version checks for xyOp
 <!-- Type: Group -->
 
 This section configures xySat, our remote satellite agent.
+
+### satellite.enable_version_checks
+<!-- Title: Enable Version Checks -->
+
+When set to `true`, xyOps will check for version updates of the xySat app, which will make external web requests to the Release Metadata URL.
 
 ### satellite.list_url
 <!-- Title: Release Metadata URL -->
@@ -476,11 +481,6 @@ This number (seconds) sets the cache TTL for satellite release metadata and tarb
 
 This object contains web server and runtime settings for xySat; these options are passed along when managing or provisioning satellite nodes (defaults provided in the sample config).
 
-### satellite.disable_version_checks
-<!-- Title: Disable Version Checks -->
-
-When set to `true`, this boolean will disable all remote version checks for xySat software.
-
 
 
 ## marketplace
@@ -489,12 +489,12 @@ When set to `true`, this boolean will disable all remote version checks for xySa
 
 This section configures the xyOps Marketplace.
 
-## marketplace.enabled
+### marketplace.enabled
 <!-- Title: Marketplace Enabled -->
 
 This boolean enables or disables the marketplace.  If disabled, users cannot search for or install plugins.  The default is `true` (enabled).
 
-## marketplace.metadata_url
+### marketplace.metadata_url
 <!-- Title: Metadata URL -->
 
 This string points to the central marketplace metadata location, which contains the full product catalog.  
@@ -505,7 +505,7 @@ Example:
 https://raw.githubusercontent.com/pixlcore/xyops-marketplace/refs/heads/main/marketplace.json
 ```
 
-## marketplace.repo_url_template
+### marketplace.repo_url_template
 <!-- Title: Plugin Repository URL Template -->
 
 This string is a template used to generate plugin repository URLs to specific files.  It has placeholder macros for `id` (org and repo), `version` (git tag), and `filename`.  
@@ -516,7 +516,7 @@ Example:
 https://raw.githubusercontent.com/[id]/refs/tags/[version]/[filename]
 ```
 
-## marketplace.ttl
+### marketplace.ttl
 <!-- Title: Time-to-Live (seconds) -->
 
 This is the number of seconds to cache the marketplace metadata locally before re-fetching from origin.  The default is `3600` (one hour).
@@ -666,6 +666,11 @@ Maximum size of job output to display inline on the details page (default: `5 MB
 <!-- Title: Hold Alt to Toggle -->
 
 Requires the user to hold the Opt/Alt key to toggle the `enabled` property of certain entities in the UI (prevents accidental clicks).
+
+### client.outdated_badges
+<!-- Title: Show Outdated Version Badges -->
+
+When set to `true`, will show a colored badge on sidebar sections for outdated software versions on the Conductors, Servers and Marketplace tabs.  Admin only.
 
 ### client.new_event_template
 <!-- Title: New Event Template -->

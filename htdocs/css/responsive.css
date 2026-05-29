@@ -177,6 +177,10 @@
 	.chart_grid_horiz.large { grid-template-columns: 1fr; }
 	.chart_grid_horiz.large canvas { height: 300px; }
 	
+	.button.early_hide {
+		display: none;
+	}
+	
 	.button.mobile_collapse i {
 		position: relative;
 		left: 2px;
@@ -562,6 +566,10 @@
 	}
 	.box_code_none {
 		padding-top: 0 !important;
+	}
+	
+	.button.early_hide {
+		display: none;
 	}
 	
 	.button.mobile_collapse i {
@@ -1060,6 +1068,10 @@
 		left: 1px;
 	}
 	.header_widget.button span {
+		display: none;
+	}
+	
+	.button.early_hide {
 		display: none;
 	}
 	
@@ -1639,6 +1651,10 @@
 		left: 1px;
 	}
 	.header_widget.button span {
+		display: none;
+	}
+	
+	.button.early_hide {
 		display: none;
 	}
 	

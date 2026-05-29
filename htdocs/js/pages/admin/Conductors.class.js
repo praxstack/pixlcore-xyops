@@ -98,18 +98,18 @@ Page.Conductors = class Conductors extends Page.PageUtils {
 		var self = this;
 		
 		// fetch data if needed
-		if (!this.latestMasterVersion) {
+		if (!app.latestMasterVersion) {
 			app.api.get( 'app/get_master_releases', {}, function(resp) {
 				// releases[0] is always `latest` (unless airgapped), releases[1] is the latest version
 				if (resp && resp.releases && resp.releases[1]) {
-					self.latestMasterVersion = resp.releases[1];
+					app.latestMasterVersion = resp.releases[1];
 					self.checkAllVersions();
 				}
 			});
 			return;
 		}
 		
-		var latest_int = get_int_version( this.latestMasterVersion.replace(/^v/, '') );
+		var latest_int = get_int_version( app.latestMasterVersion );
 		
 		this.masters.forEach( function(item) {
 			// decorate as needed
@@ -118,7 +118,7 @@ Page.Conductors = class Conductors extends Page.PageUtils {
 			if (master_int < latest_int) {
 				// outdated!
 				self.div.find('#d_ec_ver_' + CSS.escape(item.id)).html(
-					'<button class="link danger" style="color:var(--red); font-weight:bold;" data-host="' + item.id + '" onClick="$P().go_nav_upgrade(this)" title="xyOps version is outdated."><i class="mdi mdi-alert-rhombus">&nbsp;</i>v' + item.version + '</span>'
+					`<button class="link outdated" data-host="${item.id}" onClick="$P().go_nav_upgrade(this)" title="A new xyOps version is available (${app.latestMasterVersion})."><i class="mdi mdi-alert-rhombus">&nbsp;</i>v${item.version}</span>`
 				);
 			}
 			else {

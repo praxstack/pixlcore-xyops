@@ -38,6 +38,25 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		$('.button.cancel').attr('id', 'btn_close');
 	}
 	
+	hasUnsavedChanges() {
+		// return true if current page has unsaved changes
+		if (this.args && String(this.args.sub).match(/^(new|edit)$/) && app.comm.socket && app.comm.socket.connected && $('.button.save').hasClass('primary')) {
+			return true;
+		}
+		return false;
+	}
+	
+	showNavLeaveConfirm(anchor) {
+		// show confirmation dialog before leaving page
+		var text = `You have unsaved changes on the current page.  Are you sure you want to leave and discard them?`;
+		
+		Dialog.confirmDanger( 'Discard Unsaved Changes?', text, ['trash-can', 'Discard'], function(result) {
+			if (!result) return;
+			$('.button.save').removeClass('primary');
+			Nav.go(anchor);
+		} ); // confirm
+	}
+	
 	goRevisionHistory(opts) {
 		// jump intp revision history view for parent page
 		var self = this;
@@ -288,7 +307,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			}
 			
 			if (click) {
-				desc = `<button class="link" onClick="${click}">${desc}</button>`;
+				desc = `<a class="link" onClick="${click}">${desc}</a>`;
 				if (obj.revision) {
 					nice_rev = `<button class="link" onClick="${click}"><i class="mdi mdi-file-compare">&nbsp;</i><b>${obj.revision}</b></button>`;
 				}
@@ -4638,7 +4657,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			
 			return [
 				'<div class="td_drag_handle" draggable="true" title="Drag to reorder"><i class="mdi mdi-menu"></i></div>',
-				'<div class="td_big nowrap"><button class="link" onClick="$P().editParam('+idx+')"><i class="mdi mdi-' + nice_label_icon + '"></i>' + item.title + '</button></div>',
+				'<div class="td_big nowrap ellip"><a class="link" onClick="$P().editParam('+idx+')"><i class="mdi mdi-' + nice_label_icon + '"></i>' + item.title + '</a></div>',
 				'<div class="ellip mono">' + nice_id + '</div>',
 				'<div class="ellip"><i class="mdi mdi-' + nice_icon + '">&nbsp;</i>' + nice_type + '</div>',
 				'<div class="ellip">' + pairs.join(', ') + '</div>',

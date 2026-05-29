@@ -680,6 +680,134 @@ app.extend({
 		this.user.groups = [...new Set(cgrps)]; // remove dupes
 	},
 	
+	startLazyVersionChecks() {
+		// lazily check versions for conductors, servers, and optionally marketplace plugins
+		// highlight sidebar sections for outdated entities
+		if (config.outdated_badges === false) return;
+		
+		setTimeout( this.checkConductorVersions.bind(this), 500 );
+		setTimeout( this.checkServerVersions.bind(this), 1000 );
+		setTimeout( this.checkPluginVersions.bind(this), 1500 );
+	},
+	
+	checkConductorVersions() {
+		// check all conductor versions to see if any are out of date
+		var self = this;
+		if (config.outdated_badges === false) return;
+		if (!this.isAdmin()) return;
+		
+		// fetch data if needed
+		if (!this.latestMasterVersion) {
+			this.api.get( 'app/get_master_releases', {}, function(resp) {
+				// releases[0] is always `latest` (unless airgapped), releases[1] is the latest version
+				if (resp && resp.releases && resp.releases[1]) {
+					self.latestMasterVersion = resp.releases[1];
+					self.checkConductorVersions();
+				}
+			});
+			return;
+		}
+		
+		var latest_int = get_int_version( this.latestMasterVersion.replace(/^v/, '') );
+		var masters = Object.values( app.masters );
+		var is_outdated = false;
+		
+		masters.forEach( function(item) {
+			if (!item.version || !item.online) return;
+			if (is_outdated) return;
+			
+			var master_int = get_int_version( item.version );
+			if (master_int < latest_int) {
+				// outdated!
+				is_outdated = true;
+			}
+		} );
+		
+		$('#tab_Conductors').toggleClass( 'outdated', is_outdated ).attr( 'title', is_outdated ? `One or more conductors have outdated xyOps software.` : null );
+		
+		if (is_outdated && !$('#tab_Conductors > i.section_badge').length) {
+			$('#tab_Conductors').append( `<i class="mdi mdi-alert-rhombus-outline section_badge"></i>` );
+		}
+	},
+	
+	checkServerVersions() {
+		// check all server versions to see if any are out of date
+		var self = this;
+		if (config.outdated_badges === false) return;
+		if (!this.isAdmin()) return;
+		
+		// fetch data if needed
+		if (!this.latestSatVersion) {
+			this.api.get( 'app/get_satellite_releases', {}, function(resp) {
+				// releases[0] is always `latest` (unless airgapped), releases[1] is the latest version
+				if (resp && resp.releases && resp.releases[1]) {
+					self.latestSatVersion = resp.releases[1];
+					self.checkServerVersions();
+				}
+			});
+			return;
+		}
+		
+		var latest_int = get_int_version( this.latestSatVersion.replace(/^v/, '') );
+		var servers = Object.values(app.servers);
+		var is_outdated = false;
+		
+		servers.forEach( function(server) {
+			if (!server.info || !server.info.satellite) return;
+			if (is_outdated) return;
+			
+			var server_int = get_int_version( server.info.satellite );
+			if (server_int < latest_int) {
+				// outdated!
+				is_outdated = true;
+			}
+		} );
+		
+		$('#tab_Servers').toggleClass( 'outdated', is_outdated ).attr( 'title', is_outdated ? `One or more servers have outdated xySat software.` : null );
+		
+		if (is_outdated && !$('#tab_Servers > i.section_badge').length) {
+			$('#tab_Servers').append( `<i class="mdi mdi-alert-rhombus-outline section_badge"></i>` );
+		}
+	},
+	
+	checkPluginVersions() {
+		// check all installed marketplace plugins to see if any are out of date
+		var self = this;
+		if (config.outdated_badges === false) return;
+		if (!this.hasPrivilege('create_plugins') || !this.hasPrivilege('edit_plugins')) return;
+		
+		// fetch data if needed
+		if (!this.marketRows) {
+			this.api.get( 'app/marketplace', {}, function(resp) {
+				if (resp && resp.rows && resp.rows.length) {
+					self.marketRows = resp.rows;
+					self.checkPluginVersions();
+				}
+			});
+			return;
+		}
+		
+		var is_outdated = false;
+		
+		app.plugins.forEach( function(plugin) {
+			if (is_outdated) return;
+			if (!plugin.marketplace || !plugin.marketplace.id) return;
+			
+			var meta = find_object( self.marketRows, { id: plugin.marketplace.id } );
+			if (!meta) return;
+			
+			var installed_int = get_int_version( plugin.marketplace.version );
+			var market_latest_int = get_int_version( meta.versions[0] );
+			if (installed_int < market_latest_int) is_outdated = true;
+		} );
+		
+		$('#tab_Marketplace').toggleClass( 'outdated', is_outdated ).attr( 'title', is_outdated ? `One or more installed marketplace plugins are outdated.` : null );
+		
+		if (is_outdated && !$('#tab_Marketplace > i.section_badge').length) {
+			$('#tab_Marketplace').append( `<i class="mdi mdi-alert-rhombus-outline section_badge"></i>` );
+		}
+	},
+	
 	doUserLogin: function(resp) {
 		// user login, called from login page, or session recover
 		// overriding this from base.js
@@ -700,6 +828,7 @@ app.extend({
 		this.setupDragDrop();
 		this.pruneData();
 		this.updateAccessibility();
+		this.startLazyVersionChecks();
 		
 		// login resp should have epoch, so track delta from it
 		this.serverPerfStart = performance.now();
@@ -1023,7 +1152,7 @@ app.extend({
 	},
 	
 	hasAnyPrivilege(...privs) {
-		// check if user has priv, show full page error if not
+		// check if user has any priv in list
 		if (!app.user || !app.user.privileges) return false;
 		if (app.user.privileges.admin) return true;
 		return !!privs.filter( (priv_id) => this.hasPrivilege(priv_id) ).length;

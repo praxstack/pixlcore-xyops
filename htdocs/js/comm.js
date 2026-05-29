@@ -398,6 +398,14 @@ app.comm = {
 			var username = item.admin || item.username;
 			if ((username != app.username) && !app.user.admin_hide_notify_user) app.showMessage(type, desc, 8);
 		}
+		
+		// recheck versions for specific actions (lazy)
+		// these should all be cached at this point and not trigger any server requests
+		setTimeout( function() {
+			if (item.action.match(/^(peer_add|peer_disconnect)$/)) app.checkConductorVersions();
+			if (item.action.match(/^(server_add|server_remove|server_delete)$/)) app.checkServerVersions();
+			if (item.action.match(/^(plugin_create|plugin_update|plugin_delete)$/)) app.checkPluginVersions();
+		}, 1000 );
 	},
 	
 	sendCommand: function(cmd, data) {

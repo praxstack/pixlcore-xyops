@@ -680,7 +680,7 @@ Page.Events = class Events extends Page.PageUtils {
 				}
 				
 				var is_fav = !!(app.user.favorites && app.user.favorites.events && app.user.favorites.events.includes(event.id));
-				html += '<div id="btn_ve_fav" class="button right mobile_collapse ' + (is_fav ? 'favorite' : '') + '" onClick="$P().do_toggle_favorite()" title="Toggle Favorite"><i class="mdi mdi-'+(is_fav ? 'heart' : 'heart-plus-outline')+'">&nbsp;</i><span>Favorite</span></div>';
+				html += '<div id="btn_ve_fav" class="button right mobile_collapse mobile_hide ' + (is_fav ? 'favorite' : '') + '" onClick="$P().do_toggle_favorite()" title="Toggle Favorite"><i class="mdi mdi-'+(is_fav ? 'heart' : 'heart-plus-outline')+'">&nbsp;</i><span>Favorite</span></div>';
 				
 				html += '<div class="clear"></div>';
 			html += '</div>'; // title
@@ -1714,7 +1714,7 @@ Page.Events = class Events extends Page.PageUtils {
 			}
 			
 			if (click) {
-				desc = `<button class="link" onClick="${click}">${desc}</button>`;
+				desc = `<a class="link" onClick="${click}">${desc}</a>`;
 				if (item.event.revision) {
 					nice_rev = `<button class="link" onClick="${click}"><i class="mdi mdi-file-compare">&nbsp;</i><b>${item.event.revision}</b></button>`;
 				}
@@ -1895,7 +1895,7 @@ Page.Events = class Events extends Page.PageUtils {
 		html += '<div class="box_buttons">';
 			html += '<div class="button" onClick="$P().cancel_event_new()"><i class="mdi mdi-close-circle-outline">&nbsp;</i>Cancel</div>';
 			html += '<div class="button secondary" onClick="$P().do_export_current()"><i class="mdi mdi-cloud-download-outline">&nbsp;</i><span>Export...</span></div>';
-			html += '<div class="button primary" id="btn_save" onClick="$P().do_new_event()"><i class="mdi mdi-floppy">&nbsp;</i>Create Event</div>';
+			html += '<div class="button save" id="btn_save" onClick="$P().do_new_event()"><i class="mdi mdi-floppy">&nbsp;</i>Create Event</div>';
 		html += '</div>'; // box_buttons
 		
 		html += '</div>'; // box
@@ -1909,10 +1909,12 @@ Page.Events = class Events extends Page.PageUtils {
 		// this.updateAddRemoveMe('#fe_ee_email');
 		$('#fe_ee_title').focus();
 		this.setupBoxButtonFloater();
+		this.setupEditTriggers();
 	}
 	
 	cancel_event_new() {
 		// cancel editing event and return to list
+		$('.button.save').removeClass('primary');
 		if (this.event.id) Nav.go( '#Events?sub=view&id=' + this.event.id );
 		else Nav.go( '#Events?sub=list' );
 	}
@@ -1938,6 +1940,7 @@ Page.Events = class Events extends Page.PageUtils {
 		var idx = find_object_idx(app.events, { id: resp.event.id });
 		if (idx == -1) app.events.push(resp.event);
 		
+		$('.button.save').removeClass('primary');
 		Nav.go( 'Events?sub=view&id=' + resp.event.id );
 		app.showMessage('success', "The new event was created successfully.");
 	}
@@ -1954,6 +1957,7 @@ Page.Events = class Events extends Page.PageUtils {
 			event = this.rollbackData;
 			delete this.rollbackData;
 			app.showMessage('info', `Revision ${event.revision} has been loaded as a draft edit.  Click 'Save Changes' to complete the rollback.  Note that a new revision number will be assigned.`);
+			delete event.revision; // prevent error on update api (issue # 306)
 		}
 		
 		this.receive_event({ code: 0, event: deep_copy_object(event) });
@@ -2018,6 +2022,7 @@ Page.Events = class Events extends Page.PageUtils {
 	
 	cancel_event_edit() {
 		// cancel editing event and return to list
+		$('.button.save').removeClass('primary');
 		if (this.event.id) Nav.go( '#Events?sub=view&id=' + this.event.id );
 		else Nav.go( '#Events?sub=list' );
 	}
@@ -2037,6 +2042,7 @@ Page.Events = class Events extends Page.PageUtils {
 		delete clone.username;
 		
 		this.clone = clone;
+		$('.button.save').removeClass('primary');
 		Nav.go('Events?sub=new');
 	}
 	
@@ -2572,6 +2578,7 @@ Page.Events = class Events extends Page.PageUtils {
 				Dialog.hideProgress();
 				if (!self.active) return; // sanity
 				
+				$('.button.save').removeClass('primary');
 				app.showMessage('success', "The " + thing + " &ldquo;" + event.title + "&rdquo; was deleted successfully.  The job history is being deleted in the background.");
 				Nav.go('Events?sub=list', 'force');
 				
@@ -4278,8 +4285,15 @@ Page.Events = class Events extends Page.PageUtils {
 		}
 	}
 	
-	onDeactivate() {
+	onDeactivate(new_id, anchor) {
 		// called when page is deactivated
+		
+		// check for changes on specific subs, with some sanity checks first
+		if (this.hasUnsavedChanges()) {
+			this.showNavLeaveConfirm( anchor );
+			return false;
+		}
+		
 		delete this.jobs;
 		delete this.event;
 		delete this.upcomingJobs;

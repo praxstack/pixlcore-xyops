@@ -1,5 +1,24 @@
 # xyOps Changelog
 
+## Version v1.0.61
+
+> May 27, 2026
+
+- [`b3964a1c`](https://github.com/pixlcore/xyops/commit/b3964a1c5d68c5a7d28a5d1f11e844ec389e409e): Version 1.0.61
+	- Bump pixl-xyapp to v2.1.31 for CSS and nav system fixes.
+- [`404d5e67`](https://github.com/pixlcore/xyops/commit/404d5e67411a8cb312ad7686e086faec70942074): CSS Tweaks: Fix various issues with links truncating on mobile screens.
+- [`09295723`](https://github.com/pixlcore/xyops/commit/0929572355c14b83ce503e9fba12b15f39808e4c): CSS UI: Fix privacy blur issue on safari
+- [`b1b63111`](https://github.com/pixlcore/xyops/commit/b1b63111377a8d629788493674183878c941b07c): Feature: Add unsaved navigation protection (confirmation dialog) to all major pages.
+- [`ac34e418`](https://github.com/pixlcore/xyops/commit/ac34e41863b229e32367e91ec9497b0d16f1994d): Feature: Config Editor UI: Support newly introduced config properties, even if they don't exist in old config files.
+- [`f639ac68`](https://github.com/pixlcore/xyops/commit/f639ac684f048164393311849b1fa89ac2e0a45d): Feature: Show outdated badges in sidebar for conductors, servers, and marketplace plugins.  Fixes #305.
+- [`cff69216`](https://github.com/pixlcore/xyops/commit/cff6921670ab87502bd67a97ebc8e2bfd7b19ab8): Feature: Marketplace: Optional search by installed / not installed.
+- [`da75b079`](https://github.com/pixlcore/xyops/commit/da75b07934751d88e079bf767e6a58b3a487b8fe): Feature: Cache xyOps/xySat release metadata locally, and add `enable_version_checks` config settings.
+- [`d970efc0`](https://github.com/pixlcore/xyops/commit/d970efc044fa8b6cb7e15248c0dd4ddded3a8fa9): Feature: Unsaved change detection and nav confirmation in event and workflow editors.
+- [`0e6a688f`](https://github.com/pixlcore/xyops/commit/0e6a688fe1565f54e38d7cd740e523bf2b8e18bf): Feature: Add floating button palette on workflow editor.
+- [`92cd4e79`](https://github.com/pixlcore/xyops/commit/92cd4e79d9491656dfe2c982fbf614aff7cb6bca): Feature: Workflow decision controller can optionally abort the entire workflow on false eval.
+- [`8e539232`](https://github.com/pixlcore/xyops/commit/8e539232a21e118d9995ff56613e4f0d95ed1753): Workflows: Active join controllers need to detect an idle workflow state and deactivate themselves.
+- [`5392c975`](https://github.com/pixlcore/xyops/commit/5392c9753e570356008fad479950004b70786bf3): UI Tweak: Sort workflow controller type menu by title.
+
 ## Version v1.0.60
 
 > May 25, 2026

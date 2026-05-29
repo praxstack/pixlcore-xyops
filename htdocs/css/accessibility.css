@@ -204,6 +204,9 @@ body.coloracc .sel_dialog_item:hover {
 body.privacy [data-private] {
 	filter: blur(4px);
 }
+body.safari.privacy [data-private] {
+	filter: blur(8px);
+}
 
 /* Reduced Motion */
 

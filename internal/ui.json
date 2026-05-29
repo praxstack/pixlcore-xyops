@@ -593,6 +593,13 @@
 				"label": "Expression:",
 				"caption": "Enter the expression to evaluate using [XYEXP](#Docs/xyexp), e.g. `data.random > 0.5`.  If true, control will pass onto the next node."
 			},
+			"d_wfd_if_abort": {
+				"label": "Behavior:",
+				"caption": "Optionally abort the entire workflow if the expression evaluates to false."
+			},
+			"fe_wfd_if_abort": {
+				"label": "Abort on False"
+			},
 			"d_wfd_title": {
 				"label": "Custom Title:",
 				"caption": "Optionally enter a custom title for the node."
@@ -1248,12 +1255,12 @@
 	],
 	
 	"workflow_controller_type_menu": [
+		{ "id": "decision", "title": "Decision", "icon": "boom-gate-up" },
+		{ "id": "join", "title": "Join", "icon": "arrow-collapse-vertical" },
 		{ "id": "multiplex", "title": "Multiplex", "icon": "multicast" },
-		{ "id": "wait", "title": "Wait", "icon": "watch" },
 		{ "id": "repeat", "title": "Repeat", "icon": "rotate-360" },
 		{ "id": "split", "title": "Split", "icon": "call-split" },
-		{ "id": "join", "title": "Join", "icon": "arrow-collapse-vertical" },
-		{ "id": "decision", "title": "Decision", "icon": "boom-gate-up" }
+		{ "id": "wait", "title": "Wait", "icon": "watch" }
 	],
 	
 	"ticket_types": [

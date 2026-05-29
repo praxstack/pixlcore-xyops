@@ -136,17 +136,19 @@ Page.Marketplace = class Marketplace extends Page.PageUtils {
 					});
 				html += '</div>';
 				
-				// license
+				// status
 				html += '<div class="form_cell">';
 					html += this.getFormRow({
-						label: '<i class="icon mdi mdi-scale-balance">&nbsp;</i>License:',
+						label: '<i class="icon mdi mdi-check-circle-outline">&nbsp;</i>Status:',
 						content: this.getFormMenuSingle({
-							id: 'fe_s_lic',
-							title: 'Select License',
-							options: [['', 'Any License']].concat( this.fields.licenses.map( function(lic) {
-								return { id: crammify(lic), title: lic, icon: 'license' };
-							} ) ),
-							value: args.license || '',
+							id: 'fe_s_status',
+							title: 'Select Status',
+							options: [
+								{ "id": "", "title": "Any Status", "icon": "" },
+								{ "id": "installed", "title": "Installed", "icon": "check-circle" },
+								{ "id": "not", "title": "Not Installed", "icon": "cancel" }
+							],
+							value: args.status || '',
 							'data-shrinkwrap': 1
 						})
 					});
@@ -170,10 +172,10 @@ Page.Marketplace = class Marketplace extends Page.PageUtils {
 		this.addPageDescription();
 		
 		MultiSelect.init( this.div.find('#fe_s_tags, #fe_s_reqs') );
-		SingleSelect.init( this.div.find('#fe_s_type, #fe_s_lic, #fe_s_author') );
+		SingleSelect.init( this.div.find('#fe_s_type, #fe_s_status, #fe_s_author') );
 		this.setupSearchOpts();
 		
-		this.div.find('#fe_s_tags, #fe_s_type, #fe_s_reqs, #fe_s_lic, #fe_s_author').on('change', function() {
+		this.div.find('#fe_s_tags, #fe_s_type, #fe_s_reqs, #fe_s_status, #fe_s_author').on('change', function() {
 			self.navSearch();
 		});
 		
@@ -210,8 +212,8 @@ Page.Marketplace = class Marketplace extends Page.PageUtils {
 		var reqs = this.div.find('#fe_s_reqs').val();
 		if (reqs.length) args.requires = reqs.join(',');
 		
-		var lic = this.div.find('#fe_s_lic').val();
-		if (lic) args.license = lic;
+		var status = this.div.find('#fe_s_status').val();
+		if (status) args.status = status;
 		
 		var author = this.div.find('#fe_s_author').val();
 		if (author) args.author = author;
