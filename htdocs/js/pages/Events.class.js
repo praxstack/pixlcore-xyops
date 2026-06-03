@@ -690,12 +690,12 @@ Page.Events = class Events extends Page.PageUtils {
 					
 					// row 1
 					html += '<div>';
-						html += `<div class="info_label">${thing} ID</div>`;
+						html += `<div class="info_label">Event ID</div>`;
 						html += '<div class="info_value monospace">' + this.getNiceCopyableID(event.id) + '</div>';
 					html += '</div>';
 					
 					html += '<div>';
-						html += `<div class="info_label">${thing} Title</div>`;
+						html += `<div class="info_label">Event Title</div>`;
 						html += '<div class="info_value">' + this.getNiceEvent(event) + '</div>';
 					html += '</div>';
 				

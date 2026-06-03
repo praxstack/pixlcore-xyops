@@ -407,11 +407,11 @@ Page.Base = class Base extends Page {
 		// pick default icon based on event attributes
 		if (item.type == 'workflow') {
 			default_icon = 'clipboard-flow-outline';
-			if (find_object(item.actions || [], { type: 'run_event', enabled: true })) default_icon = 'clipboard-arrow-right-outline';
+			if (find_object(item.actions || [], { type: 'run_event', enabled: true })) default_icon = 'clipboard-arrow-right';
 			if (!item.enabled) default_icon = 'clipboard-outline';
 		}
 		else {
-			if (find_object(item.actions || [], { type: 'run_event', enabled: true })) default_icon = 'file-send-outline';
+			if (find_object(item.actions || [], { type: 'run_event', enabled: true })) default_icon = 'file-move';
 			if (!item.enabled) default_icon = 'file-outline';
 		}
 		
@@ -1787,7 +1787,10 @@ Page.Base = class Base extends Page {
 		} );
 		
 		events.forEach( function(event) {
-			if (event.type == 'workflow') event.icon = 'clipboard-flow-outline';
+			if (!event.icon) {
+				if (event.type == 'workflow') event.icon = 'clipboard-flow-outline';
+				else event.icon = 'calendar-clock';
+			}
 			
 			if (event.category != last_cat_id) {
 				last_cat_id = event.category;
@@ -1829,6 +1832,7 @@ Page.Base = class Base extends Page {
 		
 		servers.forEach( function(server) {
 			server.title = server.title || app.formatHostname(server.hostname);
+			server.icon = server.icon || 'router-network';
 			
 			if (server.groups[0] != last_grp_id) {
 				last_grp_id = server.groups[0];

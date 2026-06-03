@@ -739,7 +739,9 @@ Page.Marketplace = class Marketplace extends Page.PageUtils {
 			label: 'Version to Install:',
 			content: this.getFormMenuSingle({
 				id: 'fe_mkt_version',
-				options: [{ id: '', title: 'Latest Stable', icon: 'tag-text' }].concat( product.versions.map( function(ver) { return { id: ver, title: ver, icon: 'tag-text-outline' }; } ) ),
+				options: [{ id: '', title: `Latest Stable (${product.versions[0]})`, icon: 'tag-text' }].concat( 
+					product.versions.map( function(ver) { return { id: ver, title: ver, icon: 'tag-text-outline' }; } ) 
+				),
 				value: '',
 				'data-shrinkwrap': 1
 			})

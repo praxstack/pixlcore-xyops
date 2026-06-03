@@ -2827,7 +2827,7 @@ Page.Workflows = class Workflows extends Page.Events {
 		html += '<div class="wf_container" id="d_wf_container" style="height:calc(100vh - 188px);">';
 		
 		html += `<div class="wf_grid_header">
-			<div class="wf_title left" style="display:none"><i class="mdi mdi-clipboard-flow-outline">&nbsp;</i>${config.ui.titles.workflow_editor}</div>
+			<div class="wf_title left" style="display:none"><i class="mdi mdi-clipboard-edit-outline">&nbsp;</i>${config.ui.titles.workflow_editor}</div>
 			<div class="button secondary left mobile_collapse" id="d_btn_wf_edit" onClick="$P().doEditSelection()" style="display:none" title="${config.ui.tooltips.wf_edit_sel_node}"><i class="mdi mdi-note-edit-outline">&nbsp;</i><span>${config.ui.buttons.wf_edit_sel_node}</span></div>
 			<div class="button secondary left mobile_collapse" id="d_btn_wf_test" onClick="$P().doTestSelection()" style="display:none" title="${config.ui.tooltips.wf_test_sel_node}"><i class="mdi mdi-test-tube">&nbsp;</i><span>${config.ui.buttons.wf_test_sel_node}</span></div>
 			<div class="button icon left mobile_collapse" id="d_btn_wf_dup" onClick="$P().doDuplicateSelection()" style="display:none" title="${config.ui.tooltips.wf_dupe_sel}"><i class="mdi mdi-content-duplicate">&nbsp;</i><span>${config.ui.buttons.wf_dupe_sel}</span></div>

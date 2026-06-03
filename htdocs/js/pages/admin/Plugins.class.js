@@ -10,7 +10,7 @@ Page.Plugins = class Plugins extends Page.PageUtils {
 		// called once at page load
 		this.default_sub = 'list';
 		this.dom_prefix = 'ep';
-		this.controlTypes = ['checkbox', 'code', 'json', 'hidden', 'select', 'bucket', 'text', 'textarea', 'toolset', 'group'];
+		this.controlTypes = ['checkbox', 'code', 'json', 'hidden', 'select', 'bucket', 'system', 'text', 'textarea', 'toolset', 'group'];
 	}
 	
 	onActivate(args) {
@@ -570,7 +570,7 @@ Page.Plugins = class Plugins extends Page.PageUtils {
 		var cat_def = find_object( app.categories, { id: 'general' } ) || app.categories[0];
 		
 		if (!app.groups.length) return app.doError("No server groups found.  Please add a server group before testing action plugins.");
-		var grp_def = find_object( app.groups, { id: 'maingrp' } ) || app.groups[0];
+		var grp_def = find_object( app.groups, { id: 'main' } ) || app.groups[0];
 		
 		if (!find_object( app.plugins, { id: 'testplug' } )) return app.doError("Cannot test action plugins without the 'Test Plugin' event plugin.");
 		
@@ -629,7 +629,7 @@ Page.Plugins = class Plugins extends Page.PageUtils {
 					{ type: "manual", enabled: true }
 				],
 				actions: [
-					{ type: 'plugin', enabled: true, condition: "complete", plugin_id: plugin.id },
+					{ type: 'plugin', enabled: true, condition: "complete", plugin_id: plugin.id, params },
 					{ type: "delete", enabled: true, condition: "complete" }
 				],
 				limits: [],

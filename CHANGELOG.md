@@ -1,5 +1,18 @@
 # xyOps Changelog
 
+## Version v1.0.62
+
+> June 1, 2026
+
+- [`f2e2b6bb`](https://github.com/pixlcore/xyops/commit/f2e2b6bb43ec10de962e017dbe6c1bfe3b945f27): Version 1.0.62
+	- Bump pixl-xyapp to v2.1.32 for bug fix in menu handling with true/value string values.
+- [`d779682e`](https://github.com/pixlcore/xyops/commit/d779682eb8c5bf8f658f2b9a9e576134da93caa3): Bug Fix: Test Action Plugin was failing to select the main server group.
+- [`22595b8d`](https://github.com/pixlcore/xyops/commit/22595b8d911682ae310404940b630a83fbb5d51f): UI Bug Fix: Some icons in system menus were not displaying properly.
+- [`aec7ce4a`](https://github.com/pixlcore/xyops/commit/aec7ce4a22582549fd285eb3975e99f1ed99da6f): Bug Fix: Add missing system menu item into Plugin Param editor.
+- [`1ebef7f5`](https://github.com/pixlcore/xyops/commit/1ebef7f5b5d4fc4ae259a52e415eb6ba021db590): Marketplace UI: Show actual version number in "Latest Version" menu item, to match system tab behavior.
+- [`7bea480f`](https://github.com/pixlcore/xyops/commit/7bea480fdaadc5734508c9d840f1b9f4104fd61a): UI: Tweak wording for suspend action job trigger menu, and some minor event / workflow wording / icons.
+- [`290c09fd`](https://github.com/pixlcore/xyops/commit/290c09fdcb547be8d8c4bf98eb821f345128df1a): Bug Fix: Cannot rollback events (regression from v0.9.63).  Fixes #306.
+
 ## Version v1.0.61
 
 > May 27, 2026

@@ -2129,17 +2129,17 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		// suspend sources
 		html += this.getFormRow({
 			id: 'd_eja_suspend_sources',
-			label: 'Job Sources:',
+			label: 'Job Triggers:',
 			content: this.getFormMenuMulti({
 				id: 'fe_eja_suspend_sources',
-				title: 'Select Job Sources',
+				title: 'Select Job Triggers',
 				placeholder: '(Always Suspend)',
 				options: config.ui.job_source_types.filter( (item) => { return item.id != 'workflow'; } ),
 				values: action.sources || [],
 				default_icon: '',
-				'data-hold': 1,
+				'data-hold': 1
 			}),
-			caption: 'Select which job sources should trigger the suspension action.'
+			caption: 'Optionally limit the suspension action to only specific job triggers.'
 		});
 		
 		// email
@@ -5254,7 +5254,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			
 			default: 
 				if (list_def && app[list_id]) {
-					items = app[list_id].map( function(item) { return { id: item.id, title: item.title, icon: list_def.icon }; } );
+					items = app[list_id].map( function(item) { return { id: item.id, title: item.title, icon: item.icon || list_def.icon }; } );
 				}
 				else items = app[list_id] || []; 
 			break;
