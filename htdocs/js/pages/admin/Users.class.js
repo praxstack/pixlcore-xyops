@@ -36,20 +36,27 @@ Page.Users = class Users extends Page.PageUtils {
 		// show user list
 		this.loading();
 		if (!args.offset) args.offset = 0;
-		if (!args.limit) args.limit = 25;
+		if (!args.limit) args.limit = config.items_per_page;
 		app.api.post( 'user/admin_get_users', copy_object(args), this.receive_users.bind(this) );
 	}
 	
 	receive_users(resp) {
 		// receive page of users from server, render it
 		var self = this;
+		var args = this.args;
 		var html = '';
 		if (!this.active) return; // sanity
 		
 		this.lastUsersResp = resp;
 		this.users = [];
-		
 		if (resp.rows) this.users = resp.rows;
+		
+		// sort users if they fit onto a single page
+		if ((args.offset == 0) && (resp.list.length <= args.limit)) {
+			this.users.sort( function(a, b) {
+				return a.full_name.toLowerCase().localeCompare( b.full_name.toLowerCase() );
+			} );
+		}
 		
 		// NOTE: Don't change these columns without also changing the responsive css column collapse rules in style.css
 		var cols = ['Display Name', 'Username', 'Email Address', 'Status', 'Type', 'Created', 'Actions'];
@@ -68,8 +75,8 @@ Page.Users = class Users extends Page.PageUtils {
 			resp: resp,
 			cols: cols,
 			data_type: 'user',
-			offset: this.args.offset || 0,
-			limit: this.args.limit,
+			offset: args.offset || 0,
+			limit: args.limit,
 			primary: true
 		};
 		

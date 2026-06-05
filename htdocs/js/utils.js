@@ -497,6 +497,14 @@ function always_string(thing) {
 	return Array.isArray(thing) ? String(thing[0]) : String(thing);
 }
 
+function stripHTML(text) {
+	// only strip html tags that would "render" in a browser -- avoid false positives
+	return String(text)
+		.replace(/<\s*(script|style|template|iframe|object|embed)\b[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, '')
+		.replace(/<!--[\s\S]*?-->|<![^>]*>|<\?[^>]*\?>/g, '')
+		.replace(/<\/?[A-Za-z][A-Za-z0-9:-]*(?:\s+(?:"[^"]*"|'[^']*'|[^'"<>])*)?\s*\/?>/g, '');
+}
+
 CodeMirror.defineMode("mustache", function(config, parserConfig) {
 	// define custom mode for double-curly-brace "mustache" syntax to use as overlay
 	var mustacheOverlay = {

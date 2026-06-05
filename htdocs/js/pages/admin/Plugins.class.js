@@ -10,7 +10,6 @@ Page.Plugins = class Plugins extends Page.PageUtils {
 		// called once at page load
 		this.default_sub = 'list';
 		this.dom_prefix = 'ep';
-		this.controlTypes = ['checkbox', 'code', 'json', 'hidden', 'select', 'bucket', 'system', 'text', 'textarea', 'toolset', 'group'];
 	}
 	
 	onActivate(args) {

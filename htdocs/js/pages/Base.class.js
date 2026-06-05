@@ -540,7 +540,7 @@ Page.Base = class Base extends Page {
 		if (!item) return '(None)';
 		
 		var text = item.title || app.formatHostname(item.hostname);
-		var html = '<span class="nowrap">';
+		var html = '<span class="nowrap" title="' + encode_attrib_entities(text) + '">';
 		var icon = '<i class="mdi mdi-' + (item.offline ? 'close-network-outline' : (item.icon || 'router-network')) + '"></i>';
 		if (link) {
 			html += '<a href="#Servers?id=' + item.id + '">' + icon + '<span data-private>' + text + '</span></a>';

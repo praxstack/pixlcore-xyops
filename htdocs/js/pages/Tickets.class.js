@@ -757,12 +757,11 @@ Page.Tickets = class Tickets extends Page.PageUtils {
 		Dialog.hideProgress();
 		
 		app.cacheBust = hires_time_now();
+		app.showMessage('success', "Ticket #" + this.ticket.num + " was deleted successfully.");
 		
 		$('.button.save').removeClass('primary');
 		if (this.args.sub == 'search') Nav.go( this.selfNav({}), 'force' );
 		else Nav.go('Tickets', 'force');
-		
-		app.showMessage('success', "Ticket #" + this.ticket.num + " was deleted successfully.");
 	}
 	
 	get_ticket_edit_html() {
@@ -1013,12 +1012,12 @@ Page.Tickets = class Tickets extends Page.PageUtils {
 		history.replaceState( null, '', '#' + ticket.num );
 		this.render_header();
 		
-		var body = '<div class="markdown-body">' + marked.parse(ticket.body, config.ui.marked_config) + '</div>';
+		var body = '<div class="markdown-body">' + marked.parse( stripHTML(ticket.body), config.ui.marked_config) + '</div>';
 		
 		html += '<div class="box">';
 			html += '<div id="d_ticket_main_body">';
 				html += '<div class="box_title grid subject">';
-					html += '<div class="btg_title">' + strip_html(ticket.subject) + '</div>';
+					html += '<div class="btg_title">' + stripHTML(ticket.subject) + '</div>';
 					html += '<div class="btg_buttons">';
 						html += '<div class="button secondary" onClick="$P().prep_edit_ticket_body()"><i class="mdi mdi-text-box-edit-outline">&nbsp;</i>Edit Ticket...</div>';
 					html += '</div>';
@@ -2052,7 +2051,7 @@ Page.Tickets = class Tickets extends Page.PageUtils {
 			
 			// rerender subject and markdown
 			self.div.find('#d_ticket_main_body div.btg_title').html( ticket.subject );
-			self.div.find('#d_ticket_main_body div.markdown-body').html( marked.parse(ticket.body, config.ui.marked_config) );
+			self.div.find('#d_ticket_main_body div.markdown-body').html( marked.parse( stripHTML(ticket.body), config.ui.marked_config) );
 			
 			self.expandInlineImages('#d_ticket_main_body');
 			self.highlightCodeBlocks('#d_ticket_main_body');
@@ -2142,7 +2141,7 @@ Page.Tickets = class Tickets extends Page.PageUtils {
 					
 					html += '</div>';
 					
-					html += '<div class="message_body">' + '<div class="markdown-body">' + marked.parse(change.body, config.ui.marked_config) + '</div>' + '</div>';
+					html += '<div class="message_body">' + '<div class="markdown-body">' + marked.parse( stripHTML(change.body), config.ui.marked_config) + '</div>' + '</div>';
 					// html += '<div class="message_footer">' + record.disp.foot_widgets.join('') + '<div class="clear"></div>' + '</div>';
 				html += '</div>'; // box
 				if (yes_hide) html += '</div>';
@@ -2592,7 +2591,7 @@ Page.Tickets = class Tickets extends Page.PageUtils {
 	
 	editShowPreview() {
 		// show popup preview of markdown
-		this.viewMarkdownAuto( "Markdown Preview", this.editor.getValue(), " " );
+		this.viewMarkdownAuto( "Markdown Preview", stripHTML( this.editor.getValue() ), " " );
 	}
 	
 	toggleScrollLock() {
@@ -2617,7 +2616,7 @@ Page.Tickets = class Tickets extends Page.PageUtils {
 		
 		// rerender subject and markdown
 		this.div.find('#d_ticket_main_body div.btg_title').html( ticket.subject );
-		this.div.find('#d_ticket_main_body div.markdown-body').html( marked.parse(ticket.body, config.ui.marked_config) );
+		this.div.find('#d_ticket_main_body div.markdown-body').html( marked.parse( stripHTML(ticket.body), config.ui.marked_config) );
 		
 		this.expandInlineImages('#d_ticket_main_body');
 		this.highlightCodeBlocks('#d_ticket_main_body');

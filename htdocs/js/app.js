@@ -286,6 +286,10 @@ app.extend({
 				} );
 			}
 		} );
+		
+		app.users.sort( function(a, b) {
+			return a.full_name.toLowerCase().localeCompare( b.full_name.toLowerCase() );
+		} );
 	},
 	
 	showSidebar: function(visible) {

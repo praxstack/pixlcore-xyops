@@ -1,5 +1,20 @@
 # xyOps Changelog
 
+## Version v1.0.63
+
+> June 5, 2026
+
+- [`abc095d6`](https://github.com/pixlcore/xyops/commit/abc095d6b7691a47f78cefb2302a7e7276eeeb16): Version 1.0.63
+- [`ba7510f6`](https://github.com/pixlcore/xyops/commit/ba7510f6cba684a61f127ea4bb8bed6fdb01bb9a): Plugins Doc: Add more details around plugin parameters, and show the underlying JSON structures.
+- [`de7e9053`](https://github.com/pixlcore/xyops/commit/de7e9053d536328d7122c0e479553cf7eafb7de6): Feature: Allow toolsets to be used in event user fields.
+- [`e6aa0b67`](https://github.com/pixlcore/xyops/commit/e6aa0b674ab0197ba2ccdf31c2845cbea8517bdd): UI Tweak: Add hover tooltips for server titles (in case they are cut off)
+- [`fd781088`](https://github.com/pixlcore/xyops/commit/fd7810882cd7fc463095c23552a7c5c8a1fd2a45): Bug FIx: User settings change needs to sync to all other connected users (in case name or icon changed)
+- [`e5c8e1aa`](https://github.com/pixlcore/xyops/commit/e5c8e1aa3f29aacc08c639c42038b3d79b4845a4): Bug Fix: Perform macro substitution on job params in a specific key order, to prevent issues with logically using param values inside a macro code block, inside a shell script.  Fixes #312.
+- [`77ff93a6`](https://github.com/pixlcore/xyops/commit/77ff93a6987e6fab7dcd62ddef386e45c553211c): Bug Fix: Prevent infinite loop with param macros that expand to their own values.
+- [`d1e1d1d5`](https://github.com/pixlcore/xyops/commit/d1e1d1d599b267efa58112fd44647c9a21824b81): Several key improvements and bug fixes to the ticketing system...
+- [`af638787`](https://github.com/pixlcore/xyops/commit/af638787d0de9a5ac543d4040c135ec7666d0b7d): UI Tweak: Convert email box margins and padding to be responsive, based on viewport width.
+- [`6785db16`](https://github.com/pixlcore/xyops/commit/6785db161a7626331b46ea906c134f2f94027c8d): UI Tweak: Sort users alphabetically by full name (locale-aware).
+
 ## Version v1.0.62
 
 > June 1, 2026
