@@ -1088,6 +1088,18 @@ Page.Alerts = class Alerts extends Page.PageUtils {
 		}
 	}
 	
+	onDataUpdate(key, data) {
+		// refresh things as needed
+		if (key == 'activeAlerts') {
+			if ((this.args.sub == 'list') && !this.args.offset) {
+				this.doSearch();
+			}
+			else if (this.args.sub == 'view') {
+				app.api.get( 'app/search_alerts', { query: '#id:' + this.args.id }, this.receive_alert.bind(this) );
+			}
+		}
+	}
+	
 	onDeactivate() {
 		// called when page is deactivated
 		this.div.html( '' );

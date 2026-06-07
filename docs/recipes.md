@@ -6,11 +6,7 @@ This document provides a set of useful recipes you can use in xyOps.
 
 ## Continuous Jobs
 
-A continuous job is defined as a job that automatically relaunches itself upon completion. This functionality can enhance the efficiency and reliability of job execution in various systems.
-
-### Implementing Continuous Jobs
-
-To implement a continuous job, follow these steps:
+A continuous job is defined as a job that automatically relaunches itself upon completion. This functionality can enhance the efficiency and reliability of job execution in various systems.  To implement a continuous job, follow these steps:
 
 1. **Wire Up Completion Actions**: 
    - Set up actions that will trigger the same event upon job completion.
@@ -54,7 +50,7 @@ Back up databases and files to Amazon S3 on a fixed schedule, with optional rete
 
 - Use `params` and event `fields` for database credentials and include Secrets where appropriate.
 
-## Video Transcoding Pipeline with ffmpeg
+## Video Transcoding Pipeline
 
 Transcode incoming videos to MP4 H.264 and push the outputs to storage and a CDN. Supports parallel processing with progress feedback.
 
@@ -77,7 +73,7 @@ Transcode incoming videos to MP4 H.264 and push the outputs to storage and a CDN
 - If you need per server fan out, target the ffmpeg at a server group instead of a single server, and select "Round Robin" algo.
 - Tag successful jobs with `transcoded` and wire a `tag:transcoded` action to trigger downstream publishing.
 
-## PostgreSQL Metrics via a Monitor Plugin
+## PostgreSQL Metrics
 
 Collect PostgreSQL health metrics from the CLI and graph them, with alerts and automated remediation.
 
@@ -110,7 +106,96 @@ psql -At -d mydb -c "select n_dead_tup from pg_stat_user_tables order by n_dead_
 
 - Store database credentials in Secrets and inject via environment or params; do not hardcode.
 
-## Sunrise and Sunset Trigger Plugin
+## Web Service Health Alert
+
+Alert when a local web service stops responding on the same server as xySat. This recipe uses a [Monitor Plugin](plugins.md#monitor-plugins) to run a small `curl` check every minute, but it does **not** create a xyOps [Monitor](monitors.md). Monitors are for graphing numeric values over time. Here we only need a simple string status, so the alert can match the raw Plugin output directly.
+
+### How It Works
+
+- Monitor Plugin: Create a Monitor Plugin that runs on the server or server group hosting your web service.
+	- **Plugin Title**: Web Service Health
+	- **Plugin ID**: Automatically assigned when created
+	- **Command**: `/bin/bash`
+	- **Format**: `text`
+	- **Script**:
+
+```sh
+URL="http://127.0.0.1:8080/health"
+
+if curl --fail --silent --output /dev/null \
+	--connect-timeout 5 \
+	--max-time 5 \
+	--retry 3 \
+	--retry-delay 1 \
+	--retry-all-errors \
+	--retry-max-time 20 \
+	"$URL"; then
+	echo "UP"
+else
+	echo "DOWN"
+fi
+```
+
+- Replace the `URL` value with your service's local health endpoint. This can be a loopback URL like `http://127.0.0.1:8080/health`, or any URL reachable from the xySat server.
+	- The example uses `127.0.0.1` instead of `localhost` to avoid hostname lookup ambiguity, especially on systems where `localhost` may try IPv6 (`::1`) before IPv4.
+- The `--fail` flag tells `curl` to treat HTTP error responses such as `404` or `500` as failures instead of successful downloads.
+- The `--silent` and `--output /dev/null` flags keep the Plugin output clean, so xyOps receives only `UP` or `DOWN`.
+- The `--connect-timeout 5` flag caps how long `curl` waits to establish the connection.
+- The `--max-time 5` flag caps how long each request attempt may take, which prevents an unreachable service from tying up the xySat command for too long.
+- The `--retry 3` flag gives the service a few extra chances within the same minute sample before reporting `DOWN`. This helps avoid firing on a single dropped packet or brief restart.
+- The `--retry-delay 1` flag waits one second between retry attempts.
+- The `--retry-all-errors` flag asks `curl` to retry more failure types, including connection and timeout errors.
+- The `--retry-max-time 20` flag caps the total retry window, so the Plugin does not spend too much of the minute waiting.
+
+The raw output from a Monitor Plugin is placed into [ServerMonitorData.commands](data.md#servermonitordata-commands), keyed by the Plugin ID. Replace `YOUR_PLUGIN_ID` below with the actual Plugin ID assigned by xyOps. The server data will look like this:
+
+```json
+"commands": {
+	"YOUR_PLUGIN_ID": "UP"
+}
+```
+
+When the service is unreachable, the value will be:
+
+```json
+"commands": {
+	"YOUR_PLUGIN_ID": "DOWN"
+}
+```
+
+### Alert Definition
+
+Create a new [Alert](alerts.md) and point its expression at the Plugin output:
+
+```js
+!match(commands.YOUR_PLUGIN_ID, "UP")
+```
+
+The `match()` helper function is part of the [xyOps Expression Format](xyexp.md#custom-functions). This expression returns true when the raw command output does **not** contain `UP`, so the alert fires if the service is down, or if the Plugin fails to produce its expected healthy output.
+
+Suggested alert settings:
+
+- **Title**: Web Service Down
+- **Expression**: `!match(commands.YOUR_PLUGIN_ID, "UP")`
+- **Message**: `Web service health check failed.`
+- **Samples**: `1`, so the alert can fire on the same minute sample after `curl` has exhausted its retries.
+- **Server Groups**: Select the group that hosts the web service, or leave blank if it should apply everywhere.
+- **Alert Actions**: Add email, channel, ticket, web hook, snapshot, or run-job actions as needed.
+
+### Why Not Create a Monitor?
+
+This recipe intentionally skips creating a xyOps [Monitor](monitors.md). Monitors store and graph numeric values such as CPU load, free memory, request counts, latency, or disk usage. This Plugin outputs a status string instead: `UP` or `DOWN`.
+
+Because [alerts](alerts.md#alert-expressions) evaluate against the current server monitoring data, they can read `commands.YOUR_PLUGIN_ID` directly. That lets the alert fire from the Plugin's raw text output without forcing the value into a numeric graph.
+
+### Notes
+
+- Keep the Plugin output limited to `UP` or `DOWN`. Extra text can make the alert expression harder to reason about.
+- Tune the timeout and retry values for your service. Shorter timeouts detect failures faster, while more retries help avoid false positives during brief restarts or network blips. If you set alert samples above `1`, remember that each sample adds another minute before the alert fires.
+- If your service has a health endpoint, use that instead of the root URI path. A dedicated health endpoint can check database connections, cache availability, or other dependencies before returning success.
+- If you monitor multiple services, create one Monitor Plugin per service, or output JSON from one Plugin and match each service path separately in different alerts.
+
+## Sunrise and Sunset Trigger
 
 Launch jobs at local sunrise and sunset with optional offsets. Useful for energy jobs, IoT device control, or time shifting heavy tasks to off peak windows.
 

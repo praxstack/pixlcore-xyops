@@ -1487,6 +1487,17 @@ The following Event Plugins are built into xyOps and come preinstalled.
 
 xyOps ships with a built-in "Shell Plugin", which you can use to execute arbitrary shell scripts.  Simply select the Shell Plugin when creating an event or workflow, and enter your script.  This is an easy way to get up and running quickly, because you don't have to worry about reading or writing JSON.
 
+Here are the parameters it accepts:
+
+| Param Name | Param ID | Type | Description |
+|------------|----------|------|-------------|
+| **Script Source** | `script` | Code | Enter the shell script source to run.  This parameter is **Administrator Locked** by default, so standard users and non-admin API Keys cannot change it unless an administrator unlocks the parameter or grants admin privilege. |
+| **Add Date/Time Stamps to Log** | `annotate` | Checkbox | Prefix non-JSON stdout lines with date/time stamps in the job output, so each line is easier to trace during long-running jobs. |
+| **Data Passthrough** | `pass` | Checkbox | Legacy option that copies the job input data into the job output data, so downstream workflow nodes or run-event actions receive the same data.  For new workflows, [Workflow Data](workflows.md#sharing-data-between-all-nodes) is usually the better option. |
+
+> [!IMPORTANT]
+> The Shell Plugin can execute arbitrary code on your servers.  Keep the `script` parameter administrator locked unless you intentionally want non-admin users or API Keys to provide shell commands.
+
 The Shell Plugin determines success or failure based on the [exit code](https://en.wikipedia.org/wiki/Exit_status) of your script.  This defaults to `0` representing success.  Meaning, if you want to trigger an error, exit with a non-zero status code, and make sure you print your error message to STDOUT or STDERR (both will be appended to your job's output capture).  Example:
 
 ```sh
@@ -1524,39 +1535,26 @@ This would allow xyOps to show a graphical progress bar in the UI, and estimate 
 > [!TIP]
 > The Shell Plugin actually supports any interpreted scripting language, including Node.js, PHP, Perl, Python, and more.  Basically, any language that supports a [Shebang](https://en.wikipedia.org/wiki/Shebang_%28Unix%29) line will work in the Shell Plugin.  Just change the `#!/bin/sh` to point to your interpreter of choice.
 
-#### Shell Data Passthrough
-
-The Shell Plugin has a legacy feature called "Data Passthrough", which is a checkbox you will see when configuring the plugin on an event.  When checked, this will cause the Shell Plugin to read all input data for the job, and pass it through to the output, just as if you did it manually in code like this:
-
-```js
-#!/usr/bin/node
-
-const chunks = [];
-for await (const chunk of process.stdin) chunks.push(chunk);
-let job = JSON.parse( chunks.join('') );
-
-console.log( JSON.stringify({ xy: 1, data: job.input.data }) );
-```
-
-This was requested by a user before the [Workflow Data](#Docs/workflows/sharing-data-between-all-nodes) feature was introduced.  It is largely obsolete now, and kept around for legacy purposes only.
-
 ### HTTP Request Plugin
 
 xyOps ships with a built-in "HTTP Request" Plugin, which you can use to send simple GET, HEAD or POST requests to any URL, and log the response.  You can specify custom HTTP request headers, and also supply regular expressions to match a successful response based on the content.
 
 Here are the parameters it accepts:
 
-| Plugin Parameter | Description |
-|------------------|-------------|
-| **Method** | Select the HTTP request method, either GET, HEAD or POST. |
-| **URL** | Enter your fully-qualified URL here, which must begin with either `http://` or `https://`. |
-| **Headers** | Optionally include any custom request headers here, one per line. |
-| **POST Data** | If you are sending a HTTP POST, enter the raw POST data here. |
-| **Timeout** | Enter the timeout in seconds, which is measured as the time to first byte in the response. |
-| **Follow Redirects** | Check this box to automatically follow HTTP redirect responses (up to 32 of them). |
-| **SSL Cert Bypass** | Check this box if you need to make HTTPS requests to servers with invalid SSL certificates (self-signed or other). |
-| **Success Match** | Optionally enter a regular expression here, which is matched against the response body.  If specified, this must match to consider the job a success. |
-| **Error Match** | Optionally enter a regular expression here, which is matched against the response body.  If this matches the response body, then the job is aborted with an error. |
+| Param Name | Param ID | Type | Description |
+|------------|----------|------|-------------|
+| **Method** | `method` | Menu | Select the HTTP request method, either GET, HEAD, POST, PUT or DELETE. |
+| **URL** | `url` | Text | Enter your fully-qualified URL here, which must begin with either `http://` or `https://`. |
+| **Headers** | `headers` | Text Box | Optionally include any custom request headers here, one per line. |
+| **POST Data** | `data` | Text Box | If you are sending a HTTP POST, enter the raw POST data here. |
+| **Timeout** | `timeout` | Number | Enter the timeout in seconds, which is measured as the time to first byte in the response. |
+| **Idle Timeout** | `idle_timeout` | Number | Enter the idle timeout in seconds, which is measured between data packets after the response begins. |
+| **Connect Timeout** | `connect_timeout` | Number | Enter the connection timeout in seconds, which is measured while opening the socket connection. |
+| **Success Match** | `success_match` | Text | Optionally enter a regular expression here, which is matched against the response body.  If specified, this must match to consider the job a success. |
+| **Error Match** | `error_match` | Text | Optionally enter a regular expression here, which is matched against the response body.  If this matches the response body, then the job is aborted with an error. |
+| **Follow Redirects** | `follow` | Checkbox | Check this box to automatically follow HTTP redirect responses (up to 32 of them). |
+| **Download File** | `download` | Checkbox | Check this box to attach the response body as a job output file instead of logging it as text. |
+| **SSL Cert Bypass** | `ssl_cert_bypass` | Checkbox | Check this box if you need to make HTTPS requests to servers with invalid SSL certificates (self-signed or other). |
 
 #### Request Chaining
 
@@ -1622,13 +1620,14 @@ Note that the secrets will be printed on the job output screen.
 
 The Test Plugin exists mainly to test xyOps, but it can also be useful for testing pieces of workflows.  It outputs sample data and optionally a sample file, which are passed to downstream events, if connected.  It can also simulate various job outcomes (success, fail, etc.).  It offers the following parameters:
 
-| Plugin Parameter | Type | Description |
-|------------------|------|-------------|
-| **Test Duration** | Number | The number of seconds to run before reporting completion.  Progress is always reported. |
-| **Simulate Result** | Menu | Select which result to simulate (Success, Error, Warning, Critical, Crash). |
-| **Burn Memory/CPU** | Checkbox | If checked the Plugin will use some memory and CPU (it will allocate 128-256MB of memory and use about 10% of a CPU core doing math in a loop). |
-| **Generate Network Traffic** | Checkbox | If checked the Plugin will make continuous network requests downloading large binary data blobs (from GitHub). |
-| **Upload Sample File** | Checkbox | If checked the Plugin will produce a sample file and attach it to the job output. |
+| Param Name | Param ID | Type | Description |
+|------------|----------|------|-------------|
+| **Test Duration** | `duration` | Number | The number of seconds to run before reporting completion.  Progress is always reported. |
+| **Simulate Result** | `action` | Menu | Select which result to simulate (Success, Error, Warning, Critical, Crash). |
+| **Custom Value** | `custom` | Text | Enter an optional custom value to include in the test output data. |
+| **Burn Memory/CPU** | `burn` | Checkbox | If checked the Plugin will use some memory and CPU (it will allocate 128-256MB of memory and use about 10% of a CPU core doing math in a loop). |
+| **Generate Network Traffic** | `network` | Checkbox | If checked the Plugin will make continuous network requests downloading large binary data blobs (from GitHub). |
+| **Upload Sample File** | `upload` | Checkbox | If checked the Plugin will produce a sample file and attach it to the job output. |
 
 ### Docker Plugin
 
@@ -1640,21 +1639,21 @@ This is built on top of [docker run](https://docs.docker.com/reference/cli/docke
 
 The Docker Plugin uses the following parameters:
 
-| Plugin Parameter | Type | Description |
-|------------------|------|-------------|
-| **Image Name** | Text | The name of the Docker image to use, which can be local or remote. |
-| **Image Version** | Text | The version of the image to use, or `latest`. |
-| **Container Name** | Text | The name of the Docker container, which can use macros such as `{{id}}` to make it unique per job. |
-| **Max CPUs** | Number | The max number of CPU cores the container is allowed to use, or 0 for unlimited. |
-| **Max Memory** | Text | The max amount of memory to allow the container to use (default is unlimited). |
-| **Join Network** | Text | Optionally specify a Docker network name for the container to join. |
-| **Command Extras** | Text | Optionally add any extra command-line arguments to pass to `docker run` (for e.g. volume mounts). |
-| **Launch Command** | Text | The initial command to run as the container starts.  It is recommended to use [xyRun](https://github.com/pixlcore/xyrun) for this, so resources are monitored, and files are managed properly. |
-| **Run Mode** | Menu | Choose whether you want the entire job JSON data to be sent to STDIN, or only the script source (advanced). |
-| **Script Source** | Text | The code to run inside the container.  You can use any language that supports a shebang line. |
-| **Init Process Manager** | Checkbox | Run an "init" inside the container that forwards signals and reaps processes. |
-| **Ephemeral Container** | Checkbox | Automatically delete the container after the job completes (recommended). |
-| **Verbose Logging** | Checkbox | Enable verbose debug logging (raw docker command, etc.) |
+| Param Name | Param ID | Type | Description |
+|------------|----------|------|-------------|
+| **Image Name** | `image_name` | Text | The name of the Docker image to use, which can be local or remote. |
+| **Image Version** | `image_ver` | Text | The version of the image to use, or `latest`. |
+| **Container Name** | `cont_name` | Text | The name of the Docker container, which can use macros such as `{{id}}` to make it unique per job. |
+| **Max CPUs** | `cont_cpus` | Number | The max number of CPU cores the container is allowed to use, or 0 for unlimited. |
+| **Max Memory** | `cont_mem` | Text | The max amount of memory to allow the container to use (default is unlimited). |
+| **Join Network** | `cont_net` | Text | Optionally specify a Docker network name for the container to join. |
+| **Command Extras** | `cont_extras` | Text | Optionally add any extra command-line arguments to pass to `docker run` (for e.g. volume mounts). |
+| **Launch Command** | `cont_cmd` | Text | The initial command to run as the container starts.  It is recommended to use [xyRun](https://github.com/pixlcore/xyrun) for this, so resources are monitored, and files are managed properly. |
+| **Run Mode** | `run_mode` | Menu | Choose whether you want the entire job JSON data to be sent to STDIN, or only the script source (advanced). |
+| **Script Source** | `script` | Code | The code to run inside the container.  You can use any language that supports a shebang line. |
+| **Init Process Manager** | `cont_init` | Checkbox | Run an "init" inside the container that forwards signals and reaps processes. |
+| **Ephemeral Container** | `cont_rm` | Checkbox | Automatically delete the container after the job completes (recommended). |
+| **Verbose Logging** | `verbose` | Checkbox | Enable verbose debug logging (raw docker command, etc.) |
 
 #### Custom Images
 
