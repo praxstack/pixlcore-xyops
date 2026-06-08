@@ -1,5 +1,19 @@
 # xyOps Changelog
 
+## Version v1.0.64
+
+> June 8, 2026
+
+- [`cbe44b52`](https://github.com/pixlcore/xyops/commit/cbe44b52e8e464cfc97fe4f07f4257239991b9b2): Version 1.0.64
+- [`1f3438ea`](https://github.com/pixlcore/xyops/commit/1f3438eae5a536baf1047e72a6cbf940fc81159c): UI Tweak: Reorder / rename controls in the workflow "Job Node" dialog to better match the event editor.
+- [`68181462`](https://github.com/pixlcore/xyops/commit/68181462110a5efdbfaf31ad8c1e66ad736ca461): Bug Fix: Further improvements to event parameter / field handling and validation in the API, to prevent misuse.
+- [`dd6d358d`](https://github.com/pixlcore/xyops/commit/dd6d358dc53e2d1140a047c8106893f3ac76ed12): Feature: Add XYEXP event() helper function to resolve an Event or Job ID to the event title.  Fixes #314
+- [`e0d493a8`](https://github.com/pixlcore/xyops/commit/e0d493a80d495933c2d8a6929e2c6c58936eacfb): Docs: Recipes: Add recipe for a web service health alert.
+- [`7a8e0acf`](https://github.com/pixlcore/xyops/commit/7a8e0acf938b4f4627a4b9de0432dada03714711): Bug Fix: Improve JEXL match() utility function to better handle non-string values.
+- [`e915dfef`](https://github.com/pixlcore/xyops/commit/e915dfef2662e8c8716cb92083e509ba8e108e32): Bug Fix: Alert search and view pages were not automatically updating when alerts changed state.
+- [`98ff7ee0`](https://github.com/pixlcore/xyops/commit/98ff7ee074b7c8593c1af4b1a94016391dc7e31a): Docs: Update plugin parameters in HTTP Request, Test and Docker Plugins.  Add param IDs and missing params.
+- [`888ae37e`](https://github.com/pixlcore/xyops/commit/888ae37e6054f62aebfda4936d87787ce6b8bf74): Bug Fix: Improve sparse event update handling in the update_event API.
+
 ## Version v1.0.63
 
 > June 5, 2026
