@@ -1,5 +1,16 @@
 # xyOps Changelog
 
+## Version v1.0.65
+
+> June 9, 2026
+
+- [`553d9a9a`](https://github.com/pixlcore/xyops/commit/553d9a9a9fe13b987382f0ee2033f84c8085cf7c): Version 1.0.65
+- [`adaf3819`](https://github.com/pixlcore/xyops/commit/adaf3819364ca1c2d1318796c600d8ded619fa24): Configuration: Disable pixl-server-web's recent_requests (unused) to reduce load.
+- [`f343e05f`](https://github.com/pixlcore/xyops/commit/f343e05fcdde4b13f5d410c0e421fa057ad422af): Bug Fix: Ensure an active queue limit is always accompanied by a max concurrent jobs limit.
+- [`654f733f`](https://github.com/pixlcore/xyops/commit/654f733f61aa4e6e5b8d5e4126c70411f05cec0b): Bug Fix: Improve behavior of job/workflow detail page with large amounts of queued sub-jobs.
+- [`d8a93115`](https://github.com/pixlcore/xyops/commit/d8a93115e3a4b7306ad9619f9f559e60a35620fc): Bug Fix: Some web took templates (e.g. telegram) were failing to save due to malformed URLs.  Fixes #317.
+- [`345652ad`](https://github.com/pixlcore/xyops/commit/345652ad2fb668427814778a4fea5d842f632859): Bug Fix: The marketplace API crashes when air-gapped instead of returning an error.
+
 ## Version v1.0.64
 
 > June 8, 2026

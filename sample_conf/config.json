@@ -474,6 +474,7 @@
 		"max_connections": 2048,
 		"max_concurrent_requests": 256,
 		"log_requests": false,
+		"recent_requests": 0,
 		"legacy_callback_support": false,
 		"startup_message": false,
 		"debug_ttl": true,
