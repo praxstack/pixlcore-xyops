@@ -507,11 +507,13 @@ To configure air-gapped mode, use the [airgap](config.md#airgap) section in the 
 
 Set the `enabled` property to `true` to enable air-gapped mode, and set the `whitelist` and/or `blacklist` arrays to IP addresses or [CIDR blocks](https://en.wikipedia.org/wiki/Classless_Inter-Domain_Routing).  The default whitelist includes all IPs in the [private range](https://en.wikipedia.org/wiki/Private_network).
 
+You will also need to disable the "Show Outdated Version Badges" configuration setting ([client.outdated_badges](config.md#client-outdated_badges)).  This is so xyOps will not attempt to check for outdated software versions (which would require making external requests to GitHub).
+
 The air-gapped rules apply to both xyOps itself, and automatically propagate to all connected worker servers, to govern things like the [HTTP Plugin](plugins.md#http-request-plugin).  However, it is important to point out that they do **not** govern your own Plugin code, your own shell scripts, nor marketplace Plugins.
 
-For handling air-gapped software upgrades safely, please contact [xyOps Support](mailto:support@pixlcore.com).  As part of the enterprise plan we can send you digitally signed, encrypted packages with instructions on how to install them.
+For handling air-gapped software upgrades safely, please contact [xyOps Support](mailto:support@pixlcore.com).  As part of the enterprise plan we can send you digitally signed packages with instructions on how to install them.
 
-All xyOps documentation is available offline inside the xyOps app.
+Note that all xyOps documentation is available offline inside the xyOps app.
 
 ### Air-Gapped Satellite Installs
 

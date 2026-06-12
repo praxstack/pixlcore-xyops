@@ -707,7 +707,7 @@ Also present is an `items` array, which will contain an element for each event t
 | `now` | Number | The current time for the potential job launch in Epoch seconds.  Note that this may be in the past, if xyOps is catching up on missed events. |
 | `dargs` | Object | The current date/tme for the job launch, separated out into individual numerical elements, in the event's timezone.  See below for details. |
 | `params` | Object | This object will contain your plugin's own custom defined parameters, filled out by the user at the event level. |
-| `job` | Object | This is a copy of the [Event](data-strictured.md#event) object that will be used to launch the job if your plugin decides it should. |
+| `job` | Object | This is a copy of the [Event](data.md#event) object that will be used to launch the job if your plugin decides it should. |
 
 Here are descriptions of all the `dargs` date/time properties:
 

@@ -195,7 +195,6 @@ Here are the sortable column IDs for each table:
 |---------|---------|-------------|
 | `client.items_per_page` | `50` | Default page size for search results and main list pages, such as job search, tickets, servers, alerts, marketplace, activity, and snapshots. |
 | `client.alt_items_per_page` | `25` | Secondary page size for compact inline lists, picker dialogs, recent job lookups, upcoming jobs, and other small UI widgets. |
-| `client.events_per_page` | `500` | Number of events or workflows fetched per increment in the Events and Workflows list views. |
 | `client.max_table_rows` | `500` | Maximum number of rows rendered in sortable client-side tables before the UI truncates the display with a "more not shown" row. |
 | `client.max_menu_items` | `1000` | Maximum number of options shown in select menus and dropdowns. |
 | `client.max_job_output` | `5 MB` | Maximum amount of job output displayed inline on the Job Details page. |
@@ -208,7 +207,6 @@ Example:
 	"client": {
 		"items_per_page": 100,
 		"alt_items_per_page": 50,
-		"events_per_page": 1000,
 		"max_table_rows": 1000,
 		"max_menu_items": 2000,
 		"max_job_output": "10 MB",

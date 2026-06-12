@@ -235,6 +235,9 @@ Page.Search = class Search extends Page.PageUtils {
 				// sort
 				html += '<div class="form_cell">';
 					var sort_items = [
+						{ id: 'id_desc', title: 'Newest on Top', icon: 'sort-descending', group: 'Start Date:' },
+						{ id: 'id_asc', title: 'Oldest on Top', icon: 'sort-ascending' },
+						
 						{ id: 'date_desc', title: 'Newest on Top', icon: 'sort-descending', group: 'Completion Date:' },
 						{ id: 'date_asc', title: 'Oldest on Top', icon: 'sort-ascending' },
 						
@@ -370,7 +373,7 @@ Page.Search = class Search extends Page.PageUtils {
 		}
 		
 		var sort = this.div.find('#fe_s_sort').val();
-		if (sort != 'date_desc') args.sort = sort;
+		if (sort != 'id_desc') args.sort = sort;
 		
 		if (!num_keys(args)) return null;
 		
@@ -442,6 +445,16 @@ Page.Search = class Search extends Page.PageUtils {
 			compact: 1
 		};
 		switch (args.sort) {
+			case 'id_asc':
+				sopts.sort_by = '_id'; 
+				sopts.sort_dir = 1;
+			break;
+			
+			case 'id_desc':
+				sopts.sort_by = '_id'; 
+				sopts.sort_dir = -1;
+			break;
+			
 			case 'date_asc':
 				sopts.sort_by = 'completed'; 
 				sopts.sort_dir = 1;
@@ -720,6 +733,16 @@ Page.Search = class Search extends Page.PageUtils {
 		var title = 'Bulk Export Jobs';
 		
 		switch (args.sort) {
+			case 'id_asc':
+				sopts.sort_by = '_id'; 
+				sopts.sort_dir = 1;
+			break;
+			
+			case 'id_desc':
+				sopts.sort_by = '_id'; 
+				sopts.sort_dir = -1;
+			break;
+			
 			case 'date_asc':
 				sopts.sort_by = 'completed'; 
 				sopts.sort_dir = 1;

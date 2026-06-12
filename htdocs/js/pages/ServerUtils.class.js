@@ -2219,8 +2219,6 @@ Page.ServerUtils = class ServerUtils extends Page.PageUtils {
 		
 		args.offset = args.offset || 0;
 		args.limit = config.alt_items_per_page;
-		args.sort_by = 'completed'; 
-		args.sort_dir = -1;
 		
 		// add epoch date range (don't use .. range shorthand because end is inclusive)
 		args.query += ' date:>=' + this.epochStart + ' date:<' + this.epochEnd;

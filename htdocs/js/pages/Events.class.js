@@ -252,9 +252,6 @@ Page.Events = class Events extends Page.PageUtils {
 			}
 		});
 		
-		// reset max events (dynamic pagination)
-		this.eventsPerPage = config.events_per_page;
-		
 		var events = app.events;
 		
 		// use events in app cache

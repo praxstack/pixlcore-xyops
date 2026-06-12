@@ -1,5 +1,23 @@
 # xyOps Changelog
 
+## Version v1.0.67
+
+> June 10, 2026
+
+- [`6a41a1d2`](https://github.com/pixlcore/xyops/commit/6a41a1d2fafd43901926296886452213fc08a480): Version 1.0.67
+- [`858ea8a5`](https://github.com/pixlcore/xyops/commit/858ea8a5982321452056e3a68947c89da3be49c3): Bug Fix: Critical crasher bug in Plugin API and Event API in toolset validation.  Regression from v1.0.64.
+
+## Version v1.0.66
+
+> June 10, 2026
+
+- [`c64b9cc3`](https://github.com/pixlcore/xyops/commit/c64b9cc390a2ffc95b0f3e05ae58b8c74e8fd745): Version 1.0.66
+- [`8a75f414`](https://github.com/pixlcore/xyops/commit/8a75f41410be86ca5441ecdd95bc496687d7ab81): Dep: Bump pixl-xyapp to v2.1.33 for configurable client API timeout, and auto-hide timeout errors after 8 seconds.
+- [`f938589c`](https://github.com/pixlcore/xyops/commit/f938589c8389ff6c90243cf402bfc010a51177f3): API Tweak: Force no-cache on admin_stats API.
+- [`dcfa1be0`](https://github.com/pixlcore/xyops/commit/dcfa1be0c77202cc10bd4bc6f3d1c245db6223c1): Cleanup: Remove unused client.events_per_page config property (legacy).
+- [`be7a3952`](https://github.com/pixlcore/xyops/commit/be7a3952d515d4ea53b5f4056b42b680140ecc54): Feature: Add support for configurable client API timeout (default 10 seconds).
+- [`3ba1a810`](https://github.com/pixlcore/xyops/commit/3ba1a810bd498e9219edbc4b6f153fbc5ddeaa5d): Bug Fix: Change default job search sort to start date (primary key), for performance.
+
 ## Version v1.0.65
 
 > June 9, 2026
