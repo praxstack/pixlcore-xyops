@@ -498,6 +498,7 @@ When Action Plugins are invoked, they are passed a JSON document on STDIN (compr
 | `condition` | String | The [Action.condition](data.md#action-condition) which activated the Plugin. |
 | `params` | Object | If the Plugin defines any parameters, their values will be here. |
 | `secrets` | Object | If the Plugin is assigned any [Secrets](secrets.md), they are included here (as well as in environment variables). |
+| `base_url` | String | A localhost base URL is provided in case your Plugin needs to make any xyOps API calls. |
 | (Other) | Various | Based on context; see below. |
 
 If the Action Plugin is being invoked in job-related context (i.e. on job start, job complete, or other job actions) the contents of [JobHookData](data.md#jobhookdata) will also be merged in at the top-level.  Similarly, if the plugin is being invoked in an alert-related context (alert fired or cleared), then the contents of [AlertHookData](data.md#alerthookdata) will be merged in.
@@ -516,6 +517,7 @@ Here is an example JSON document sent to an Action Plugin's STDIN as part of a j
 		"DB_USER": "dev",
 		"DB_PASS": "1234"
 	},
+	"base_url": "http://localhost:5522",
 	"job": {
 		"id": "jmhzaot10tm",
 		"complete": true,
@@ -581,6 +583,8 @@ And here is an example JSON document sent to an Action Plugin's STDIN as part of
 	"params": {
 		"foo": "Foosball"
 	},
+	"secrets": {},
+	"base_url": "http://localhost:5522",
 	"server": {
 		"id": "smf4j79snhe",
 		/* See Server data structure for more */
@@ -693,13 +697,24 @@ When your trigger plugin is invoked, it will be passed an array of all the event
 			}
 		}
 	],
-	"secrets": {}
+	"secrets": {},
+	"active_jobs": [],
+	"base_url": "http://localhost:5522"
 }
 ```
 
-As with all xyOps STDIO communication, the JSON will always have a top-level `xy` property set to `1` (the [xyOps Wire Protocol](xywp.md) version), and a `type` property set to `trigger`.  If your plugin was assigned any secrets, they will be available in the top-level `secrets` object (and also as environment variables).
+As with all xyOps STDIO communication, the JSON will always have a top-level `xy` property set to `1` (the [xyOps Wire Protocol](xywp.md) version), and a `type` property set to `trigger`.  Here is the full list of top-level properties you can expect:
 
-Also present is an `items` array, which will contain an element for each event that has the plugin assigned as a trigger.  It is up to your plugin code to decide if each event should launch a job or not.  You are also provided some other information about the events:
+| Property Name | Type | Description |
+|---------------|------|-------------|
+| `xy` | Number | The [xyOps Wire Protocol](xywp.md) version. |
+| `type` | String | Will always be set to `triger` for Trigger Plugin payloads. |
+| `items` | Array | An array of scheduled events for the plugin to process.  See below for details. |
+| `secrets` | Object | If your plugin was assigned any secrets, they will be passed in this object (and also as environment variables). |
+| `active_jobs` | Array | An array of all active [Job](data.md#job)s currently running. |
+| `base_url` | String | A localhost base URL is provided in case your Plugin needs to make any xyOps API calls. |
+
+The `items` array will contain an element for each event that is scheduled to launch, and has the plugin assigned as a trigger.  It is up to your plugin code to decide if each event should actually launch a job or not.  You are also provided some other information about the each event:
 
 | Property Name | Type | Description |
 |---------------|------|-------------|

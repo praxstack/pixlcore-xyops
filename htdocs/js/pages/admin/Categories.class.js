@@ -57,7 +57,7 @@ Page.Categories = class Categories extends Page.PageUtils {
 		this.categories = resp.rows;
 		
 		// NOTE: Don't change these columns without also changing the responsive css column collapse rules in style.css
-		var cols = ['<i class="mdi mdi-menu"></i>', 'Category Title', 'Category ID', 'Events / Jobs', 'Author', 'Created', 'Actions'];
+		var cols = ['<i class="mdi mdi-menu"></i>', 'Category Title', 'Category ID', 'Events', 'Author', 'Created', 'Actions'];
 		// if (app.isCategoryLimited()) cols.shift();
 		
 		var drag_handle = app.isCategoryLimited() ? '<div class="td_drag_handle" style="cursor:default"><i class="mdi mdi-menu"></i></div>' : 
@@ -96,7 +96,7 @@ Page.Categories = class Categories extends Page.PageUtils {
 				drag_handle,
 				'<b>' + self.getNiceCategory(item, app.hasPrivilege('edit_categories')) + '</b>',
 				'<span class="mono">' + item.id + '</span>',
-				commify( num_events ),
+				'<a href="#Events?category=' + item.id + '">' + commify( num_events ) + '</a>',
 				// commify( item.max_jobs ),
 				self.getNiceUser(item.username, app.isAdmin()),
 				'<span title="'+self.getNiceDateTimeText(item.created)+'">'+self.getNiceDate(item.created)+'</span>',

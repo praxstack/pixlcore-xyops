@@ -1,5 +1,20 @@
 # xyOps Changelog
 
+## Version v1.0.68
+
+> June 12, 2026
+
+- [`c2308671`](https://github.com/pixlcore/xyops/commit/c2308671e1316ce98d3ea08791ccf9afdd8f7106): Version 1.0.68
+- [`84e3268e`](https://github.com/pixlcore/xyops/commit/84e3268e03f91188db3049973bf28e96a59dbcdb): Bug Fix: File search results were using the wrong responsive CSS classes.  Fixes #319.
+- [`6b93b826`](https://github.com/pixlcore/xyops/commit/6b93b8265982b884edfb113388d8c0d8a01d93a9): Bug Fix: If an adminstrator is assigned a role that includes category or group restrictions, those should NOT apply.
+- [`a8da68b5`](https://github.com/pixlcore/xyops/commit/a8da68b5210bf3a74b4a30505aa7735ec0f1d456): Feature: Trigger Plugins are now passed all active jobs in an array, to use in making launch decisions.
+- [`59ee6f08`](https://github.com/pixlcore/xyops/commit/59ee6f08e7f14acea9ec167e39de05f281163ddd): Feature: Improve trigger plugin error handling, and include full raw output in activity log report.
+- [`e78b8680`](https://github.com/pixlcore/xyops/commit/e78b868016284b9d30f514a9f925e43283235d14): UI Tweak: Change "New Server" to "Add Server" in the sidebar.
+- [`9daac9d6`](https://github.com/pixlcore/xyops/commit/9daac9d66f8e09f6210597b444ea3bff70ef7eed): Feature: On the category list page, the "Event" count columns are now clickable, and nav directly to the event list w/ the selected category.
+- [`b8896f7a`](https://github.com/pixlcore/xyops/commit/b8896f7a502f3b3145396345caa883f4029503dc): Feature: Pass a localhost base URL property and env var to all action and trigger plugins, so they can make API calls.
+- [`9ddcef34`](https://github.com/pixlcore/xyops/commit/9ddcef343e4300b67ad442e7ba56cb1b317a81e7): Docs: Plugins: Fix typo in link.
+- [`98d9289a`](https://github.com/pixlcore/xyops/commit/98d9289a5dd7096bec1ad7abcb683fcdcd347b7a): Docs: Hosting: Add blurb in air-gapped section about client.outdated_badges setting, which must be disabled in air-gapped mode.
+
 ## Version v1.0.67
 
 > June 10, 2026
