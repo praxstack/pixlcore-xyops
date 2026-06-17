@@ -9,7 +9,7 @@ Running xyOps in live production with lots of servers and/or lots of running job
 - CPU cores: xyOps is multi-process and highly concurrent. More cores help the scheduler, web server, storage I/O, and log compression run smoothly under load.
 - RAM: Add headroom for the Node.js heap, in-process caches, storage engine caches, and OS page cache. RAM directly improves cache hit rates and reduces disk/remote I/O.
 - Storage: Prefer fast SSD/NVMe for local Filesystem/SQLite and log archives. Ensure enough IOPS for parallel job logs, snapshots, and uploads.
-- Network: For large fleets, ensure good NIC throughput and low latency between conductors and workers. If using external storage (S3, Redis, MinIO), place conductors close to it.
+- Network: For large fleets, ensure good NIC throughput and low latency between conductors, workers, and shared storage. For multi-conductor production, place conductors close to both the JSON data store (Redis or Postgres) and the file store (S3 or S3-compatible).
 - OS limits: Increase file descriptor and process limits for busy nodes (e.g. `ulimit -n`, systemd Limits). Ensure swap is configured conservatively to avoid heap thrash.
 
 ## Increase Node.js Memory
@@ -53,15 +53,15 @@ Or, you can set it globally in the main [satellite.config](config.md#satellite-c
 
 ## Multi-Conductor Setups
 
-Multi-conductor requires external shared storage so all conductors see the same state. See [Multi-Conductor with Nginx](hosting.md#multi-conductor-with-nginx).
+Multi-conductor requires shared external storage so all conductors see the same state. For live production, use a Hybrid storage setup with Redis or Postgres for JSON data, plus S3 or an S3-compatible service for files. Redis and Postgres support native storage transactions, so the database owns the commit or rollback decision if a conductor fails during a transaction.
 
 For details, see the [Storage Setup Guide](storage.md).
 
 ### NFS Warning
 
-While it is possible to use the [Filesystem](https://github.com/jhuckaby/pixl-server-storage#local-filesystem) engine with an NFS mount, this is **only** recommended if used in conjunction with the [Hybrid](https://github.com/jhuckaby/pixl-server-storage#hybrid) engine, where the Filesystem is set as the `binaryEngine` (to store only files), and the `docEngine` is set to a dedicated key/value store like [MinIO or RustFS](https://github.com/jhuckaby/pixl-server-storage#s3-compatible-services).
+While it is possible to use the [Filesystem](https://github.com/jhuckaby/pixl-server-storage#local-filesystem) engine with an NFS mount, this is **only** recommended if used in conjunction with the [Hybrid](https://github.com/jhuckaby/pixl-server-storage#hybrid) engine, where the Filesystem is set as the `binaryEngine` to store only files, and the `docEngine` is set to Redis or Postgres for JSON data.
 
-The reason is, xyOps reads and writes thousands upon thousands of tiny key/value records as part of its [database system](https://github.com/jhuckaby/pixl-server-unbase), and this is *extremely* difficult for NFS to deal with at scale.
+The reason is, xyOps reads and writes thousands upon thousands of tiny key/value records as part of its [database system](https://github.com/jhuckaby/pixl-server-unbase), and this is *extremely* difficult for NFS to deal with at scale. Also, NFS does not provide native pixl-server-storage transactions, so it should not be the document store for multi-conductor production.
 
 ## Automated Backups
 
@@ -204,5 +204,5 @@ This would limit traffic to 100 requests/sec per IP, utilizing up to 20MB of IP 
 ## References
 
 - [xyOps Self-Hosting Guide](hosting.md)
-- [Storage engines and Hybrid](https://github.com/jhuckaby/pixl-server-storage#engines)
+- [xyOps Storage Setup Guide](storage.md)
 - [Web server documentation](https://github.com/jhuckaby/pixl-server-web)

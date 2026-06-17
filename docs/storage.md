@@ -7,36 +7,37 @@ This is important because xyOps has **two very different storage workloads**:
 - **Data**: Lots of small JSON records, used in lists, hashes, indexes, job data, monitoring data, and general app metadata.
 - **Files**: Bucket files, ticket attachments, user uploads, avatars, job files, compressed job logs, and other binary payloads.
 
-Some engines can serve both roles really well, namely [MinIO](#minio) and [RustFS](#rustfs), because they provide very fast S3-compatible object storage on premises.  However, most of the other engines only handle one side of the workload well, so you should generally use a [Hybrid](https://github.com/jhuckaby/pixl-server-storage#hybrid) configuration for them.
+Some engines can technically serve both roles, but xyOps works best when each workload lands on storage that fits it.  For live production, especially with multiple conductors, the official recommendation is a [Hybrid](https://github.com/jhuckaby/pixl-server-storage#hybrid) configuration: use Redis or Postgres for JSON data, and use S3 or an S3-compatible service for binary files.
+
+This matters for transactions.  SQLite, Postgres, and Redis support native engine transactions in pixl-server-storage.  When one of these engines is the Hybrid `docEngine`, transaction commits are handled inside the database itself.  If a conductor crashes during a commit and a backup conductor takes over, the database owns the final commit or rollback decision.  Engines without native transaction support still use pixl-server-storage's local rollback log system, which means the original conductor may be needed for recovery after a hard crash.
 
 In general:
 
-| Engine / Provider | Good for Data | Good for Files | Notes |
-|-------------------|---------------|----------------|-------|
-| Filesystem | - | ✅ | Fine for local files, but not shared across conductors. |
-| NFS | - | ✅ | Only recommended for binary files, not tiny JSON record workloads. |
-| AWS S3 | - | ✅ | Fine for files, but too latent for xyOps database traffic. |
-| MinIO (S3) | ✅ | ✅ | Excellent on premises when kept close to the conductors. |
-| RustFS (S3) | ✅ | ✅ | Same category as MinIO, fast enough for both roles on premises. |
-| Redis | ✅ | - | Great for tiny records, poor fit for general binary files. |
-| SQLite | ✅ | - | Great local doc store, but single-host only. |
-| Postgres | ✅ | - | Good shared doc store, but not ideal for large files. |
+| Engine / Provider | Good for Data | Native Transactions | Good for Files | Notes |
+|-------------------|---------------|---------------------|----------------|-------|
+| Filesystem | - | - | ✅ | Fine for local files, but not shared across conductors. |
+| NFS | - | - | ✅ | Only recommended for binary files, not tiny JSON record workloads. |
+| AWS S3 | - | - | ✅ | Excellent for files, but too latent for xyOps database traffic. |
+| S3-compatible, such as MinIO or RustFS | Possible | - | ✅ | Great file tier, but not recommended as the all-in-one data engine for multi-conductor production. |
+| Redis | ✅ | ✅ | - | Great for tiny records, poor fit for general binary files. |
+| SQLite | ✅ | ✅ | - | Great local doc store, but single-host only. |
+| Postgres | ✅ | ✅ | - | Good shared doc store, but not ideal for large files. |
 
-For single-conductor deployments, meaning development, testing, homelabs, and small internal tools, the default configuration of [SQLite and Filesystem](#sqlite-and-filesystem) should work just fine.  However, for live production and especially for multi-conductor deployments, you should either:
+For single-conductor deployments, meaning development, testing, homelabs, and small internal tools, the default configuration of [SQLite and Filesystem](#sqlite-and-filesystem) is still the best choice.  For live production and especially for multi-conductor deployments, the recommended configurations are now:
 
-1. Use a single fast S3-compatible engine such as [MinIO](#minio) or [RustFS](#rustfs), or
-2. Use a [Hybrid](https://github.com/jhuckaby/pixl-server-storage#hybrid) configuration with a document-oriented engine for JSON data, and a file-oriented engine for binaries.
+1. [Redis and S3](#redis-and-s3), or an S3-compatible service such as MinIO or RustFS.
+2. [Postgres and S3](#postgres-and-s3), or an S3-compatible service such as MinIO or RustFS.
 
 ## Rules of Thumb
 
 - For a **single conductor**, use the stock [SQLite and Filesystem](#sqlite-and-filesystem) setup unless you have a clear reason to change it.
 - For **multi-conductor** and/or live production, you need shared external storage for all conductors.  Local SQLite plus local disk is not enough.
-- If you already run an on-prem S3 service, prefer **MinIO** or **RustFS** and keep the configuration simple by using the `S3` engine directly.
-- If you already operate **Redis** or **Postgres** and want to keep using them, pair them with **S3** or **NFS** via the [Hybrid](https://github.com/jhuckaby/pixl-server-storage#hybrid) engine.
+- For **multi-conductor live production**, prefer **Redis + S3** or **Postgres + S3** via the [Hybrid](https://github.com/jhuckaby/pixl-server-storage#hybrid) engine.
+- If your S3 endpoint is on premises, such as **MinIO** or **RustFS**, use it as the Hybrid `binaryEngine` for files, while Redis or Postgres remains the `docEngine` for data.
 - Leave [Storage.transactions](config.md#storage-transactions) enabled no matter which engine(s) you choose.
 - Keep your conductors as close as possible to the storage engine handling data.  Latency matters a lot for xyOps.
 
-## Recommended Configurations
+## Common Configurations
 
 ### SQLite and Filesystem
 
@@ -165,7 +166,9 @@ See also:
 > [!WARNING]
 > Before adopting MinIO, review its current licensing, packaging, and support status.  MinIO remains an excellent technical fit for xyOps, but the [project landscape has changed](https://www.chainguard.dev/unchained/secure-and-free-minio-chainguard-containers) recently.
 
-MinIO is a great choice for xyOps because, as an S3-compatible provider, it handles both data and files with ease.  That means it does **not** need to be part of a hybrid storage configuration.  You can simply use the `S3` engine directly.  Also, unlike AWS S3 which has higher latency, MinIO is very fast when hosted on premises, which is the assumption here.
+MinIO is a great S3-compatible file store for xyOps.  It is usually deployed on premises, close to the conductors, so it can provide low-latency binary storage for bucket files, ticket attachments, user uploads, job files, and compressed job logs.
+
+For multi-conductor live production, use MinIO as the Hybrid `binaryEngine`, not as the all-in-one storage engine.  Pair it with [Redis](#redis-and-s3) or [Postgres](#postgres-and-s3) as the `docEngine`, so JSON transactions use native database commits.
 
 Here is a quick-start guide to getting MinIO up and running.  First, create a Docker volume to store your MinIO data:
 
@@ -221,20 +224,22 @@ Then shut down xyOps completely, and reconfigure your [Storage.AWS](config.md#st
 
 For initial testing you can set `accessKeyId` and `secretAccessKey` to the MinIO defaults, but you should replace them before production.
 
-Finally, set [Storage.engine](config.md#storage-engine) to `S3` and restart xyOps.
+Finally, set [Storage.engine](config.md#storage-engine) to `Hybrid`, set the Hybrid `binaryEngine` to `S3`, and choose either `Redis` or `Postgres` as the Hybrid `docEngine`.  See [Redis and S3](#redis-and-s3) and [Postgres and S3](#postgres-and-s3) for complete examples.
 
-Why this is recommended:
+Where this fits:
 
-- The MinIO engine handles both JSON records and files.
+- MinIO handles binary files through the S3 engine.
 - All conductors can share the same backend.
-- Latency is low enough for the tiny-record database workload.
-- Operationally, it is simpler than running separate data and file stores.
+- Redis or Postgres handles JSON records and native transaction commits.
+- This avoids depending on conductor-local rollback logs for production database transactions.
 
 See [Migration](#migration) below for migrating data between storage engines.
 
 ### RustFS
 
-[RustFS](https://rustfs.com/) is also a great choice for xyOps because, as an S3-compatible provider, it handles both data and files with ease.  That means it does **not** need to be part of a hybrid storage configuration.  Like MinIO, it can be used directly via the `S3` engine.  Also unlike AWS S3, RustFS is very fast when hosted on premises, which is the assumption here.
+[RustFS](https://rustfs.com/) is also a great S3-compatible file store for xyOps.  Like MinIO, it can be hosted on premises and kept close to the conductors, which makes it a good Hybrid `binaryEngine` for files.
+
+For multi-conductor live production, use RustFS as the S3-compatible file tier, and pair it with [Redis](#redis-and-s3) or [Postgres](#postgres-and-s3) for JSON data and native transaction commits.
 
 Here is a quick-start guide to getting RustFS up and running.  Note that as of this writing, RustFS is still relatively young, so test it carefully in your own environment before rolling it into a mission-critical production system.
 
@@ -292,14 +297,14 @@ Then shut down xyOps completely, and reconfigure your [Storage.AWS](config.md#st
 }
 ```
 
-Finally, set [Storage.engine](config.md#storage-engine) to `S3` and restart xyOps.
+Finally, set [Storage.engine](config.md#storage-engine) to `Hybrid`, set the Hybrid `binaryEngine` to `S3`, and choose either `Redis` or `Postgres` as the Hybrid `docEngine`.  See [Redis and S3](#redis-and-s3) and [Postgres and S3](#postgres-and-s3) for complete examples.
 
-Why this is recommended:
+Where this fits:
 
-- RustFS engine handles both JSON records and files.
+- RustFS handles binary files through the S3 engine.
 - All conductors can share the same backend.
-- On-prem latency is low enough for xyOps database traffic.
-- It avoids the complexity of operating two separate storage tiers.
+- Redis or Postgres handles JSON records and native transaction commits.
+- This avoids depending on conductor-local rollback logs for production database transactions.
 
 See [Migration](#migration) below for migrating data between storage engines.
 
@@ -328,32 +333,18 @@ Example setup:
 		"host": "redis.internal.mycompany.com",
 		"port": 6379,
 		"keyPrefix": "xyops/",
-		"keyTemplate": ""
+		"keyTemplate": "",
+		"cache": {
+			"enabled": true,
+			"maxItems": 100000,
+			"maxBytes": 104857600
+		}
 	},
 
 	"Filesystem": {
 		"base_dir": "/mnt/xyops",
 		"key_namespaces": 1
 	}
-}
-```
-
-If you have a cluster of multiple Redis servers, use the [RedisCluster](https://github.com/jhuckaby/pixl-server-storage#rediscluster) engine instead:
-
-```json
-"RedisCluster": {
-	"host": "redis.internal.mycompany.com",
-	"port": 6379,
-	"connectRetries": 5,
-	"clusterOpts": {
-		"scaleReads": "master",
-		"redisOptions": {
-			"commandTimeout": 5000,
-			"connectTimeout": 5000
-		}
-	},
-	"keyPrefix": "xyops/",
-	"keyTemplate": ""
 }
 ```
 
@@ -370,11 +361,13 @@ Tradeoffs:
 - Redis must be configured for persistence, or a restart can become a data-loss event.
 - Large file traffic still depends on NFS performance and mount stability.
 
-If you are starting from scratch on premises, [MinIO](#minio) or [RustFS](#rustfs) are usually simpler and cleaner.
+If you are starting from scratch on premises, prefer [Redis and S3](#redis-and-s3) or [Postgres and S3](#postgres-and-s3).  MinIO or RustFS are good S3-compatible choices for the file side.
 
 ### Redis and S3
 
-This configuration uses Redis for JSON records and S3 for binary files.  It is a good production option if you already operate Redis and already have object storage, especially managed AWS S3 or a S3-compatible remote service.
+This configuration uses Redis for JSON records and S3 for binary files.  This is one of the recommended multi-conductor production configurations, because Redis handles JSON commits using native `MULTI` / `EXEC` transactions, while S3 handles binary files.
+
+You can use AWS S3, or an S3-compatible service such as MinIO or RustFS.  The important part is that Redis remains the `docEngine`, because pixl-server-storage transactions only apply to JSON records.
 
 Example setup:
 
@@ -391,7 +384,12 @@ Example setup:
 		"host": "redis.internal.mycompany.com",
 		"port": 6379,
 		"keyPrefix": "xyops/",
-		"keyTemplate": ""
+		"keyTemplate": "",
+		"cache": {
+			"enabled": true,
+			"maxItems": 100000,
+			"maxBytes": 104857600
+		}
 	},
 
 	"AWS": {
@@ -410,46 +408,22 @@ Example setup:
 		"fileExtensions": true,
 		"params": {
 			"Bucket": "YOUR_S3_BUCKET_ID"
-		},
-		"cache": {
-			"enabled": true,
-			"maxItems": 100000,
-			"maxBytes": 104857600
 		}
 	}
 }
 ```
 
-If you have a cluster of multiple Redis servers, use the [RedisCluster](https://github.com/jhuckaby/pixl-server-storage#rediscluster) engine instead:
-
-```json
-"RedisCluster": {
-	"host": "redis.internal.mycompany.com",
-	"port": 6379,
-	"connectRetries": 5,
-	"clusterOpts": {
-		"scaleReads": "master",
-		"redisOptions": {
-			"commandTimeout": 5000,
-			"connectTimeout": 5000
-		}
-	},
-	"keyPrefix": "xyops/",
-	"keyTemplate": ""
-}
-```
-
-Use this when:
+Use Redis and S3 when:
 
 - You already run Redis and want it to remain your document store.
 - You want files in object storage rather than on NFS.
-- You need multi-conductor support.
+- You need multi-conductor support with native transaction commits for JSON data.
 
 Tradeoffs:
 
 - You still operate two different storage systems.
 - AWS S3 is fine for files, but not for the JSON record workload, which is why it stays on Redis.
-- If you are on premises and the S3 endpoint is actually MinIO or RustFS, it is usually simpler to skip Redis and use `S3` alone.
+- Redis must be configured for persistence, meaning RDB and/or AOF, or a restart can become a data-loss event.
 
 ### Postgres and NFS
 
@@ -511,7 +485,9 @@ Tradeoffs:
 
 ### Postgres and S3
 
-This configuration uses Postgres for JSON records and S3 for binary files.  This is the best hybrid choice for teams that already trust Postgres for app state and already have object storage for files.
+This configuration uses Postgres for JSON records and S3 for binary files.  This is one of the recommended multi-conductor production configurations, because Postgres handles JSON commits using native PostgreSQL transactions, while S3 handles binary files.
+
+You can use AWS S3, or an S3-compatible service such as MinIO or RustFS.  The important part is that Postgres remains the `docEngine`, because pixl-server-storage transactions only apply to JSON records.
 
 Example setup:
 
@@ -560,27 +536,22 @@ Example setup:
 		"fileExtensions": true,
 		"params": {
 			"Bucket": "YOUR_S3_BUCKET_ID"
-		},
-		"cache": {
-			"enabled": true,
-			"maxItems": 100000,
-			"maxBytes": 104857600
 		}
 	}
 }
 ```
 
-Use this when:
+Use Postgres and S3 when:
 
 - You already operate Postgres.
 - You already have object storage.
-- You want multi-conductor support without introducing another data store.
+- You want multi-conductor support with native transaction commits for JSON data.
 
 Tradeoffs:
 
 - You still have two backends to manage.
 - AWS S3 is acceptable for files, but not for xyOps database traffic, which is why Postgres handles the document side.
-- If your object storage is actually a fast on-prem S3 service, [MinIO](#minio) or [RustFS](#rustfs) are still simpler.
+- Postgres is a very good document store here, but only because files stay out of it.
 
 ## Developer Configurations
 
@@ -613,11 +584,11 @@ Why it is not recommended:
 - Lists, hashes, indexes, and maintenance tasks amplify the small-object problem.
 - S3 is designed for durable object storage, not as a low-latency database for millions of tiny records.
 
-S3 is excellent as a `binaryEngine` (as part of a [Hybrid](https://github.com/jhuckaby/pixl-server-storage#hybrid) split).  It is *not* a great all-in-one engine for xyOps unless the S3 service is something like on-prem [MinIO](#minio) or [RustFS](#rustfs), where latency is much lower.
+S3 is excellent as a `binaryEngine` (as part of a [Hybrid](https://github.com/jhuckaby/pixl-server-storage#hybrid) split).  It is not the recommended all-in-one engine for xyOps production, even when the S3 service is something fast and on premises like [MinIO](#minio) or [RustFS](#rustfs), because the S3 engine does not support native transactions.  Use Redis or Postgres for the Hybrid `docEngine` instead.
 
 ### Redis
 
-Using plain [Redis](https://github.com/jhuckaby/pixl-server-storage#redis) or [RedisCluster](https://github.com/jhuckaby/pixl-server-storage#rediscluster) as the only storage engine means both JSON records and general file payloads live in Redis memory.  That is fast, but it is also very expensive and operationally awkward for binary storage.
+Using [Redis](https://github.com/jhuckaby/pixl-server-storage#redis) as the only storage engine means both JSON records and general file payloads live in Redis memory.  That is fast, but it is also very expensive and operationally awkward for binary storage.
 
 Why it is not recommended:
 

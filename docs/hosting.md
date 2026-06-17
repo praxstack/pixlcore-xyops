@@ -135,7 +135,7 @@ See our [Command Line Guide](cli.md) for controlling the xyOps service via comma
 
 When you manually install xyOps, it creates a cluster of one, and promotes itself to primary.  To add backup conductors, follow these instructions.
 
-First, for multi-conductor setups, **you must have an external storage backend**, such as S3, or S3-compatible (MinIO, etc.).  See [Storage Engines](https://github.com/jhuckaby/pixl-server-storage#engines) for details.
+First, for multi-conductor setups, **you must have shared external storage**.  For live production, we recommend a Hybrid storage setup using Redis or Postgres for JSON data, plus S3 or an S3-compatible service for files.  See [Storage Setup](storage.md) for details.
 
 Once you have external storage setup and working, stop the xyOps service, and edit the `/opt/xyops/conf/masters.json` file:
 
@@ -265,7 +265,7 @@ For a load balanced multi-conductor setup with Nginx w/TLS, please read this sec
 
 A few prerequisites for this setup:
 
-- For multi-conductor setups, **you must have an external storage backend**, such as S3, or S3-compatible (MinIO, etc.).  See [Storage Engines](https://github.com/jhuckaby/pixl-server-storage#engines) for details.
+- For multi-conductor setups, **you must have shared external storage**.  For live production, we recommend a Hybrid storage setup using Redis or Postgres for JSON data, plus S3 or an S3-compatible service for files.  See [Storage Setup](storage.md) for details.
 - You will need a custom domain configured and TLS certs created and ready to attach.
 - You have your xyOps configuration file customized and ready to go ([config.json](https://github.com/pixlcore/xyops/blob/main/sample_conf/config.json)) (see below).
 
@@ -373,7 +373,7 @@ A few things to note here:
 
 ## External Storage
 
-For using an external storage system, you have [several to choose from](storage.md).  We currently recommend **MinIO**, because it has an open source community edition, it is S3 compatible, and it handles both data and files in the same engine.
+For using an external storage system, you have [several to choose from](storage.md).  For live production multi-conductor setups, we currently recommend **Redis + S3** or **Postgres + S3** via the Hybrid storage engine.  The S3 side can be AWS S3 or an S3-compatible service such as MinIO or RustFS.
 
 For more details, see the [Storage Setup Guide](storage.md).
 
@@ -402,7 +402,8 @@ xySat is configured automatically via the xyOps conductor server.  The [satellit
 	"debug_level": 5,
 	"child_kill_timeout": 10,
 	"monitoring_enabled": true,
-	"quickmon_enabled": true
+	"quickmon_enabled": true,
+	"upgrade_timeout_sec": 60
 }
 ```
 
@@ -424,6 +425,7 @@ Here are descriptions of the configuration properties:
 | `child_kill_timeout` | Number | Number of seconds to wait after sending a SIGTERM to follow-up with a SIGKILL. |
 | `monitoring_enabled` | Boolean | Enable or disable the monitoring subsystem (i.e. send monitoring metrics every minute). |
 | `quickmon_enabled` | Boolean | Enable or disable the quick monitors, which send lightweight metrics every second. |
+| `upgrade_timeout_sec` | Number | The number of seconds to allow for upgrades to complete, before reporting an error (default: `60`). |
 
 ### Overriding The Connect URL
 

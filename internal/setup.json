@@ -162,8 +162,7 @@
 			"created": 1434125333,
 			"params": [
 				{ "id":"script", "type":"code", "title":"Script Source", "value": "#!/bin/sh\n\n# Enter your shell script code here", "locked": true, "required": true },
-				{ "id":"annotate", "type":"checkbox", "title":"Add Date/Time Stamps to Log", "value": false },
-				{ "id":"pass", "type":"checkbox", "title":"Data Passthrough", "value": false }
+				{ "id":"annotate", "type":"checkbox", "title":"Add Date/Time Stamps to Log", "value": false }
 			]
 		} ],
 		[ "listPush", "global/plugins", {
@@ -331,6 +330,42 @@
 			"username": "admin",
 			"modified": 1434125333,
 			"created": 1434125333
+		} ],
+		[ "listPush", "global/plugins", {
+			"id": "hookplug",
+			"title": "Fire Web Hook",
+			"enabled": true,
+			"type": "event",
+			"command": "[hook-plugin]",
+			"script": "",
+			"params": [
+				{
+					"type": "system",
+					"id": "web_hook",
+					"title": "Web Hook",
+					"caption": "Select the desired web hook to fire.",
+					"locked": false,
+					"required": true,
+					"list_id": "web_hooks",
+					"multiple": false
+				},
+				{
+					"type": "textarea",
+					"id": "text",
+					"title": "Custom Text",
+					"caption": "Optionally enter custom text to be appended to the end of the web hook system message.",
+					"locked": false,
+					"value": "",
+					"required": false,
+					"regex": ""
+				}
+			],
+			"kill": "parent",
+			"runner": false,
+			"notes": "This Plugin fires a custom web hook as job instead of an action.\n",
+			"icon": "webhook",
+			"uid": "",
+			"gid": ""
 		} ],
 		[ "listPush", "global/plugins", {
 			"id": "open_files",

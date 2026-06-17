@@ -577,7 +577,7 @@ For a load balanced multi-conductor setup with Nginx w/TLS and OAuth-Proxy for S
 
 A few prerequisites for this setup:
 
-- For multi-conductor setups, **you must have a central external storage backend**, such as [MinIO](storage.md#minio), [RustFS](storage.md#rustfs), or a [Hybrid storage](storage.md#hybrid-configurations) setup.  Do not use local Docker data volumes for multi-conductor.
+- For multi-conductor setups, **you must have shared external storage**.  For live production, we recommend a Hybrid storage setup using Redis or Postgres for JSON data, plus S3 or an S3-compatible service for files.  Do not use local Docker data volumes for multi-conductor.  See [Storage Setup](storage.md) for details.
 - You will need a custom domain configured and TLS certs created and ready to attach.
 - You have your xyOps configuration files customized and ready to go ([config.json](https://github.com/pixlcore/xyops/blob/main/sample_conf/config.json) and [sso.json](https://github.com/pixlcore/xyops/blob/main/sample_conf/sso.json)) (see below for details).
 - And of course you should have a pretested SSO configuration for OAuth2-Proxy, so you are confident that piece works before integrating it here.
@@ -645,7 +645,7 @@ Next is the OAuth2-Proxy setup (we use the official Docker image here).  Configu
 - `OAUTH2_PROXY_SET_XAUTHREQUEST` is set to `true`.  This returns the set of trusted headers in auth_request mode.
 - `OAUTH2_PROXY_SKIP_AUTH_ROUTES` has been removed, as OAuth2-Proxy doesn't actually do any routing in this configuration.
 
-Once you have those two components running, we can fire up the xyOps backend.  This is listed separately as you'll usually want to run these on dedicated servers.  Before starting multiple conductors, configure xyOps to use a central storage engine as described in the [Storage Setup Guide](storage.md).  Here is the multi-conductor configuration as a single Docker compose file.  For additional conductor servers you can duplicate this service, change the hostname, and point each conductor at the same central storage configuration:
+Once you have those two components running, we can fire up the xyOps backend.  This is listed separately as you'll usually want to run these on dedicated servers.  Before starting multiple conductors, configure xyOps to use shared external storage as described in the [Storage Setup Guide](storage.md).  Here is the multi-conductor configuration as a single Docker compose file.  For additional conductor servers you can duplicate this service, change the hostname, and point each conductor at the same shared storage configuration:
 
 ```yaml
 services:
@@ -669,10 +669,10 @@ A few things to note here:
 - We're using our official xyOps Docker image, but you can always [build your own from source](https://github.com/pixlcore/xyops/blob/main/Dockerfile).
 - All conductor server hostnames need to be listed in the `XYOPS_masters` environment variable, comma-separated.
 - All conductor servers need to be able to route to each other via their hostnames, so they can self-negotiate and hold elections.
-- All conductor servers must share the same central storage backend.  Do not mount separate local `/opt/xyops/data` volumes per conductor, as that will create split-brain data.
+- All conductor servers must use the same shared external storage configuration.  Do not mount separate local `/opt/xyops/data` volumes per conductor, as that will create split-brain data.
 - The timezone (`TZ`) should be set to your company's main timezone, so things like midnight log rotation and daily stat resets work as expected.
 
-For the xyOps container, we are bind mapping local host directories for configuration and logs (`./xyops-conf` and `./xyops-logs`).  Please change those paths to appropriate locations on the host where you want these files stored.  Launch the container once, and it will generate all the config files for you.  Then configure a central storage engine in `./xyops-conf/config.json` before bringing up multiple conductors.  See the [xyOps Configuration Guide](config.md) and [Storage Setup Guide](storage.md) for details.  Specifically though, let's talk about `sso.json` for this configuration.  This file is largely discussed above (see [Configuration](#configuration)), but the [Header Map](#header-map) in particular is going to be different for Nginx + OAuth2-Proxy:
+For the xyOps container, we are bind mapping local host directories for configuration and logs (`./xyops-conf` and `./xyops-logs`).  Please change those paths to appropriate locations on the host where you want these files stored.  Launch the container once, and it will generate all the config files for you.  Then configure shared external storage in `./xyops-conf/config.json` before bringing up multiple conductors.  See the [xyOps Configuration Guide](config.md) and [Storage Setup Guide](storage.md) for details.  Specifically though, let's talk about `sso.json` for this configuration.  This file is largely discussed above (see [Configuration](#configuration)), but the [Header Map](#header-map) in particular is going to be different for Nginx + OAuth2-Proxy:
 
 ```json
 "header_map": {

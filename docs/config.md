@@ -798,11 +798,6 @@ Maximum concurrent I/O operations (default: `32`).
 
 Enables transactional writes (default: `true`).  Please leave this enabled!
 
-### Storage.network_transactions
-<!-- Title: Network Transactions -->
-
-Enables transactions across networked backends (experimental: use with caution).
-
 ### Storage.trans_auto_recover
 <!-- Title: Transaction Auto-Recover -->
 
@@ -811,7 +806,7 @@ Automatically recover incomplete transactions on startup (default: `true`).
 ### Storage.trans_dir
 <!-- Title: Transaction Directory Path -->
 
-Temp directory for transaction logs/journals (default: `data/_transactions`).
+Local directory for transaction rollback logs and recovery bookkeeping (default: `data/_transactions`).  Engines with native transaction support, such as SQLite, Postgres, and Redis, do not write rollback logs for successful commits, but the directory is still used for transaction housekeeping.
 
 ### Storage.log_event_types
 <!-- Title: Log Event Types -->

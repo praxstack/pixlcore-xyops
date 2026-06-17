@@ -19,6 +19,7 @@ Several built-in Event Plugins ship with xyOps.  They are:
 | **[Shell Plugin](#shell-plugin)** | The Shell Plugin allows you to easily create events that execute arbitrary shell code, without having to learn the xyOps Plugin API. |
 | **[HTTP Request Plugin](#http-request-plugin)** | The HTTP Plugin can send HTTP requests to any URL, and supports a variety of protocols and options, including custom headers and custom body content. |
 | **[Test Plugin](#test-plugin)** | The Test Plugin exists mainly to test xyOps, but it can also be useful for testing pieces of workflows.  It outputs sample data and optionally a sample file, which are passed to downstream events, if connected. |
+| **[Fire Web Hook Plugin](#fire-web-hook-plugin)** | The Fire Web Hook Plugin fires one of your configured xyOps web hooks as a standard job, so workflows can branch or fail based on the web hook result. |
 | **[Docker Plugin](#docker-plugin)** | The Docker Plugin allows you to run custom scripts inside a Docker container.  Similar to the [Shell Plugin](#shell-plugin), you can specify any custom code to run, and in any language, as long as it supports a [Shebang](https://en.wikipedia.org/wiki/Shebang_%28Unix%29) line. |
 
 To write your own Event Plugin, all you need is to provide a command-line executable, and have it read and write JSON over [STDIN and STDOUT](https://en.wikipedia.org/wiki/Standard_streams).  Information about the current job is passed as a JSON document to your STDIN, and you can send back status updates and completion events simply by writing JSON to your STDOUT.
@@ -1643,6 +1644,26 @@ The Test Plugin exists mainly to test xyOps, but it can also be useful for testi
 | **Burn Memory/CPU** | `burn` | Checkbox | If checked the Plugin will use some memory and CPU (it will allocate 128-256MB of memory and use about 10% of a CPU core doing math in a loop). |
 | **Generate Network Traffic** | `network` | Checkbox | If checked the Plugin will make continuous network requests downloading large binary data blobs (from GitHub). |
 | **Upload Sample File** | `upload` | Checkbox | If checked the Plugin will produce a sample file and attach it to the job output. |
+
+### Fire Web Hook Plugin
+
+xyOps ships with a built-in "Fire Web Hook" Plugin, which you can use to fire one of your configured [Web Hooks](webhooks.md) as a standard job.  This is useful when web hook delivery needs to be part of a workflow's actual job graph, rather than a follow-up [Action](actions.md) that runs after another job has already completed.
+
+The standard Web Hook action is still the best fit for notifications and side effects, where delivery failure should not change the original job's outcome.  The Fire Web Hook Plugin is different: the web hook is the job.  If the web hook succeeds, the job succeeds.  If the web hook fails, the job fails, and you can branch, retry, abort the workflow, or run other follow-up logic based on that result.
+
+> [!NOTE]
+> This Plugin is included with new installs starting in xyOps v1.0.69 and xySat v1.0.31.  Existing installations upgraded from earlier versions may need to import the [Fire Web Hook Plugin import file](https://pixlcore.com/software/xywiki/xyops-plugin-hookplug.json), because xyOps upgrades do not currently mutate existing system configuration.
+
+Here are the parameters it accepts:
+
+| Param Name | Param ID | Type | Description |
+|------------|----------|------|-------------|
+| **Web Hook** | `web_hook` | System Menu | Select the configured xyOps web hook to fire.  This field is required. |
+| **Custom Text** | `text` | Text Box | Optionally enter custom text to append to the standard generated web hook message. |
+
+The selected web hook still uses the normal web hook definition, including its URL, method, headers, body, secrets, timeout, retries, redirect settings, TLS settings, and `{{ ... }}` template expressions.  See [Web Hooks](webhooks.md) for more details.
+
+Note that the **Custom Text** parameter only matters if the selected web hook template uses the standard `{{text}}` value somewhere, for example in a JSON body field such as `text`, `content`, or `message`.  If your web hook body does not reference `{{text}}`, then this extra text is not sent to the remote endpoint.
 
 ### Docker Plugin
 

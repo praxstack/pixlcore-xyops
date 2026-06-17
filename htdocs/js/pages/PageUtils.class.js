@@ -2679,7 +2679,8 @@ Page.PageUtils = class PageUtils extends Page.Base {
 						rows: 5, 
 						class: 'monospace', 
 						disabled: elem_dis,
-						spellcheck: 'false'
+						spellcheck: 'false',
+						onkeydown: "captureTabs(this, event)"
 					}) + explore_end;
 				break;
 				
@@ -5056,7 +5057,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 				case 'system':
 					param.list_id = $('#fe_epa_list_id').val();
 					param.multiple = !!$('#fe_epa_multiple').is(':checked');
-					delete param.required;
+					param.required = !!$('#fe_epa_required').is(':checked');
 				break;
 				
 				case 'hidden':
@@ -5120,7 +5121,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			$('#d_epa_value_' + new_type).show();
 			$('#d_epa_value_regex').toggle( !!new_type.match(/^(text|textarea|code)$/) );
 			$('#d_epa_id').toggle( !new_type.match(/^(group)$/) );
-			$('#d_epa_required').toggle( !!new_type.match(/^(text|textarea|code)$/) );
+			$('#d_epa_required').toggle( !!new_type.match(/^(text|textarea|code|system)$/) );
 			$('#d_epa_text_variant').toggle( !!new_type.match(/^(text)$/) );
 			$('#d_epa_value_range').toggle( (new_type == 'text') && ($('#fe_epa_text_variant').val() == 'number') );
 			$('#d_epa_locked').toggle( !new_type.match(/^(toolset|group)$/) && show_lock );
@@ -5478,7 +5479,8 @@ Page.PageUtils = class PageUtils extends Page.Base {
 						rows: 5, 
 						class: 'monospace', 
 						disabled: elem_dis,
-						spellcheck: 'false'
+						spellcheck: 'false',
+						onkeydown: "captureTabs(this, event)"
 					}) + explore_end;
 				break;
 				

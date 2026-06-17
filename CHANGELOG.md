@@ -1,5 +1,24 @@
 # xyOps Changelog
 
+## Version v1.0.69
+
+> June 15, 2026
+
+- [`f0ea4b2a`](https://github.com/pixlcore/xyops/commit/f0ea4b2ad303374b523bcde44b2459b3c2c7d2ef): Version 1.0.69
+	- Bump pixl-mail to v1.1.8 for upstream vuln fixes in nodemailer.
+	- Bump pixl-request to v2.6.7 for upstream vuln fixes in form-data and basic-ftp.
+	- Bump ws to v7.5.11 for vuln fix.
+- [`fe5ffba1`](https://github.com/pixlcore/xyops/commit/fe5ffba10f9347a9c415d30fe4346feae325f4ca): Docs: Update several docs regarding new native engine transactions, and new recommended storage configurations.
+- [`e572375d`](https://github.com/pixlcore/xyops/commit/e572375d338bbfc0de9bd6dcfc48d6b8484056e5): Feature: Pressing the Tab key in textarea (text box) params now actually types a tab character.
+- [`e41a9ffb`](https://github.com/pixlcore/xyops/commit/e41a9ffb6c734d50ab0dc1ce95d6ff02a6a38fef): Feature: Allow system menu params to be marked as "required".
+- [`b72ac5c8`](https://github.com/pixlcore/xyops/commit/b72ac5c83cafe67a7fc67c8fff1a36f60f38bd85): Setup: Add new "Fire Web Hook" built-in Plugin.
+- [`c2a95807`](https://github.com/pixlcore/xyops/commit/c2a958078959632796430bb36166e3304b06a18c): API: Add new fire_job_web_hook API
+- [`cb0df45a`](https://github.com/pixlcore/xyops/commit/cb0df45a9e3093d78da6e2e1c546fce93e609306): UI Tweak: Fix spacing in code blocks inside user job markdown HTML content
+- [`d637ea37`](https://github.com/pixlcore/xyops/commit/d637ea37e0ebe4da928d621fdbb867d8eef79ddb): Feature: System DB Optimization now supports multiple engines (namely Postgres).
+- [`a44f6b55`](https://github.com/pixlcore/xyops/commit/a44f6b55fae003b7420a54604bb0cc579f4a6297): Bump sanitize-html to v2.17.5 for vuln fix.
+- [`3a8a326f`](https://github.com/pixlcore/xyops/commit/3a8a326f8ce737e19e07136462749e334bf6c5f5): Bump pixl-request to v2.6.6 for fixes to download handling and possible stream handle leaks on error.
+- [`89e520db`](https://github.com/pixlcore/xyops/commit/89e520dbba2bec27b8f3a7791c337e4f660a6397): Bump pixl-server-storage to v4.2.1 for new native engine transaction support in Postgres, Redis, and SQLite.
+
 ## Version v1.0.68
 
 > June 12, 2026
