@@ -31,6 +31,43 @@ function getWorkflow(name) {
 
 exports.tests = [
 	
+	async function test_workflow_reject_duplicate_node_id(test) {
+		// The API should reject duplicate workflow node IDs instead of silently repairing them.
+		let workflow = getWorkflow('decision');
+		workflow.id = 'edupnode01';
+		workflow.workflow.nodes.push( Tools.copyHash(workflow.workflow.nodes[0], true) );
+		
+		let { data } = await this.request.json( this.api_url + '/app/create_event/v1', workflow );
+		assert.ok( data.code !== 0, "api rejected duplicate node ID" );
+	},
+	
+	async function test_workflow_reject_duplicate_connection_id(test) {
+		// The API should reject duplicate workflow connection IDs.
+		let workflow = getWorkflow('decision');
+		workflow.id = 'edupconn01';
+		
+		let conn = Tools.copyHash(workflow.workflow.connections[0], true);
+		conn.source = workflow.workflow.connections[1].source;
+		conn.dest = workflow.workflow.connections[1].dest;
+		workflow.workflow.connections.push(conn);
+		
+		let { data } = await this.request.json( this.api_url + '/app/create_event/v1', workflow );
+		assert.ok( data.code !== 0, "api rejected duplicate connection ID" );
+	},
+	
+	async function test_workflow_reject_duplicate_connection_pair(test) {
+		// The API should reject duplicate wires between the same source and destination nodes.
+		let workflow = getWorkflow('decision');
+		workflow.id = 'eduppair01';
+		
+		let conn = Tools.copyHash(workflow.workflow.connections[0], true);
+		conn.id = 'cduppair';
+		workflow.workflow.connections.push(conn);
+		
+		let { data } = await this.request.json( this.api_url + '/app/create_event/v1', workflow );
+		assert.ok( data.code !== 0, "api rejected duplicate connection pair" );
+	},
+	
 	async function test_workflow_decision(test) {
 		// test multi-job workflow with decision controller
 		let { data:wflow } = await this.request.json( this.api_url + '/app/create_event/v1', getWorkflow('decision'));

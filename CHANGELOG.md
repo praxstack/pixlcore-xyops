@@ -1,5 +1,26 @@
 # xyOps Changelog
 
+## Version v1.0.70
+
+> June 18, 2026
+
+- [`8a02cb91`](https://github.com/pixlcore/xyops/commit/8a02cb91b36f839c10d805c824e2ab3c7c070716): Version 1.0.70
+- [`e72934c2`](https://github.com/pixlcore/xyops/commit/e72934c2d30907acfe72525e9796f6b86f38fbd7): Docs: Hosting: Add section on migrating to a new server.
+- [`bd645fb8`](https://github.com/pixlcore/xyops/commit/bd645fb87ac5c9daef9146e4b6490de7db636522): Feature: Improve performance of data sync between conductor peers.
+- [`7baa3847`](https://github.com/pixlcore/xyops/commit/7baa38475545e8ac2a721f3687ed0806da4266b4): Bug Fix: Crasher when email format is set to plain text.
+- [`ce683512`](https://github.com/pixlcore/xyops/commit/ce683512556d6016af636bb2e3a7818de5295faf): UI Tweak: Fix workflow rendering quirks at 0.25x zoom, especially with Safari
+- [`5e0a53c7`](https://github.com/pixlcore/xyops/commit/5e0a53c76b67b581c1cd1d582db1be8dbd84de31): Feature: Log Viewer: Save current settings inside sidebar tab link (active session only).
+- [`a6d2619c`](https://github.com/pixlcore/xyops/commit/a6d2619c52a39a03f89b713e1da3fbfa235141f1): Feature: Job Details Page: Add "D" keyboard shortcut to download raw job JSON data.
+- [`5e15625c`](https://github.com/pixlcore/xyops/commit/5e15625cd42e788f0df747626e59845443cee1fe): Feature: Job Details Page: Add "V" keyboard shortcut to view and copy raw job JSON data.
+- [`92197a60`](https://github.com/pixlcore/xyops/commit/92197a608a12f4f853f4a77bf3578caf0a4b33bd): Feature: Job Details Page: Add download button to job metadata log (CSV format for now).
+- [`94c6d0a6`](https://github.com/pixlcore/xyops/commit/94c6d0a694848f8b9cc10d02a3f0858111f4ffce): Event API: Add checks to ensure workflow nodes and connections are not duplicated (via external tools).
+- [`0cac576c`](https://github.com/pixlcore/xyops/commit/0cac576c5a8761b6c41224e460bcda5a13030fb6): Docs: Config: Remove experimental "network transactions" checkbox (replaced by engine native transactions)
+- [`c01ae217`](https://github.com/pixlcore/xyops/commit/c01ae217e146b552baa9a34855af6d0898292591): Setup: Shell Plugin: Remove legacy `pass` checkbox (superseded by the workflowData system).
+- [`794ace74`](https://github.com/pixlcore/xyops/commit/794ace7496da60d4f0f2bc5902b7f64821c38fbb): Docs: Plugins: Add section for new "Fire Web Hook" built-in plugin.
+- [`89bdb9a9`](https://github.com/pixlcore/xyops/commit/89bdb9a9e9d57b7aa7f88b3b2dc4d60e23de3259): Config: Add default example Redis storage configuration.
+- [`97489916`](https://github.com/pixlcore/xyops/commit/97489916df0d4eebcc159d5843c99ce03a71ee6e): Docs: Storage: Corrected some typos in the sample JSON configurations.
+- [`17da3308`](https://github.com/pixlcore/xyops/commit/17da330877a4d09feb09f77c0d0618211167309e): Docs: Hosting: Add upgrade_timeout_sec prop in satellite configuration.
+
 ## Version v1.0.69
 
 > June 15, 2026

@@ -166,9 +166,11 @@ body.dark .wf_event_title {
 }
 
 .wf_fallback_icon {
-	height: 96px;
-	line-height: 96px;
-	font-size: 72px;
+	height: 110px;
+	line-height: 110px;
+	/* margin-top: 16px;
+	margin-bottom: 16px; */
+	font-size: 80px;
 	text-align: center;
 	color: var(--label-color);
 	display: none;
@@ -222,6 +224,7 @@ body.dark .wf_event_title {
 
 #d_wf_editor.zoom_quarter .wf_body > .wf_fallback_icon { display: block; }
 #d_wf_editor.zoom_quarter .wf_body > .summary_grid { display: none; }
+#d_wf_editor.zoom_quarter .wf_body > .info_group { display: none; }
 #d_wf_editor.zoom_quarter .wf_ent_title { display: none; }
 #d_wf_editor.zoom_quarter .wf_ent_label { display: none; }
 #d_wf_editor.zoom_quarter .wf_trig_label { display: none; }

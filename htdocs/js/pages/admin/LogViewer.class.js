@@ -171,6 +171,9 @@ Page.LogViewer = class LogViewer extends Page.PageUtils {
 			self.doSearch();
 		}, 1 );
 		
+		// magic trick: replace link in sidebar with current opts
+		$('#tab_LogViewer').attr( 'href', '#' + Nav.currentAnchor() );
+		
 		return true;
 	}
 	

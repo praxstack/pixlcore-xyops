@@ -493,6 +493,39 @@ The types of proxies supported are:
 
 Make sure to set the environment variables across your server fleet, so things like the [HTTP Request Plugin](plugins.md#http-request-plugin) will also adhere.
 
+## Data Migration
+
+To migrate an existing xyOps installation to a brand new server, use the built-in bulk export and import features from the **System** tab, but make sure you copy the configuration directory by hand first.  The bulk export contains xyOps data, but it does **not** replace your server configuration files.
+
+Before you import anything on the new server, copy the entire configuration directory from the old conductor:
+
+```
+/opt/xyops/conf
+```
+
+This directory contains your full xyOps configuration, UI configuration overrides, custom email templates, custom UI assets, conductor peer settings, and most importantly, your secret key.  The secret key is normally stored in:
+
+```
+/opt/xyops/conf/overrides.json
+```
+
+**Important:** Your Secret Vault data and API Keys are encrypted using the secret key, and conductor and worker authentication also depends on it.  You must copy the original `secret_key` value to the new server **before** importing data or adding servers.  If the new conductor starts with a different secret key and you import your old data, imported secrets will not decrypt correctly and servers may fail to authenticate.  As long as you copy the entire `/opt/xyops/conf` directory first, your imported Secrets and API Keys should work on the new server.
+
+Here is the recommended process:
+
+1. On the old xyOps server, go to **System** and click **Export Data**.
+2. For a complete migration, select all storage lists, all database tables, and all extras that you want to preserve.
+3. Install xyOps on the new server, but do not import data yet.
+4. Stop xyOps on the new server if it is already running.
+5. Copy the entire `/opt/xyops/conf` directory from the old server to the new server.
+6. Review the copied configuration and update only server-specific settings, such as hostnames, ports, TLS paths, storage endpoints, or Docker volume paths.
+7. Start xyOps on the new server and confirm that it is running with the copied configuration.
+8. In the new xyOps UI, login using the default admin account, go to **System** and click **Import Data**.
+9. Upload the export archive from the old server.
+10. Verify users, API Keys, Secrets, events, workflows, plugins, buckets, schedules, workers, and uploaded files before retiring the old server.
+
+If you are using Docker, copy the host directory that you bind-mounted to `/opt/xyops/conf`, such as `./xyops01-conf` in the examples above.  If you are using a manual install, copy `/opt/xyops/conf` directly.  Either way, keep a backup of the old server and the export archive until you have fully validated the new conductor.
+
 ## Air-Gapped Mode
 
 xyOps supports air-gapped installs, which prevent it from making unauthorized outbound connections beyond a specified IP range.  You can configure which IP ranges it is allowed to connect to, via whitelist and/or blacklist.  The usual setup is to allow local LAN requests so servers can communicate with each other in your infra.

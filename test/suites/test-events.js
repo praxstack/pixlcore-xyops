@@ -100,6 +100,20 @@ exports.tests = [
 		assert.ok( data.event.actions[0].type === 'email' && data.event.actions[0].enabled === true, "unexpected action content" );
 	},
 
+	async function test_api_event_rejects_reserved_job_override(test) {
+		// reserved _xy_override_* params must not be allowed to alter launch context
+		let event = Tools.findObject( this.xy.events, { id: this.event_id } );
+		let error = null;
+		let valid = this.xy.requireValidEventData(
+			Tools.mergeHashes(event, { params: { _xy_override_uid: '0' } }),
+			function(data) { error = data; }
+		);
+
+		assert.ok( valid === false, "reserved job override should fail validation" );
+		assert.ok( error && error.code === 'api', "expected api validation error" );
+		assert.ok( error.description.match(/reserved/), "expected reserved-key error" );
+	},
+
 	async function test_api_update_event_missing_id(test) {
 		// update without id should error
 		let { data } = await this.request.json( this.api_url + '/app/update_event/v1', { title: 'oops' } );

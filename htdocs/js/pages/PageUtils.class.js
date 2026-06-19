@@ -4361,7 +4361,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		// ctx.translate( 0 - this.wfScroll.x, 0 - this.wfScroll.y );
 		
 		ctx.lineJoin = "round";
-		ctx.lineWidth = 4;
+		ctx.lineWidth = (this.wfZoom == 0.25) ? 8 : 4;
 		// ctx.strokeStyle = "rgba(128,130,132,0.5)";
 		// ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
 		// ctx.shadowOffsetX = 8;

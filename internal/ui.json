@@ -1006,6 +1006,8 @@
 			"do_edit_event": { "keys": ["KeyE"], "title": "Edit Event" },
 			"doAddToTicket": { "keys": ["KeyA"], "title": "Add Job to Ticket" },
 			"doCreateTicket": { "keys": ["KeyC"], "title": "Create Job Ticket" },
+			"do_view_job_data": { "keys": ["KeyV"], "title": "View Job JSON" },
+			"do_download_job_data": { "keys": ["KeyD"], "title": "Download Job JSON" },
 			"do_delete_job": { "keys": ["Backspace", "Delete"], "title": "Delete Job" },
 			"prevSlide": { "keys": ["ArrowLeft"], "title": "Previous Media Slide" },
 			"nextSlide": { "keys": ["ArrowRight"], "title": "Next Media Slide" }

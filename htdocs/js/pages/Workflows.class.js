@@ -950,7 +950,7 @@ Page.Workflows = class Workflows extends Page.Events {
 			ctx.save();
 			ctx.scale( window.devicePixelRatio * self.wfZoom, window.devicePixelRatio * self.wfZoom );
 			ctx.lineJoin = "round";
-			ctx.lineWidth = 4;
+			ctx.lineWidth = (self.wfZoom == 0.25) ? 8 : 4;
 			
 			var opts = {
 				ctx: ctx,

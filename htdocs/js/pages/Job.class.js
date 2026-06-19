@@ -526,6 +526,7 @@ Page.Job = class Job extends Page.PageUtils {
 		html += '<div class="box" id="d_job_meta">';
 			html += '<div class="box_title">';
 				html += (is_workflow ? 'Workflow Log' : 'Metadata Log');
+				html += '<div class="button right" onClick="$P().do_download_meta_log()"><i class="mdi mdi-cloud-download-outline">&nbsp;</i>Download...</div>';
 			html += '</div>';
 			html += '<div class="box_content table">';
 				html += this.getMetaLog();
@@ -3197,9 +3198,61 @@ Page.Job = class Job extends Page.PageUtils {
 		$('.pxc_tt_overlay').remove();
 	}
 	
+	do_download_meta_log() {
+		// download meta log as CSV
+		var self = this;
+		var rows = [
+			this.isWorkflow ? ['Date/Time', 'Server', 'Node ID', 'Type', 'Message'] : ['Date/Time', 'Server', 'Message']
+		].concat(
+			this.job.activity.map( function(row) {
+				if (self.isWorkflow) {
+					var nice_node_id = '-';
+					var nice_node_type = '-';
+					
+					if (row.node) {
+						nice_node_id = '#' + row.node;
+						var node = find_object( self.job.workflow.nodes, { id: row.node } );
+						if (node) nice_node_type = node.type;
+					}
+					
+					return [
+						self.getNiceDateTimeText(row.epoch, true),
+						row.server || row.username,
+						nice_node_id,
+						nice_node_type,
+						row.msg
+					];
+				}
+				else {
+					return [
+						self.getNiceDateTimeText(row.epoch, true),
+						row.server || row.username,
+						row.msg
+					];
+				}
+			} )
+		);
+		
+		var raw = rows.map( function(row) {
+			return '"' + row.map( str => String(str).replace(/\"/g, '""') ).join('","') + '"' + "\n";
+		} ).join("\n") + "\n";
+		
+		var blob = new Blob([raw], { type: "text/csv" });
+		
+		var link = document.createElement("a");
+		link.href = URL.createObjectURL(blob);
+		link.download = "xyops-job-meta-log-" + this.job.id + '.csv';
+		
+		document.body.appendChild(link);
+		link.click();
+		
+		document.body.removeChild(link);
+		URL.revokeObjectURL(link.href);
+	}
+	
 	do_view_job_data() {
 		// show job json in dialog
-		this.viewCodeAuto("Job Data JSON", this.getJobJSON());
+		this.viewCodeAuto("View Job Data JSON", this.getJobJSON());
 	}
 	
 	do_copy_job_data() {
@@ -3229,7 +3282,7 @@ Page.Job = class Job extends Page.PageUtils {
 		// get pretty-printed and pruned job json
 		var job = deep_copy_object(this.job);
 		
-		delete job.activity;
+		// delete job.activity;
 		delete job.timelines;
 		// delete job.table;
 		// delete job.html;

@@ -1021,7 +1021,7 @@ Page.Events = class Events extends Page.PageUtils {
 		} );
 		
 		html += this.getCompactGrid(targs, function(item, idx) {
-			var disp = self.getJobActionDisplayArgs(item);
+			var disp = self.getJobActionDisplayArgs(item, true);
 			var disp_cond_icon = disp.condition.icon;
 			if (item.source == 'category') disp_cond_icon = 'lock-outline';
 			else if (item.source == 'universal') disp_cond_icon = 'lock';
