@@ -289,8 +289,9 @@ Page.Channels = class Channels extends Page.PageUtils {
 		html += '<div class="box_buttons">';
 			html += '<div class="button cancel mobile_collapse" onClick="$P().cancel_channel_edit()"><i class="mdi mdi-close-circle-outline">&nbsp;</i><span>Close</span></div>';
 			html += '<div class="button danger mobile_collapse" onClick="$P().show_delete_channel_dialog()"><i class="mdi mdi-trash-can-outline">&nbsp;</i><span>Delete...</span></div>';
-			html += '<div class="button secondary mobile_collapse" onClick="$P().do_export()"><i class="mdi mdi-cloud-download-outline">&nbsp;</i><span>Export...</span></div>';
-			html += '<div class="button secondary mobile_collapse" onClick="$P().go_edit_history()"><i class="mdi mdi-history">&nbsp;</i><span>History...</span></div>';
+			html += '<div class="button secondary mobile_collapse" onClick="$P().do_test()"><i class="mdi mdi-test-tube">&nbsp;</i><span>Test...</span></div>';
+			html += '<div class="button secondary mobile_collapse mobile_hide" onClick="$P().do_export()"><i class="mdi mdi-cloud-download-outline">&nbsp;</i><span>Export...</span></div>';
+			html += '<div class="button secondary mobile_collapse mobile_hide" onClick="$P().go_edit_history()"><i class="mdi mdi-history">&nbsp;</i><span>History...</span></div>';
 			html += '<div class="button save phone_collapse" id="btn_save" onClick="$P().do_save_channel()"><i class="mdi mdi-floppy">&nbsp;</i><span>Save Changes</span></div>';
 		html += '</div>'; // box_buttons
 		
@@ -303,6 +304,124 @@ Page.Channels = class Channels extends Page.PageUtils {
 		this.updateAddRemoveMe('#fe_ech_email');
 		this.setupBoxButtonFloater();
 		this.setupEditTriggers();
+	}
+	
+	do_test() {
+		// test channel
+		var self = this;
+		var title = "Test Channel";
+		var btn = ['open-in-new', 'Test Channel'];
+		
+		if (this.div.find('.button.save').hasClass('primary')) return app.doError("Please save or revert your changes before testing.");
+		
+		app.clearError();
+		var channel = this.get_channel_form_json();
+		if (!channel || !channel.id) return; // error
+		
+		// privilege check
+		if (!app.requirePrivilege('create_events')) return;
+		if (!app.requirePrivilege('run_jobs')) return;
+		
+		if (!app.categories.length) return app.doError("No categories found.  Please add a category before testing channels.");
+		var cat_def = find_object( app.categories, { id: 'general' } ) || app.categories[0];
+		
+		if (!app.groups.length) return app.doError("No server groups found.  Please add a server group before testing channels.");
+		var grp_def = find_object( app.groups, { id: 'main' } ) || app.groups[0];
+		
+		if (!find_object( app.plugins, { id: 'testplug' } )) return app.doError("Cannot test channels without the built-in 'Test Plugin' event plugin.");
+		
+		var html = '';
+		html += `<div class="dialog_intro">Use this form to test the current channel.  This is done by creating a temporary self-deleting event, which immediately runs an ad-hoc test job with your channel configured to notify at completion.  The test will launch in a new browser tab in order to preserve the current context.</div>`;
+		html += '<div class="dialog_box_content scroll maximize">';
+		
+		// result
+		html += this.getFormRow({
+			label: 'Simulate Result:',
+			content: this.getFormMenuSingle({
+				id: 'fe_epd_result',
+				options: [
+					{ id: 'success', title: 'Success', icon: 'check-circle-outline' },
+					{ id: 'error', title: 'Error', icon: 'alert-decagram-outline' },
+					{ id: 'warning', title: 'Warning', icon: 'alert-outline' },
+					{ id: 'critical', title: 'Critical', icon: 'fire-alert' },
+					{ id: 'abort', title: 'Abort', icon: 'cancel' }
+				],
+				value: app.getPref('tap_result') || ''
+			}),
+			caption: "Select which job result to simulate for the channel action."
+		});
+		
+		html += '</div>';
+		Dialog.confirm( title, html, btn, function(result) {
+			if (!result) return;
+			app.clearError();
+			
+			var result = $('#fe_epd_result').val();
+			if (!result) return app.badField('#fe_epd_result', "Please select a job result to simulate.");
+			app.setPref('tap_result', result);
+			
+			var event = {
+				enabled: true,
+				title: "Test Event",
+				icon: 'test-tube',
+				category: cat_def.id,
+				targets: [ grp_def.id ],
+				algo: 'random',
+				plugin: 'testplug',
+				params: { 
+					duration: 1,
+					action: ucfirst(result)
+				},
+				triggers: [
+					{ type: "manual", enabled: true }
+				],
+				actions: [
+					{ type: 'channel', enabled: true, condition: "complete", channel_id: channel.id },
+					{ type: "delete", enabled: true, condition: "complete" }
+				],
+				limits: [],
+				fields: [],
+				tags: [],
+				notes: "For testing only."
+			};
+			
+			var job = deep_copy_object(event);
+			job.test = true;
+			job.test_actions = false;
+			job.test_limits = false;
+			job.label = "Test";
+			
+			// pre-open new window/tab for job details
+			var win = window.open('', '_blank');
+			
+			app.api.post( 'app/create_event', event, function(resp) {
+				// now run the job
+				if (!self.active) return; // sanity
+				job.id = resp.event.id;
+				
+				app.api.post( 'app/run_event', job, function(resp) {
+					// Dialog.hideProgress();
+					if (!self.active) return; // sanity
+					
+					// jump immediately to live details page in new window
+					win.location.href = '#Job?id=' + resp.id + '&action=1';
+				}, 
+				function(err) {
+					// capture error so we can close the window we just opened
+					win.close();
+					app.doError("API Error: " + err.description);
+				}); // run_event error
+			},
+			function(err) {
+				win.close();
+				app.doError("API Error: " + err.description);
+			} ); // create_event error
+			
+			Dialog.hide();
+		}); // Dialog.confirm
+		
+		SingleSelect.init( $('#fe_epd_result') );
+		Dialog.autoResize();
 	}
 	
 	do_export() {

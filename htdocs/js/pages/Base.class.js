@@ -86,11 +86,14 @@ Page.Base = class Base extends Page {
 		// if user cannot edit categories, no linky!
 		if (!app.hasPrivilege('edit_categories')) link = false;
 		
-		var html = '<span class="nowrap" title="' + encode_attrib_entities(item.title) + '">';
+		var cat_class = '';
+		if (item.color) cat_class = 'cat_' + item.color;
+		
+		var html = '<span class="nowrap ' + cat_class + '" title="' + encode_attrib_entities(item.title) + '">';
 		var icon = '<i class="mdi mdi-' + (item.icon || 'folder-open-outline') + '"></i>';
 		if (link) {
 			if (link === true) link = '#Categories?sub=edit&id=' + item.id;
-			html += '<a href="' + link + '">';
+			html += '<a href="' + link + '" class="' + cat_class + '">';
 			html += icon + '<span>' + item.title + '</span></a>';
 		}
 		else {
@@ -415,10 +418,17 @@ Page.Base = class Base extends Page {
 			if (!item.enabled) default_icon = 'file-outline';
 		}
 		
-		var html = '<span class="nowrap" title="' + encode_attrib_entities(item.title) + '">';
+		// locate category for color
+		var cat_class = '';
+		if (item.category) {
+			var category = find_object( app.categories, { id: item.category } );
+			if (category.color) cat_class = 'cat_' + category.color;
+		}
+		
+		var html = '<span class="nowrap ' + cat_class + '" title="' + encode_attrib_entities(item.title) + '">';
 		var icon = '<i class="mdi mdi-' + (item.icon || default_icon) + '"></i>';
 		if (link) {
-			html += '<a href="' + loc + '?id=' + item.id + '">';
+			html += '<a href="' + loc + '?id=' + item.id + '" class="' + cat_class + '">';
 			html += icon + '<span>' + item.title + '</span></a>';
 		}
 		else {
@@ -1298,7 +1308,8 @@ Page.Base = class Base extends Page {
 		}
 		
 		var icon = '<i class="mdi mdi-timer-outline"></i>';
-		if (job.icon) icon = '<i class="mdi mdi-' + job.icon + '"></i>';
+		if (job.suspended) icon = '<i class="mdi mdi-motion-pause-outline"></i>';
+		else if (job.icon) icon = '<i class="mdi mdi-' + job.icon + '"></i>';
 		else if (job.invisible) icon = '<i class="mdi mdi-selection-ellipse"></i>';
 		else if (job.type == 'workflow') icon = '<i class="mdi mdi-clipboard-play-outline"></i>';
 		else if (job.workflow) icon = '<i class="mdi mdi-clipboard-clock-outline"></i>';
@@ -1767,6 +1778,13 @@ Page.Base = class Base extends Page {
 	selfMergeNav(args) {
 		// costruct nav URI to current page, but with new args merged in with current args
 		return this.selfNav(merge_objects(this.args, args));
+	}
+	
+	getCategoriesForMenu() {
+		// get decorated categories for drop-down menu
+		return app.categories.map( function(cat) {
+			return { ...cat, class: cat.color ? `clr_${cat.color}` : `` };
+		} );
 	}
 	
 	getCategorizedEvents() {

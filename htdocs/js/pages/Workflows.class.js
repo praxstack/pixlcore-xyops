@@ -1690,7 +1690,7 @@ Page.Workflows = class Workflows extends Page.Events {
 			id: 'd_wfdj_cat',
 			content: this.getFormMenuSingle({
 				id: 'fe_wfdj_cat',
-				options: app.categories,
+				options: this.getCategoriesForMenu(),
 				value: node.data.category || '',
 				default_icon: 'folder-open-outline',
 				// 'data-shrinkwrap': 1
@@ -2763,7 +2763,7 @@ Page.Workflows = class Workflows extends Page.Events {
 			id: 'd_wf_cat',
 			content: this.getFormMenuSingle({
 				id: 'fe_wf_cat',
-				options: app.categories,
+				options: this.getCategoriesForMenu(),
 				value: event.category || '',
 				default_icon: 'folder-open-outline',
 				// 'data-shrinkwrap': 1

@@ -96,7 +96,7 @@ Page.Events = class Events extends Page.PageUtils {
 						content: this.getFormMenuSingle({
 							id: 'fe_el_category',
 							title: 'Select Category',
-							options: [['', 'Any Category']].concat( app.categories ),
+							options: [['', 'Any Category']].concat( this.getCategoriesForMenu() ),
 							value: args.category || '',
 							default_icon: 'folder-open-outline',
 							'data-shrinkwrap': 1
@@ -203,7 +203,7 @@ Page.Events = class Events extends Page.PageUtils {
 				// user
 				html += '<div class="form_cell">';
 					html += this.getFormRow({
-						label: '<i class="icon mdi mdi-account">&nbsp;</i>User:',
+						label: '<i class="icon mdi mdi-account">&nbsp;</i>Author:',
 						content: this.getFormMenuSingle({
 							id: 'fe_el_username',
 							title: 'Select User',
@@ -646,14 +646,14 @@ Page.Events = class Events extends Page.PageUtils {
 		
 		if (is_workflow) {
 			app.setHeaderNav([
-				{ icon: 'clipboard-flow-outline', loc: '#Events?plugin=_workflow', title: 'Workflows' },
+				{ icon: 'clipboard-flow-outline', loc: $('#tab_Workflows').attr('href'), title: 'Workflows' },
 				{ icon: icon, title: event.title }
 			]);
 			app.highlightTab( 'Workflows' );
 		}
 		else {
 			app.setHeaderNav([
-				{ icon: 'calendar-clock', loc: '#Events?sub=list', title: 'Events' },
+				{ icon: 'calendar-clock', loc: $('#tab_Events').attr('href'), title: 'Events' },
 				{ icon: icon, title: event.title }
 			]);
 			app.highlightTab( 'Events' );
@@ -1900,7 +1900,7 @@ Page.Events = class Events extends Page.PageUtils {
 		this.div.html( html ).buttonize();
 		
 		MultiSelect.init( this.div.find('select[multiple]') );
-		SingleSelect.init( this.div.find('#fe_ee_icon, #fe_ee_cat, #fe_ee_algo, #fe_ee_plugin') );
+		SingleSelect.init( this.div.find('#fe_ee_username, #fe_ee_icon, #fe_ee_cat, #fe_ee_algo, #fe_ee_plugin') );
 		this.renderPluginParamEditor();
 		this.renderParamEditor();
 		// this.updateAddRemoveMe('#fe_ee_email');
@@ -2009,7 +2009,7 @@ Page.Events = class Events extends Page.PageUtils {
 		this.div.html( html ).buttonize();
 		
 		MultiSelect.init( this.div.find('select[multiple]') );
-		SingleSelect.init( this.div.find('#fe_ee_icon, #fe_ee_cat, #fe_ee_algo, #fe_ee_plugin') );
+		SingleSelect.init( this.div.find('#fe_ee_username, #fe_ee_icon, #fe_ee_cat, #fe_ee_algo, #fe_ee_plugin') );
 		this.renderPluginParamEditor();
 		this.renderParamEditor();
 		// this.updateAddRemoveMe('#fe_ee_email');
@@ -2615,6 +2615,24 @@ Page.Events = class Events extends Page.PageUtils {
 			caption: 'Enter the title of the event, for display purposes.'
 		});
 		
+		if (event.id) {
+			// author
+			html += this.getFormRow({
+				label: 'Author:',
+				content: this.getFormMenuSingle({
+					id: 'fe_ee_username',
+					title: 'Select User',
+					options: [['', 'Any User']].concat( app.users.map( function(user) {
+						return { id: user.username, title: user.full_name, icon: user.icon || '' };
+					} ) ),
+					value: event.username || '',
+					default_icon: 'account',
+					'data-private': 1
+				}),
+				caption: 'Optionally change the author of the event.'
+			});
+		}
+		
 		// enabled
 		html += this.getFormRow({
 			label: 'Status:',
@@ -2647,7 +2665,7 @@ Page.Events = class Events extends Page.PageUtils {
 				id: 'fe_ee_cat',
 				title: 'Select category for event',
 				placeholder: 'Select category for event...',
-				options: app.categories,
+				options: this.getCategoriesForMenu(),
 				value: event.category || '',
 				default_icon: 'folder-open-outline',
 				// 'data-shrinkwrap': 1
@@ -4180,6 +4198,10 @@ Page.Events = class Events extends Page.PageUtils {
 		event.algo = $('#fe_ee_algo').val();
 		event.plugin = $('#fe_ee_plugin').val();
 		event.notes = $('#fe_ee_notes').val();
+		
+		if (event.id) {
+			event.username = $('#fe_ee_username').val();
+		}
 		
 		event.params = this.getPluginParamValues( event.plugin, force );
 		if (!event.params) return false; // invalid

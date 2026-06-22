@@ -1,5 +1,23 @@
 # xyOps Changelog
 
+## Version v1.0.71
+
+> June 21, 2026
+
+- [`36566e6a`](https://github.com/pixlcore/xyops/commit/36566e6a17c9ff62bf810343bc9b6387d7fc37bc): Version 1.0.71
+	- Bump pixl-xyapp to v2.1.36 for color system improvements.
+- [`540d419d`](https://github.com/pixlcore/xyops/commit/540d419d365a8411cfb6b6b6614fc70bd856c043): Feature: Further improvements to category color system.
+- [`a22215f8`](https://github.com/pixlcore/xyops/commit/a22215f89ab66127bf60676b2526f42ed937a534): UI Tweak: Event view page header: Clicking outer nav breadcrumbs now honors sidebar selection.
+- [`8fdb4ce8`](https://github.com/pixlcore/xyops/commit/8fdb4ce823ea8de888ee1f968037b02c6b03acab): Feature: Event author (owner) is now editable.
+- [`a3902fa3`](https://github.com/pixlcore/xyops/commit/a3902fa3864b59fb389390d410233954297bce7a): UI Tweak: Make suspended jobs more visible by changing icon.
+- [`d422ef75`](https://github.com/pixlcore/xyops/commit/d422ef75114f4017f21e1de4ed7b8d90eacc4f0d): UI Tweak: Add named groups to category color sets.
+- [`e740ccbb`](https://github.com/pixlcore/xyops/commit/e740ccbb0f8c9eb9fa5ca4dddc88e2bc471f1efe): Feature: Accept gzip-compressed JSON files when dropped on xyOps, and from "Import File...".
+- [`e85ee7bd`](https://github.com/pixlcore/xyops/commit/e85ee7bdf10f0a56bfb6ec8197043acfcb5541a8): Feature: Add "Test" button to notification channel editor.
+- [`b599ddd1`](https://github.com/pixlcore/xyops/commit/b599ddd1ae86978ae86c2444c8bcb848ab5465ff): Feature: Add many more custom colors to categories.  Fixes #309
+- [`267dd74c`](https://github.com/pixlcore/xyops/commit/267dd74cf62252964b43ce635f7d69c61fc17259): Docs: Storage: Add section on Postgres SSL
+- [`fb5abdbb`](https://github.com/pixlcore/xyops/commit/fb5abdbb2549015114712e3d8b75b758efb0b495): Feature: Make applicable action descriptions clickable on event detail page.  Fixes #331
+- [`0df49000`](https://github.com/pixlcore/xyops/commit/0df49000e759e3e0a142f07a8f1659462c2cbdc7): Tighten validation for reserved job overrides
+
 ## Version v1.0.70
 
 > June 18, 2026
