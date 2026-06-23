@@ -78,9 +78,14 @@ This number (seconds) is the max allowed time without a pong before a socket is 
 ## max_jobs_per_min
 <!-- Title: Max Jobs Per Minute -->
 
-This number sets a global rate limit on job starts per minute (default: `100`); additional jobs are deferred with an error.
+This number sets a global rate limit on job starts per minute (default: `100`); additional jobs are prevented from launching.
 
 This is designed as a runaway e-brake mechanism, to prevent an erroneous workflow configuration from bringing down the entire system.
+
+## max_jobs_per_workflow
+<!-- Title: Max Jobs Per Workflow -->
+
+This number sets a global limit on the number of sub-jobs allowed per workflow run (default: `1000`).  Additional jobs are prevented from launching, and the workflow is aborted.
 
 ## dead_job_timeout
 <!-- Title: Dead Job TImeout (seconds) -->

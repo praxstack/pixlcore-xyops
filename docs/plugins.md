@@ -26,6 +26,31 @@ To write your own Event Plugin, all you need is to provide a command-line execut
 
 When your Plugin is executed on the target server for running a job, a unique temp directory will be created for it, and any files passed to the job will be pre-downloaded for you.  The CWD (current working directory) will be set to the temp dir, so your Plugin can easily list and access the input files.
 
+Here is an example Event Plugin using Node.js:
+
+```js
+// read job JSON from STDIN
+const chunks = [];
+for await (const chunk of process.stdin) chunks.push(chunk);
+const job = JSON.parse( chunks.join('') );
+
+console.log("Hello from plugin!");
+
+// send progress updates
+let percentage = 0;
+setInterval( function() {
+	percentage += 10;
+	console.log( JSON.stringify({ xy: 1, progress: percentage / 100 }) );
+	
+	if (percentage >= 100) {
+		console.log( JSON.stringify({ xy: 1, complete: true, code: 0 }) );
+		process.exit(0);
+	}
+}, 1000 );
+```
+
+You can write Plugins using any language you want, as long as it supports reading / writing JSON over STDIO.
+
 #### Event Parameters
 
 As with most other Plugin types, you can define custom parameters for Event Plugins.  These can be text fields, text boxes, code editors, select menus, checkboxes, or toolsets.  The user can then fill these out when they are editing the event, and they are passed to the Plugin when a job runs.  See [Plugin Parameters](#plugin-parameters) below for more details.
@@ -138,7 +163,7 @@ When Event Plugins are invoked via a job launching, they are passed a set of env
 | `JOB_NOW` | Will contain the current [Job.now](data.md#job-now). |
 | `JOB_BASE_URL` | Will contain the current [Job.base_url](data.md#job-base_url). |
 | `data_*` | All top-level properties from the [Job.input.data](data.md#job-input) object are included as environment variables, with a `data_` prefix. |
-| `workflow_*` | All [workflow parameters](data.md#jobworkflow.params) (user fields) are included as environment variables, with a `workflow_` prefix. |
+| `workflow_*` | All [workflow parameters](data.md#jobworkflow-params) (user fields) are included as environment variables, with a `workflow_` prefix. |
 | `workflow_data_*` | All top-level properties from the [Job.workflowData](data.md#job-workflowdata) object are included as environment variables, with a `workflow_data_` prefix. |
 | `server_data_*` | All top-level properties from the [Job.serverData](data.md#job-serverdata) object are included as environment variables, with a `server_data_` prefix. |
 | *(Event Param IDs)* | All event parameters are passed as environment variables with the param IDs used as variable names. |

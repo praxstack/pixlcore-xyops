@@ -2919,6 +2919,8 @@ Page.Job = class Job extends Page.PageUtils {
 				if (file.bucket) nice_source = self.getNiceBucket(file.bucket, true);
 				else if (file.plugin) nice_source = self.getNicePlugin(file.plugin, true);
 				else if (file.ticket) nice_source = `<span class="nowrap"><a href="#Tickets?id=${file.ticket}"><i class="mdi mdi-text-box-outline"></i>Ticket</a></span>`;
+				else if (file.magic) nice_source = '<i class="mdi mdi-link-variant">&nbsp;</i>Magic Link';
+				else if (file.username) nice_source = self.getNiceUser(file.username, true);
 				else nice_source = '<i class="mdi mdi-file-download-outline">&nbsp;</i>Input';
 			}
 			else nice_source = '<i class="mdi mdi-file-upload-outline">&nbsp;</i>Output';
@@ -3052,7 +3054,17 @@ Page.Job = class Job extends Page.PageUtils {
 		var job = this.job;
 		if (!app.requirePrivilege('delete_jobs')) return;
 		
-		Dialog.confirmDanger( 'Delete Job', "Are you sure you want to permanently delete the current job, including all logs and files?  There is no way to undo this operation.", ['trash-can', 'Delete'], function(result) {
+		var title = "Delete Job";
+		var text = "Are you sure you want to permanently delete the current job, including all logs and files?  There is no way to undo this operation.";
+		var btn = ['trash-can', 'Delete'];
+		
+		if (job.type == 'workflow') {
+			title = "Delete Workflow Job";
+			text += "<br><br>Also, since this is a workflow, note that all sub-jobs will be deleted as well.";
+			btn = ['trash-can', 'Delete All'];
+		}
+		
+		Dialog.confirmDanger( title, text, btn, function(result) {
 			if (!result) return;
 			app.clearError();
 			Dialog.showProgress( 1.0, "Deleting Job..." );

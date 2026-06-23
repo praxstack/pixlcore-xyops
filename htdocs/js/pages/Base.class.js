@@ -1781,9 +1781,10 @@ Page.Base = class Base extends Page {
 	}
 	
 	getCategoriesForMenu() {
-		// get decorated categories for drop-down menu
+		// get colored categories for drop-down menu
 		return app.categories.map( function(cat) {
-			return { ...cat, class: cat.color ? `clr_${cat.color}` : `` };
+			var clr = cat.color || 'plain';
+			return { ...cat, class: `clr_${cat.color}` };
 		} );
 	}
 	
@@ -1805,9 +1806,24 @@ Page.Base = class Base extends Page {
 		} );
 		
 		events.forEach( function(event) {
-			if (!event.icon) {
-				if (event.type == 'workflow') event.icon = 'clipboard-flow-outline';
-				else event.icon = 'calendar-clock';
+			var default_icon = 'file-clock-outline';
+			
+			// pick default icon based on event attributes
+			if (event.type == 'workflow') {
+				default_icon = 'clipboard-flow-outline';
+				if (find_object(event.actions || [], { type: 'run_event', enabled: true })) default_icon = 'clipboard-arrow-right';
+				if (!event.enabled) default_icon = 'clipboard-outline';
+			}
+			else {
+				if (find_object(event.actions || [], { type: 'run_event', enabled: true })) default_icon = 'file-move';
+				if (!event.enabled) default_icon = 'file-outline';
+			}
+			
+			if (!event.icon) event.icon = default_icon;
+			
+			var category = cat_map[ event.category ];
+			if (category && category.color) {
+				event.class = `clr_${category.color}`;
 			}
 			
 			if (event.category != last_cat_id) {

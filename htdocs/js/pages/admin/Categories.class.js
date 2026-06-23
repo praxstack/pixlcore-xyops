@@ -219,7 +219,7 @@ Page.Categories = class Categories extends Page.PageUtils {
 			notes: "",
 			// max_jobs: 0,
 			enabled: true,
-			color: '',
+			color: 'plain',
 			limits: [],
 			actions: []
 		};

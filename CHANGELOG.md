@@ -1,5 +1,30 @@
 # xyOps Changelog
 
+## Version v1.0.73
+
+> June 22, 2026
+
+- [`b40d2de9`](https://github.com/pixlcore/xyops/commit/b40d2de975358cb5194510663c507ef3f1be9d22): Version 1.0.73
+- [`78ec5358`](https://github.com/pixlcore/xyops/commit/78ec5358e8f9ccca83e0bc5cdeae217ee2324065): Emergency CSS Fix: Our CSS minifier does not support nesting.
+
+## Version v1.0.72
+
+> June 22, 2026
+
+- [`1872bb3f`](https://github.com/pixlcore/xyops/commit/1872bb3f1513280d44de53f83c7e41eab3adbb73): Version 1.0.72
+	- Bump pixl-server-storage to v4.2.2 for new deleteAll and Postgres plugin APIs.
+	- Bump pixl-xyapp to v2.1.37 for new color variants.
+- [`cd37f247`](https://github.com/pixlcore/xyops/commit/cd37f247f80dd6fb2ac5f4ab3c09b354219fafe4): CSS: Further adjustments to some category colors in light mode to increase contrast.
+- [`27fc506f`](https://github.com/pixlcore/xyops/commit/27fc506f1742ba3b70ac10bb25144d3a23bdb37a): Accessibility: Change category color text in color accessibility and high contrast modes.
+- [`5573760b`](https://github.com/pixlcore/xyops/commit/5573760b098578f7935f236b538aa79c9af1676b): Docs: Plugins: Add sample Event Plugin source code.
+- [`d61b39ec`](https://github.com/pixlcore/xyops/commit/d61b39ecf885a09783ccd9bc26eef62274efad46): Feature: Limit the maximum number of sub-jobs per workflow run to 1000 (configurable).
+- [`d279bd44`](https://github.com/pixlcore/xyops/commit/d279bd44a4e8a7f887fc57e0b4fda76384f09172): Feature: Delete Job: Add robustness, and auto-delete all workflow sub-jobs when parent is deleted.
+- [`446737a2`](https://github.com/pixlcore/xyops/commit/446737a2956c7752f4b16124e0ecccfd7fe09c43): NPM: add new allowScripts property, for upcoming NPM v12 restrictions.
+- [`0915e2a5`](https://github.com/pixlcore/xyops/commit/0915e2a565e6a316037cd2af8a518fb91b64bc9e): Feature: Deleting jobs now deletes input files as well as output files (unless they are linked to buckets or tickets).
+- [`d02c9e73`](https://github.com/pixlcore/xyops/commit/d02c9e73f5c1443479bc779b73074e8126a1f297): UI Tweak: Improve job file table to show magic link and user inputs.
+- [`9cf94b29`](https://github.com/pixlcore/xyops/commit/9cf94b298c2c48162711c3e23aa77839641b41b7): UI Tweak: Fix default event icons in drop-down menus, and add category colors there as well.
+- [`cd3d065e`](https://github.com/pixlcore/xyops/commit/cd3d065e4a2b9869f1dbcdd30eba1a2afd035ac3): UI Bug Fix: Category color may get stuck in search menus.
+
 ## Version v1.0.71
 
 > June 21, 2026

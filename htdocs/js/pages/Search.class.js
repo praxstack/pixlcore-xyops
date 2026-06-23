@@ -112,7 +112,7 @@ Page.Search = class Search extends Page.PageUtils {
 							id: 'fe_s_category',
 							title: 'Select Category',
 							placeholder: 'All Categories',
-							options: [['', 'Any Category']].concat( this.getCategoriesForMenu() ),
+							options: [ {id:'', title:'Any Category', class:'clr_plain'} ].concat( this.getCategoriesForMenu() ),
 							value: args.category || '',
 							default_icon: 'folder-open-outline',
 							'data-shrinkwrap': 1
