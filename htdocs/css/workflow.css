@@ -6,7 +6,7 @@ See the LICENSE.md file in this repository. */
 
 .wf_container {
 	position: relative;
-	/* overflow: hidden; */
+	overflow: hidden;
 	
 	user-select: none;
 	-moz-user-select: none;
@@ -134,6 +134,11 @@ See the LICENSE.md file in this repository. */
 }
 
 .wf_event_title {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 8px;
+	
 	height: 30px;
 	line-height: 30px;
 	background: var(--table-header-background-color);
@@ -141,14 +146,10 @@ See the LICENSE.md file in this repository. */
 	text-transform: none;
 	color: var(--label-color);
 	padding-left: 8px;
-	padding-right: 12px;
+	padding-right: 6px;
 	
-	border-top-left-radius: 16px;
-	border-top-right-radius: 16px;
-	
-	white-space: nowrap;
-	overflow: hidden;
-	text-overflow: ellipsis;
+	border-top-left-radius: 14px;
+	border-top-right-radius: 14px;
 }
 body.dark .wf_event_title {
 	background: var(--form-background-color);
@@ -159,6 +160,33 @@ body.dark .wf_event_title {
 .wf_event_title i.mdi:before {
 	transform: scale(1.25);
 }
+
+.wf_event_title_text {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.wf_event_title_pill {
+	display: inline-flex;
+	align-items: center;
+	
+	height: 18px;
+	padding: 0 8px;
+	
+	border-radius: 999px;
+	
+	font-size: 11px;
+	font-weight: bold;
+	
+	white-space: nowrap;
+	
+	color: white;
+	text-shadow: 0px 1px 0px rgba(0, 0, 0, 0.5);
+}
+.wf_event_title_pill.replay {
+	background-color: var(--cyan);
+}
+
 .wf_body {
 	padding: 8px;
 	max-height: 250px;
@@ -228,6 +256,7 @@ body.dark .wf_event_title {
 #d_wf_editor.zoom_quarter .wf_ent_title { display: none; }
 #d_wf_editor.zoom_quarter .wf_ent_label { display: none; }
 #d_wf_editor.zoom_quarter .wf_trig_label { display: none; }
+#d_wf_editor.zoom_quarter .wf_event_title_pill { display: none; }
 
 .wf_pole {
 	position: absolute;

@@ -2197,19 +2197,23 @@ Parameters:
 |---------------|------|-------------|
 | `id` | String | **(Required)** The [Job.id](data.md#job-id). |
 | `params` | Object | Optional. User parameters to merge into the job's `params` when resuming. |
+| `redirect` | String | Optional. For a suspended workflow sub-job, set this to a workflow Event or Job [Node ID](data.md#workflownode-id) to jump to after resume processing continues. |
 
 Behavior:
 
 - Fails if the job is not active or not suspended.
 - Records suspension metadata (duration, resumed at/by, IPs, user agent) in the job's suspend action details for audit.
 - If provided, merges `params` into current job parameters upon resume.  This is used to collect user parameters in the UI at resume time.
+- If provided, `redirect` customizes the parent workflow's next step after the sub-job resumes.  Instead of following the normal matching output wires from the suspended node, the workflow will launch the selected Event or Job node directly.
+- The UI only presents the resume redirect selector when resuming a workflow sub-job that was suspended at the end of the job, such as from an `On Complete`, `On Success`, `On Any Error`, or tag actions.  It is not shown for jobs suspended at the start of the job, such as from an `On Start` action.
 
 Example request:
 
 ```json
 {
     "id": "jabc123def",
-    "params": { "example": 12345 }
+    "params": { "example": 12345 },
+    "redirect": "node123"
 }
 ```
 

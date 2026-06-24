@@ -52,13 +52,13 @@ Special trigger option bubbles (Catch-Up, Range, Blackout, Delay, Precision) hav
 
 ### Event Nodes
 
-Event nodes place a pre-created event on the graph. You can override targets, algo, tags and user parameters for that use. When the node runs, the sub-job inherits the event's configuration plus the node's overrides. If the referenced event is a workflow, it must include an enabled manual trigger so the engine knows where to start the sub-workflow. 
+Event nodes place a pre-created event on the graph. You can override targets, algo, tags and user parameters for that use. When the node runs, the sub-job inherits the event's configuration plus the node's overrides. Event nodes can also replay a previous job for testing. If the referenced event is a workflow, it must include an enabled manual trigger so the engine knows where to start the sub-workflow.
 
 Event nodes present input, output and limit poles and can accept flow from triggers, other event/job nodes or controllers, and can send flow to other event/job nodes, actions, or controllers.
 
 ### Job Nodes
 
-Job nodes are ad-hoc jobs without a backing event. You choose a plugin and provide any parameters, plus optional title/icon/category, targets, algo and tags. Actions and limits attached in the graph are merged into the launched sub-job at runtime. Job nodes also include input, output and limit poles, accept flow from triggers/event/job/controllers, and can send to event/job/action/controller nodes.
+Job nodes are ad-hoc jobs without a backing event. You choose a plugin and provide any parameters, plus optional title/icon/category, targets, algo and tags. Actions and limits attached in the graph are merged into the launched sub-job at runtime. Job nodes can also replay a previous job for testing. Job nodes also include input, output and limit poles, accept flow from triggers/event/job/controllers, and can send to event/job/action/controller nodes.
 
 See [Event vs Job Nodes](#event-vs-job-nodes) below.
 
@@ -179,6 +179,17 @@ Conditions on wires from Event/Job nodes determine which outputs fire when a sub
 The editor defaults new wires from Event/Job outputs to success, and you can change the condition inline on the wire (just click it). Note that Action and Limit nodes do not forward flow: they are attached to the launched sub-job; actions require a condition and limits attach via the bottom pole.
 
 
+## Custom Resume Flow
+
+When a workflow sub-job is suspended by a completion action, the resume dialog lets the user choose how workflow flow should continue after the job is resumed.  The default option resumes normally, which means xyOps evaluates the completed sub-job result and follows any matching output wires from the current Event or Job node.
+
+The user can also choose a specific workflow Event or Job node to jump to.  In this mode, xyOps launches that selected node directly after the suspended sub-job resumes, instead of following the normal matching output wires from the suspended node.
+
+This selector is only shown when the suspended workflow sub-job is already at the end of its job lifecycle.  In other words, it appears for a Suspend Job action wired to a completion condition such as `On Complete`, `On Success`, `On Any Error`, `On Warning`, `On Critical`, `On Abort`, or a tag condition.  It is not shown when the Suspend Job action fires at the start of the job, such as `On Start`.
+
+The same behavior is available through the [resume_job](api.md#resume_job) API by passing the optional `redirect` property with the target workflow node ID.
+
+
 ## Continue After Controllers
 
 [Repeat](#repeat-controller), [Multiplex](#multiplex-controller) and [Split](#split-controller) are special because they launch the same Event or Job node multiple times.  For example, Repeat may run the same job 10 times, Multiplex may run it once per server in the target group, and Split may run it once per item or file.
@@ -206,6 +217,22 @@ The controller's "continue percentage" setting controls whether the "On Continue
 - If the success percentage is below the controller setting, the "On Continue" wires do not fire, and the workflow may finish if no other nodes are active.
 
 Each "On Continue" condition is scoped to the specific controller and Event/Job node pair it is attached to.  You can have multiple controller sections in the same workflow, and each one waits for its own controlled jobs before firing its own "On Continue" wires.
+
+
+## Replay Previous Jobs
+
+Event and Job nodes can be set to replay a previous job instead of launching a new one.  This is useful while testing a workflow where one step is expensive, slow, rate-limited, or difficult to reproduce.  For example, you can run a database query or AI request once, then replay that saved result while you keep working on the downstream nodes.
+
+To use this, edit an Event or Job node and choose a job from the "Replay Previous Job" menu.  xyOps lists previous workflow jobs that match the selected event or plugin.  After you save the node, the graph shows a "Replay" badge in the node header so you can quickly see which nodes are frozen.
+
+When the workflow reaches a replayed node:
+
+- xyOps does not launch a new sub-job.
+- The selected previous job is loaded and treated as if it just completed for this node.
+- The previous job's output `data`, output `files`, tags and `workflowData` are passed to downstream nodes.
+- The previous job's result is simulated too, so `On Success`, `On Any Error`, `On Warning`, `On Critical`, `On Abort` and tag conditions follow the same path they would have followed originally.
+
+Actions attached directly to the replayed node, such as emails, web hooks, suspend actions, or disable/delete actions, are not run again.  They are considered part of the replayed job's original lifecycle, so replay mode only feeds the saved result back into workflow flow.
 
 
 ## Passing Data Between Nodes
@@ -272,6 +299,7 @@ Event nodes can reference events of type `workflow`. To run as a sub-workflow:
 - **Conditional logic**: Use Decision for branching; duplicate the node for multi-branch flows and give each a clear title/icon.
 - **Staggering**: For massive multi-server jobs, add a Multiplex controller with a stagger to avoid spikes.
 - **File workloads**: Split on `files` to process one file per sub-job; combine results with Join.
+- **Replay while testing**: Use Replay on expensive or slow Event/Job nodes so downstream workflow logic can be tested repeatedly from a known saved result.
 
 
 ## Data Model Reference
@@ -279,7 +307,7 @@ Event nodes can reference events of type `workflow`. To run as a sub-workflow:
 Workflows are stored inside events. See [Data Structures](data.md) for complete schemas. Highlights:
 
 - [Workflow](data.md#workflow): `{ start?, nodes: [], connections: [] }`.
-- [Nodes](data.md#workflownode): `{ id, type: 'trigger'|'event'|'job'|'limit'|'action'|'controller', x, y, data? }`.
+- [Nodes](data.md#workflownode): `{ id, type: 'trigger'|'event'|'job'|'limit'|'action'|'controller', x, y, data? }`.  Event and Job node data may include `replay`, containing the previous job ID to replay.
 - [Connections](data.md#workflowconnection): `{ id, source, dest, condition? }` where `condition` matches the wire condition list above.
 - Controller data:
   - Multiplex: `{ controller: 'multiplex', stagger?, continue? }`

@@ -632,6 +632,34 @@ Page.Job = class Job extends Page.PageUtils {
 			if (event && event.fields) fields = event.fields;
 		}
 		
+		// possibly show list of wf nodes to redirect flow to
+		var node_list = null;
+		if ((job.state == 'complete') && job.workflow && job.workflow.job) {
+			var parent_job = app.activeJobs[job.workflow.job];
+			if (parent_job && parent_job.workflow && parent_job.workflow.nodes) {
+				node_list = parent_job.workflow.nodes.filter( node => !!node.type.match(/^(event|job)$/) ).map( function(node) {
+					if (node.type == 'event') {
+						var event = find_object( app.events, { id: node.data.event } ) || { title: `(Event #${node.data.event})` };
+						return {
+							id: node.id,
+							title: event.title,
+							icon: event.icon || 'file-clock-outline'
+						};
+					}
+					else {
+						var plugin = find_object( app.plugins, { id: node.data.plugin } ) || { title: `(Plugin #${node.data.plugin})` };
+						return {
+							id: node.id,
+							title: node.data.label || `${plugin.title} (#${node.id})`,
+							icon: plugin.icon || 'power-plug-outline'
+						};
+					}
+				} );
+				if (node_list.length) node_list[0].group = "Jump to Workflow Node:";
+				else node_list = null; // sanity
+			}
+		} // node_list
+		
 		app.clearError();
 		
 		var thing = '';
@@ -655,6 +683,26 @@ Page.Job = class Job extends Page.PageUtils {
 			
 			html += '</div>';
 		}
+		else if (node_list) {
+			// completing workflow job, present list of nodes to redirect to
+			html += `<div class="dialog_intro">Are you sure you want to resume ${thing}?</div>`;
+			html += '<div class="dialog_box_content scroll maximize">';
+			
+			// node list menu
+			html += this.getFormRow({
+				id: 'd_rj_redirect',
+				label: "Customize Resume Flow:",
+				content: this.getFormMenuSingle({
+					id: 'fe_rj_redirect',
+					title: "Select Resume Flow",
+					options: [ { id: '', title: "Resume Flow Normally", icon: 'clipboard-play-outline' } ].concat( node_list ),
+					value: ''
+				}),
+				caption: "Optionally select a custom workflow node to jump to after resuming.  By default the flow will resume normally by executing any nodes wired to the end of the current job node, with a matching condition."
+			});
+			
+			html += '</div>';
+		}
 		else {
 			// no user fields
 			html += `Are you sure you want to resume ${thing}?`;
@@ -664,21 +712,28 @@ Page.Job = class Job extends Page.PageUtils {
 			if (!result) return;
 			app.clearError();
 			
-			var values = {};
+			var req = {
+				id: job.id
+			};
 			if (fields.length) {
-				values = self.getParamValues(fields);
-				if (!values) return; // validation error
+				req.params = self.getParamValues(fields);
+				if (!req.params) return; // validation error
+			}
+			if (node_list) {
+				req.redirect = $('#fe_rj_redirect').val();
 			}
 			
 			Dialog.showProgress( 1.0, "Resuming Job..." );
 			
-			app.api.post( 'app/resume_job', { id: job.id, params: values }, function(resp) {
+			app.api.post( 'app/resume_job', req, function(resp) {
 				Dialog.hideProgress();
 				if (!self.active) return; // sanity
 				
 				app.showMessage('success', "The job was resumed successfully.");
 			} ); // api.post
 		}); // Dialog.confirm
+		
+		if (node_list) SingleSelect.init( $('#fe_rj_redirect') );
 		
 		Dialog.autoResize();
 	}

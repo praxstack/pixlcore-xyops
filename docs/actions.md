@@ -402,6 +402,8 @@ See [Plugins](plugins.md) for more details on plugins.
 
 Suspend the running job until a user resumes it in the UI. Optionally notify users and/or fire a web hook about the suspension.
 
+For workflow sub-jobs, a suspension that fires at job completion can optionally resume by jumping to a selected workflow Event or Job node.  This resume choice is only presented for completion actions, such as `On Complete`, `On Success`, `On Any Error` and other end-of-job conditions.  It is not presented for `On Start` suspensions.  See [Custom Resume Flow](workflows.md#custom-resume-flow) for details.
+
 Parameters:
 
 | Name | Type | Required | Description |

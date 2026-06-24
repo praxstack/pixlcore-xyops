@@ -141,6 +141,9 @@ cp.exec('curl -s ' + gh_releases_url, function (err, stdout, stderr) {
 	
 	if (!Array.isArray(releases)) die("Unexpected response from GitHub Releases API: " + gh_releases_url + ": Not an array");
 	
+	// filter out prereleases
+	releases = releases.filter( item => !item.prerelease );
+	
 	var release = null;
 	for (var idx = 0, len = releases.length; idx < len; idx++) {
 		var rel = releases[idx];

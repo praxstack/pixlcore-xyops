@@ -1563,6 +1563,12 @@ Page.Base = class Base extends Page {
 			color = 'blue';
 			text = 'In Progress';
 		}
+		else if (job.replay) {
+			icon = 'replay';
+			ocon = icon;
+			color = 'cyan';
+			text = 'Replay';
+		}
 		else if (!job.code) {
 			icon = 'check-circle';
 			ocon = icon + '-outline';

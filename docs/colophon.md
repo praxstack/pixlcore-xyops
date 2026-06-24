@@ -14,7 +14,6 @@ We stand on the shoulders of giants.  xyOps was built using these awesome open s
 | [bcryptjs](https://www.npmjs.com/package/bcryptjs) | Optimized bcrypt in JavaScript with zero dependencies. | BSD-3-Clause |
 | [better-sqlite3](https://www.npmjs.com/package/better-sqlite3) | The fastest and simplest library for SQLite in Node.js. | MIT |
 | [canvas-confetti](https://www.npmjs.com/package/canvas-confetti) | Performant confetti animation in the browser. | ISC |
-| [clean-css](https://www.npmjs.com/package/clean-css) | A fast and efficient CSS optimizer for Node.js platform and any modern browser. | MIT |
 | [codemirror](https://www.npmjs.com/package/codemirror) | Full-featured in-browser code editor. | MIT |
 | [diff](https://www.npmjs.com/package/diff) | JavaScript text diff implementation. | BSD-3-Clause |
 | [ioredis](https://www.npmjs.com/package/ioredis) | A robust Redis client for Node.js. | MIT |

@@ -3101,7 +3101,8 @@ Workflows are really just [Event](#event)s with an extra `workflow` property, wh
 				"params": {},
 				"targets": [],
 				"algo": "",
-				"tags": []
+				"tags": [],
+				"replay": "jmhc0du7n8k"
 			},
 			"x": 306,
 			"y": 235
@@ -3208,12 +3209,14 @@ Nodes may have a `data` property which contains information specific to the node
 
 | Node Type | Data Description |
 |-----------|------------------|
-| `event` | Will contain an `event` property, which refers to the [Event](#event), as well as properties that override defaults set in the event. |
-| `job` | Will contain most of the properties from the [Event](#event) object, to run an ad-hoc job without an explicit event definition. |
+| `event` | Will contain an `event` property, which refers to the [Event](#event), as well as properties that override defaults set in the event.  May also contain an optional `replay` property. |
+| `job` | Will contain most of the properties from the [Event](#event) object, to run an ad-hoc job without an explicit event definition.  May also contain an optional `replay` property. |
 | `trigger` | Not used.  Trigger nodes use their [WorkflowNode.id](#workflownode-id) property to link to the [Event.trigger](#event-trigger), which is the source of truth for the trigger. |
 | `limit` | Will contain properties from the [Limit](#limit) object. |
 | `action` | Will contain properties from the [Action](#action) object. |
 | `controller` | Will contain properties specific to the controller type.  See below. |
+
+For `event` and `job` nodes, the optional `replay` property may contain a previous [Job.id](#job-id).  When this is set, the workflow node replays that previous job instead of launching a new sub-job.  The replayed job contributes its original output data, output files, `workflowData`, tags and completion result to the workflow, and downstream wire conditions are evaluated from that replayed result.
 
 For controller nodes, see the following table for details on how the `data` property is used:
 
@@ -3385,13 +3388,16 @@ Contains information about all completed jobs inside the workflow.  The `jobs` o
 				"_error",
 				"_last"
 			],
-			"files": []
+			"files": [],
+			"replay": true
 		}
 	]
 }
 ```
 
 Each element of the array is a subset of properties copied from the [Job](#job) object.
+
+If the node was configured to replay a previous job, the completed-job stub will include `replay: true`.
 
 ### JobWorkflow.job
 

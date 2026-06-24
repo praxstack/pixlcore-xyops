@@ -2207,7 +2207,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			content: this.getFormMenuSingle({
 				id: 'fe_eja_web_hook',
 				title: 'Select Web Hook',
-				options: [ ['', '(None)'] ].concat( app.web_hooks ),
+				options: app.web_hooks,
 				value: action.web_hook,
 				default_icon: 'webhook'
 			}),
@@ -3888,7 +3888,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			else if (item.source == 'universal') disp_icon = 'lock';
 			
 			var tooltip = item.source ? `title="(Inherited from ${item.source})"` : 'title="(Inherited from event)"';
-			if ((item.source == 'category') || (item.source == 'universal')) tooltip += ` style="color:var(--cyan)"`;
+			// if ((item.source == 'category') || (item.source == 'universal')) tooltip += ` style="color:var(--cyan)"`;
 			
 			html += '<div>'; // grid unit
 			html += `<div class="info_label">${disp.condition.title}</div>`;
@@ -3932,7 +3932,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			else if (item.source == 'universal') icon = 'lock';
 			
 			var tooltip = item.source ? `title="(Inherited from ${item.source})"` : 'title="(Inherited from event)"';
-			if ((item.source == 'category') || (item.source == 'universal')) tooltip += ` style="color:var(--cyan)"`;
+			// if ((item.source == 'category') || (item.source == 'universal')) tooltip += ` style="color:var(--cyan)"`;
 			
 			html += '<div>'; // grid unit
 			html += `<div class="info_label">${nice_title}</div>`;
@@ -3961,9 +3961,13 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		var params = node.data.params;
 		var default_icon = (event.type == 'workflow') ? 'clipboard-flow-outline' : config.ui.data_types.event.icon;
 		var icon = event.icon || default_icon;
+		var pill = node.data.replay ? `<div class="wf_event_title_pill replay"><i class="mdi mdi-replay"></i>Replay</div>` : '';
 		
 		html += `<div id="d_wfn_${node.id}" class="${classes.join(' ')}" style="left:${pos.x}px; top:${pos.y}px;" aria-label="${encode_attrib_entities(event.title)}">
-			<div class="wf_event_title"><i class="mdi mdi-drag"></i><i class="mdi mdi-${icon}"></i>${event.title}</div>
+			<div class="wf_event_title">
+				<div class="wf_event_title_text"><i class="mdi mdi-drag"></i><i class="mdi mdi-${icon}"></i>${event.title}</div>
+				${pill}
+			</div>
 			<div class="wf_body">
 				<div class="wf_fallback_icon"><i class="mdi mdi-${icon}"></i></div>
 				<div class="summary_grid double">
@@ -4033,9 +4037,13 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		var params = node.data.params;
 		var title = node.data.label || plugin.title;
 		var icon = plugin.icon || config.ui.data_types.plugin.icon;
+		var pill = node.data.replay ? `<div class="wf_event_title_pill replay"><i class="mdi mdi-replay"></i>Replay</div>` : '';
 		
 		html += `<div id="d_wfn_${node.id}" class="${classes.join(' ')}" style="left:${pos.x}px; top:${pos.y}px;" aria-label="${encode_attrib_entities(title)}">
-			<div class="wf_event_title"><i class="mdi mdi-drag"></i><i class="mdi mdi-${icon}"></i>${title}</div>
+			<div class="wf_event_title">
+				<div class="wf_event_title_text"><i class="mdi mdi-drag"></i><i class="mdi mdi-${icon}"></i>${title}</div>
+				${pill}
+			</div>
 			<div class="wf_body">
 				<div class="wf_fallback_icon"><i class="mdi mdi-${icon}"></i></div>
 				<div class="summary_grid double">

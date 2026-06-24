@@ -1,5 +1,19 @@
 # xyOps Changelog
 
+## Version v1.0.74
+
+> June 23, 2026
+
+- [`97ff6f7c`](https://github.com/pixlcore/xyops/commit/97ff6f7cbe14ba0224cca478feeae6aa47662a77): Version 1.0.74
+- [`54ff7ac7`](https://github.com/pixlcore/xyops/commit/54ff7ac7ef191bc41d8b7e07ef84a453fb6e8878): Docs: Update docs for new workflow replay feature.
+- [`a347eacd`](https://github.com/pixlcore/xyops/commit/a347eacd86ba8582d7272cb2f16b6febb3bd6ea9): Docs: Update docs for new workflow suspend/resume jump to node feature.
+- [`bfa862a5`](https://github.com/pixlcore/xyops/commit/bfa862a5a9d55bcb08347db0c5abeb532a69a19e): Feature: Workflows: Add "Replay" feature to freeze a node to simulate a previous job.
+- [`106ebea0`](https://github.com/pixlcore/xyops/commit/106ebea03b7b83a22ff8654633c891f3a9fc03a8): CSS Tweak: Remove cyan color from inherited limits / actions
+- [`4022a714`](https://github.com/pixlcore/xyops/commit/4022a7146827a4416c56140ba12e4755f12d3b02): Feature: Workflow Suspend/Resume: Allow user to select a target node to jump to after resume.
+- [`c7e82892`](https://github.com/pixlcore/xyops/commit/c7e82892f04b54ebe8a676b741df3bed5761db4f): Meta: Release Script: Add protection against accidental release with local git changes.
+- [`9b9931f2`](https://github.com/pixlcore/xyops/commit/9b9931f228ee19cf779570b1204684d3550f7dbe): Feature: Upgrade System: Automatically filter out prereleases.
+- [`0f2fc549`](https://github.com/pixlcore/xyops/commit/0f2fc549e5baa4b635957e3eea4132ef02678592): Dependency: Remove "clean-css", as it is no longer maintained.
+
 ## Version v1.0.73
 
 > June 22, 2026

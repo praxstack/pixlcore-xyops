@@ -505,6 +505,13 @@
 				"label": "User Parameters:",
 				"caption": "Enter values for all the event-defined parameters here."
 			},
+			"d_wfde_replay": {
+				"label": "Replay Previous Job:",
+				"caption": "Optionally select a previous job to replay for this node."
+			},
+			"fe_wfde_replay": {
+				"title": "Select Previous Job"
+			},
 			
 			"d_wfdj_plugin": {
 				"label": "Plugin:",
@@ -557,6 +564,13 @@
 			"d_wfdj_user_params": {
 				"label": "Plugin Parameters:",
 				"caption": "Enter values for all the Plugin-defined parameters here."
+			},
+			"d_wfdj_replay": {
+				"label": "Replay Previous Job:",
+				"caption": "Optionally select a previous job to replay for this node."
+			},
+			"fe_wfdj_replay": {
+				"title": "Select Previous Job"
 			},
 			
 			"d_wfd_type": {

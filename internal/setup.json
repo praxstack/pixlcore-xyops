@@ -867,18 +867,7 @@
 			[ "generateInitialSecretKey", { "file": "conf/overrides.json" } ],
 			{
 				"action": "bundleCompress",
-				"minify": {
-					"level": {
-						"1": {
-							"all": false,
-							"removeWhitespace": true,
-							"removeComments": true
-						},
-						"2": {
-							"all": false
-						}
-					}
-				},
+				"minify": false,
 				"strip_source_maps": true,
 				"dest_bundle": "htdocs/css/_combo.css",
 				"src_html_file": "htdocs/index-dev.html",

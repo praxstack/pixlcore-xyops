@@ -1554,6 +1554,16 @@ Page.Workflows = class Workflows extends Page.Events {
 			content: '<div id="d_wfde_param_editor" class="plugin_param_editor_cont"></div>'
 		});
 		
+		// replay
+		html += this.getFormRow({
+			id: 'd_wfde_replay',
+			content: this.getFormMenuSingle({
+				id: 'fe_wfde_replay',
+				options: [ { id: '', title: config.ui.menu_bits.generic_loading } ],
+				value: node.data.replay || ''
+			})
+		});
+		
 		html += '</div>';
 		Dialog.confirm( title, html, btn, function(result) {
 			if (!result) return;
@@ -1564,6 +1574,7 @@ Page.Workflows = class Workflows extends Page.Events {
 			node.data.expression = $('#fe_wfde_expression').val();
 			node.data.algo = $('#fe_wfde_algo').val();
 			node.data.tags = $('#fe_wfde_tags').val();
+			node.data.replay = $('#fe_wfde_replay').val();
 			
 			if (self.event.id && (node.data.event == self.event.id)) {
 				return app.badField('#fe_wfde_event', config.ui.errors.wfde_event_self);
@@ -1605,8 +1616,8 @@ Page.Workflows = class Workflows extends Page.Events {
 			self.addState();
 		}); // Dialog.confirm
 		
+		SingleSelect.init( $('#fe_wfde_event, #fe_wfde_algo, #fe_wfde_replay') );
 		MultiSelect.init( $('#fe_wfde_targets, #fe_wfde_tags') );
-		SingleSelect.init( $('#fe_wfde_event, #fe_wfde_algo') );
 		
 		// handle event change
 		var do_change_event = function() {
@@ -1621,7 +1632,28 @@ Page.Workflows = class Workflows extends Page.Events {
 			}
 			
 			Dialog.autoResize();
-		}
+			
+			// search for previous jobs for replay menu
+			var squery = self.event.id ? `workflow:${self.event.id} event:${event.id}` : `event:${event.id} source:workflow`;
+			
+			app.api.get( 'app/search_jobs', { query: squery, limit: config.alt_items_per_page }, function(resp) {
+				var items = (resp.rows || []).map( function(job) {
+					var args = self.getJobDisplayArgs(job);
+					return { id: job.id, title: args.title, icon: args.icon };
+				} );
+				
+				if (!items.length) {
+					$('#fe_wfde_replay').html( render_menu_options( [{ id: '', title: config.ui.errors.fe_ex_job }], '' ) ).trigger('change');
+					return;
+				}
+				
+				// prepend none item
+				items.unshift({ id: '', title: config.ui.menu_bits.generic_none });
+				
+				// change menu items and fire onChange event for redraw
+				$('#fe_wfde_replay').html( render_menu_options( items, node.data.replay || '' ) ).trigger('change');
+			} ); // api.get
+		} // do_change_event
 		
 		$('#fe_wfde_event').on('change', do_change_event);
 		do_change_event();
@@ -1769,6 +1801,16 @@ Page.Workflows = class Workflows extends Page.Events {
 			content: '<div id="d_wfdj_param_editor" class="plugin_param_editor_cont"></div>'
 		});
 		
+		// replay
+		html += this.getFormRow({
+			id: 'd_wfdj_replay',
+			content: this.getFormMenuSingle({
+				id: 'fe_wfdj_replay',
+				options: [ { id: '', title: config.ui.menu_bits.generic_loading } ],
+				value: node.data.replay || ''
+			})
+		});
+		
 		html += '</div>';
 		Dialog.confirm( title, html, btn, function(result) {
 			if (!result) return;
@@ -1781,6 +1823,7 @@ Page.Workflows = class Workflows extends Page.Events {
 			node.data.expression = $('#fe_wfdj_expression').val();
 			node.data.algo = $('#fe_wfdj_algo').val();
 			node.data.tags = $('#fe_wfdj_tags').val();
+			node.data.replay = $('#fe_wfdj_replay').val();
 			
 			if (!node.data.targets.length) return app.badField('#fe_wfdj_targets');
 			
@@ -1821,7 +1864,7 @@ Page.Workflows = class Workflows extends Page.Events {
 		}); // Dialog.confirm
 		
 		MultiSelect.init( $('#fe_wfdj_targets, #fe_wfdj_tags') );
-		SingleSelect.init( $('#fe_wfdj_cat, #fe_wfdj_plugin, #fe_wfdj_algo') );
+		SingleSelect.init( $('#fe_wfdj_cat, #fe_wfdj_plugin, #fe_wfdj_algo, #fe_wfdj_replay') );
 		
 		// handle plugin change
 		var initial_plugin_id = $('#fe_wfdj_plugin').val();
@@ -1843,7 +1886,28 @@ Page.Workflows = class Workflows extends Page.Events {
 			Dialog.autoResize();
 			
 			old_plugin_id = plugin_id;
-		}
+			
+			// search for previous jobs for replay menu
+			var squery = self.event.id ? `workflow:${self.event.id} plugin:${plugin_id}` : `plugin:${plugin_id} source:workflow`;
+			
+			app.api.get( 'app/search_jobs', { query: squery, limit: config.alt_items_per_page }, function(resp) {
+				var items = (resp.rows || []).map( function(job) {
+					var args = self.getJobDisplayArgs(job);
+					return { id: job.id, title: args.title, icon: args.icon };
+				} );
+				
+				if (!items.length) {
+					$('#fe_wfdj_replay').html( render_menu_options( [{ id: '', title: config.ui.errors.fe_ex_job }], '' ) ).trigger('change');
+					return;
+				}
+				
+				// prepend none item
+				items.unshift({ id: '', title: config.ui.menu_bits.generic_none });
+				
+				// change menu items and fire onChange event for redraw
+				$('#fe_wfdj_replay').html( render_menu_options( items, node.data.replay || '' ) ).trigger('change');
+			} ); // api.get
+		} // do_change_plugin
 		
 		$('#fe_wfdj_plugin').on('change', do_change_plugin);
 		do_change_plugin();
