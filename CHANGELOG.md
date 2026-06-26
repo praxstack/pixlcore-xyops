@@ -1,5 +1,19 @@
 # xyOps Changelog
 
+## Version v1.0.75
+
+> June 25, 2026
+
+- [`ced3c94f`](https://github.com/pixlcore/xyops/commit/ced3c94f454c17611226f773e7e167b8a6feed2c): Version 1.0.75
+- [`29585b88`](https://github.com/pixlcore/xyops/commit/29585b8893616fac0b3c0dc0c9e4d9fc0d374d4e): Feature: Add table searching and sorting to secrets, and add new variable names column.
+- [`a2993821`](https://github.com/pixlcore/xyops/commit/a29938212ec46f3732fdb3ebacef41eaa44e8d52): Feature: Add configurable defaults for new tickets
+- [`51d1b404`](https://github.com/pixlcore/xyops/commit/51d1b404b7879ab47f0cc7d304893390a04888d9): UI: Improve "Abort Job" dialogs to include more job details (event name, state).
+- [`2a8ea194`](https://github.com/pixlcore/xyops/commit/2a8ea194eaffd3a9c3c1d01d61a803cd439913ef): UI: Alphabetically sort actions and limits menus, and tweak limit dialog.
+- [`f74f7fe8`](https://github.com/pixlcore/xyops/commit/f74f7fe87a9f46c6be22176a15115f36539ccb35): UI: Workflows: Fix Wait controller label, to include more precision.
+- [`ec8213b8`](https://github.com/pixlcore/xyops/commit/ec8213b892ab1703e297c64535fa85e6b7becd76): UI: Add dialog descriptions to the "Test Event" and "Test Workflow" dialogs.
+- [`0e043a67`](https://github.com/pixlcore/xyops/commit/0e043a67553822e31ec470e888e24d2f998d9d8e): Feature: Allow user to skip over job retry or start delay, by clicking the state label.  Fixes #343.
+- [`f29b1a63`](https://github.com/pixlcore/xyops/commit/f29b1a630e9632f1cb3afdc17724caaa5bc385f7): Feature: Add optional "Start Delay" to the Run Event action.  Fixes #344.
+
 ## Version v1.0.74
 
 > June 23, 2026

@@ -1286,7 +1286,7 @@ Page.Base = class Base extends Page {
 		else if (job.type == 'workflow') icon = 'clipboard-play-outline';
 		else if (job.workflow) icon = 'clipboard-clock-outline';
 		
-		var state = ucfirst(job.state || 'unknown');
+		var state = toTitleCase((job.state || 'unknown').replace(/_/g, ' '));
 		if (state == 'Complete') state = get_text_from_seconds( app.epoch - job.completed, true, true ) + ' ago';
 		
 		var title = `${job.id} (${event_title} &mdash; ${state})`;
@@ -1354,7 +1354,7 @@ Page.Base = class Base extends Page {
 			case 'start_delay':
 				extra_classes.push('pending');
 				cx = 0;
-				label = '<i class="mdi mdi-clock-fast"></i>';
+				label = '<i class="mdi mdi-clock-outline"></i>';
 			break;
 			
 			case 'retry_delay':
@@ -1411,7 +1411,7 @@ Page.Base = class Base extends Page {
 			indeterminate = false; 
 			
 			if (job.suspended) label = '<i class="mdi mdi-motion-pause-outline"></i>';
-			else if (job.state == 'start_delay') label = '<i class="mdi mdi-clock-fast"></i>';
+			else if (job.state == 'start_delay') label = '<i class="mdi mdi-clock-outline"></i>';
 			else if (job.state == 'retry_delay') label = '<i class="mdi mdi-update"></i>';
 			else if (job.state == 'queued') label = '<i class="mdi mdi-tray-full"></i>';
 		}
@@ -1486,6 +1486,7 @@ Page.Base = class Base extends Page {
 		var nice_state = ucfirst(job.state || 'unknown');
 		var now = app.epoch;
 		var icon = 'progress-question';
+		var clicky = '';
 		
 		switch (job.state) {
 			case 'queued': 
@@ -1499,12 +1500,14 @@ Page.Base = class Base extends Page {
 				icon = 'clock-fast';
 				nice_state = 'Start Delay';
 				if (job.until && (job.until > now)) nice_state += ' (' + get_text_from_seconds(job.until - now, true, true) + ')';
+				if (app.hasPrivilege('run_jobs')) clicky = `$P().doSkipJobDelay('${job.id}')`;
 			break;
 			
 			case 'retry_delay': 
 				icon = 'update';
 				nice_state = 'Retry Delay';
 				if (job.until && (job.until > now)) nice_state += ' (' + get_text_from_seconds(job.until - now, true, true) + ')';
+				if (app.hasPrivilege('run_jobs')) clicky = `$P().doSkipJobDelay('${job.id}')`;
 			break;
 			
 			case 'ready': icon = 'play-speed'; break;
@@ -1515,12 +1518,13 @@ Page.Base = class Base extends Page {
 		}
 		
 		// special case: If job is complete but not final, it's actually still finishing
-		if ((job.state == 'complete') && !job.final) { icon = 'progress-check'; nice_state = 'Finishing'; }
+		if ((job.state == 'complete') && !job.final) { icon = 'progress-check'; nice_state = 'Finishing'; clicky = ''; }
 		
 		// special case for suspended job
-		if (job.suspended && !job.final) { icon = 'motion-pause-outline'; nice_state = 'Suspended'; }
+		if (job.suspended && !job.final) { icon = 'motion-pause-outline'; nice_state = 'Suspended'; clicky = ''; }
 		
-		return '<i class="mdi mdi-' + icon + '">&nbsp;</i>' + nice_state;
+		if (clicky) return `<span class="nowrap link danger" onClick="${clicky}"><i class="mdi mdi-${icon}"></i>${nice_state}</span>`;
+		else return '<i class="mdi mdi-' + icon + '">&nbsp;</i>' + nice_state;
 	}
 	
 	getNiceJobAvgCPU(job) {
@@ -2042,6 +2046,54 @@ Page.Base = class Base extends Page {
 		);
 		
 		return this.buildOptGroup( servers, title || "Servers:", default_icon || 'router-network' );
+	}
+	
+	// Job Utilities
+	
+	doSkipJobDelay(job_id) {
+		// show dialog to skip job delay
+		var self = this;
+		var job = app.activeJobs[job_id];
+		if (!job) return app.doError("Could not find the job, or it is no longer active: #" + job_id);
+		
+		var args = this.getJobDisplayArgs(job);
+		var title = "Skip Job Delay";
+		var btn = ['clock-fast', 'Skip Delay'];
+		var html = `Are you sure you want to skip the delay for job #${args.title}?`;
+		
+		Dialog.confirmDanger( title, html, btn, function(result) {
+			if (!result) return;
+			app.clearError();
+			Dialog.showProgress( 1.0, "Skipping Job Delay..." );
+			
+			app.api.post( 'app/job_skip_delay', { id: job_id }, function(resp) {
+				Dialog.hideProgress();
+				app.showMessage('success', "The job delay was successfully skipped.");
+			} ); // api.post
+		} ); // confirm
+	}
+	
+	doAbortJob(job_id) {
+		// abort any active job in any state
+		var self = this;
+		var job = app.activeJobs[job_id];
+		if (!job) return app.doError("Could not find the job, or it is no longer active: #" + job_id);
+		
+		var args = this.getJobDisplayArgs(job);
+		var title = "Abort Job";
+		var btn = ['alert-decagram', 'Abort'];
+		var html = `Are you sure you want to abort the job #${args.title}?`;
+		
+		Dialog.confirmDanger( title, html, btn, function(result) {
+			if (!result) return;
+			app.clearError();
+			Dialog.showProgress( 1.0, "Aborting Job..." );
+			
+			app.api.post( 'app/abort_job', { id: job_id }, function(resp) {
+				Dialog.hideProgress();
+				app.showMessage('success', config.ui.messages.job_aborted);
+			} ); // api.post
+		} ); // confirm
 	}
 	
 	// Upcoming Job Prediction

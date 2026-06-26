@@ -1290,7 +1290,9 @@ Page.Workflows = class Workflows extends Page.Events {
 		
 		if (node.type == 'limit') return app.doError('wf_test_no_limit');
 		
-		var html = '<div class="dialog_box_content scroll maximize">';
+		var html = '';
+		html += `<div class="dialog_intro">${config.ui.intros.wfd_test_selection}</div>`;
+		html += '<div class="dialog_box_content scroll maximize">';
 		
 		// test scope
 		html += this.getFormRow({

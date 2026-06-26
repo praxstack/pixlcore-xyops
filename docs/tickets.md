@@ -55,12 +55,69 @@ Related APIs:
 - [delete_ticket](api.md#delete_ticket): Permanently delete a ticket.
 - [search_tickets](api.md#search_tickets): Search with pagination and sorting; supports compact mode for grids.
 
+### New Ticket Template
+
+You can set defaults for new tickets using the [client.new_ticket_template](config.md#client-new_ticket_template) configuration object.  This is useful when your team wants every new ticket to start with common metadata, a standard due date, or a global notification list.
+
+The template applies to tickets created manually in the UI, and parts of it are also used by tickets created from job and alert actions.  Specifically, ticket actions inherit `cc`, `notify`, and `due` from the template, unless the action supplies its own due date.
+
+Here is a simple example:
+
+```json
+"new_ticket_template": {
+	"type": "issue",
+	"status": "open",
+	"assignees": ["oncall"],
+	"cc": ["ops-manager"],
+	"notify": ["ops-team@company.com"],
+	"tags": ["production"],
+	"due": "3 days"
+}
+```
+
+Common options include:
+
+- `assignees`: Default list of user IDs assigned to manually-created tickets.
+- `cc`: Default list of xyOps usernames who should receive ticket update emails.
+- `notify`: Default list of custom email addresses that should receive ticket update emails.
+- `tags`: Default list of tag IDs applied to manually-created tickets.
+- `type`: Default ticket type, such as `issue`, `change`, or `maintenance`.
+- `status`: Default ticket status, usually `open` or `draft`.
+- `due`: Default due date.  This may be an absolute Unix epoch time, or a relative date delta such as `"1 day"`, `"3 days"`, `"1 week"`, or `"1d"`.
+
+For example, to copy an operations manager on all new tickets, set:
+
+```json
+"new_ticket_template": {
+	"cc": ["ops-manager"]
+}
+```
+
+To send all ticket update emails to an outside mailing list, use `notify`:
+
+```json
+"new_ticket_template": {
+	"notify": ["ops-team@company.com"]
+}
+```
+
+To make every new ticket due three days after it is created, set:
+
+```json
+"new_ticket_template": {
+	"due": "3 days"
+}
+```
+
+When a ticket has a due date and remains open past that date, xyOps sends daily overdue reminder emails to ticket assignees.  Ticket update emails still go to assignees, `cc` users, and `notify` email addresses.
+
 ### Job Action
 
 Jobs can create tickets on start or completion based on outcome or tags. Add a "Create Ticket" action to an event, workflow node, or via category/universal defaults. When fired:
 
 - The ticket body is auto-generated (template: job) with useful context (job details, performance, log excerpt, links).
 - Category, tags, and server fields are auto-populated from the job when applicable.
+- The ticket can inherit default `cc`, `notify`, and `due` values from `client.new_ticket_template`.
 - The new ticket is added to the originating job for traceability.
 
 See [Actions](actions.md) for action configuration.
@@ -71,6 +128,7 @@ Alerts can create tickets when an alert fires (or clears, if desired). Add a "Cr
 
 - The ticket body is auto-generated (template: alert) with server and alert context, links to the alert and server, and optionally active job summaries.
 - Server is populated from the firing server; tags can be set from the action.
+- The ticket can inherit default `cc`, `notify`, and `due` values from `client.new_ticket_template`.
 - The new ticket is added to the alert invocation record.
 
 

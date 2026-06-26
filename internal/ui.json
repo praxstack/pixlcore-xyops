@@ -331,6 +331,13 @@
 			"title": "Select tags to apply",
 			"placeholder": "Select tags to apply..."
 		},
+		"d_nt_due_preset": {
+			"label": "Due Date:",
+			"caption": "Optionally select the ticket due date (reminders are sent out after this)."
+		},
+		"fe_nt_due_preset": {
+			"title": "Select Due Date"
+		},
 		
 		"d_ete_scope": {
 			"label": "Test Scope:",
@@ -924,6 +931,7 @@
 	"intros": {
 		"wfd_exp_builder": "This allows you to explore output data from recently completed jobs, and pick out a specific JSON key path to use for your controller expression.",
 		"wfd_data_importer": "Select a previously completed job to import the data and/or files from it.  This is so you can use it as simulated input for your test run.",
+		"wfd_test_selection": "Use this form to test the workflow in its current state.  This runs an ad-hoc test job with your edits, and any custom settings below.  The test will launch in a new browser tab in order to preserve your current context.",
 		"server_data_explorer": "This allows you to explore monitoring data from your servers, and pick out a specific JSON key path to use for your expression.",
 		"job_create_ticket": "Use this form to create a new ticket, which will reference the current job.",
 		"job_add_to_ticket": "Attach the current job to an existing ticket.",
@@ -1222,32 +1230,32 @@
 		{ "id": "alert_cleared", "title": "Alert Cleared", "icon": "check-circle-outline" }
 	],
 	
-	"action_type_menu": [ 
-		{ "id": "email", "title": "Send Email", "icon": "email-arrow-right-outline" },
-		{ "id": "web_hook", "title": "Web Hook", "icon": "webhook" },
-		{ "id": "run_event", "title": "Run Event", "icon": "calendar-clock" },
-		{ "id": "channel", "title": "Notify Channel", "icon": "bullhorn-outline" },
-		{ "id": "snapshot", "title": "Take Snapshot", "icon": "monitor-screenshot" },
-		{ "id": "store", "title": "Store Bucket", "icon": "import" },
-		{ "id": "fetch", "title": "Fetch Bucket", "icon": "export" },
-		{ "id": "ticket", "title": "Create Ticket", "icon": "text-box-plus-outline" },
-		{ "id": "suspend", "title": "Suspend Job", "icon": "motion-pause-outline" },
+	"action_type_menu": [
 		{ "id": "tag", "title": "Apply Tags", "icon": "tag-plus-outline" },
-		{ "id": "disable", "title": "Disable Event", "icon": "cancel" },
+		{ "id": "ticket", "title": "Create Ticket", "icon": "text-box-plus-outline" },
 		{ "id": "delete", "title": "Delete Event", "icon": "trash-can-outline" },
-		{ "id": "plugin", "title": "Plugin", "icon": "power-plug" }
+		{ "id": "disable", "title": "Disable Event", "icon": "cancel" },
+		{ "id": "fetch", "title": "Fetch Bucket", "icon": "export" },
+		{ "id": "channel", "title": "Notify Channel", "icon": "bullhorn-outline" },
+		{ "id": "plugin", "title": "Plugin", "icon": "power-plug" },
+		{ "id": "run_event", "title": "Run Event", "icon": "calendar-clock" },
+		{ "id": "email", "title": "Send Email", "icon": "email-arrow-right-outline" },
+		{ "id": "store", "title": "Store Bucket", "icon": "import" },
+		{ "id": "suspend", "title": "Suspend Job", "icon": "motion-pause-outline" },
+		{ "id": "snapshot", "title": "Take Snapshot", "icon": "monitor-screenshot" },
+		{ "id": "web_hook", "title": "Web Hook", "icon": "webhook" }
 	],
 	
-	"limit_type_menu": [ 
-		{ "id": "time", "title": "Max Run Time", "icon": "timer-remove-outline" },
+	"limit_type_menu": [
 		{ "id": "job", "title": "Max Concurrent Jobs", "icon": "traffic-light-outline" },
-		{ "id": "log", "title": "Max Output Size", "icon": "file-remove-outline" },
-		{ "id": "mem", "title": "Max Memory Limit", "icon": "memory" },
 		{ "id": "cpu", "title": "Max CPU % Limit", "icon": "chip" },
-		{ "id": "retry", "title": "Max Retry Limit", "icon": "redo-variant" },
-		{ "id": "queue", "title": "Max Queue Limit", "icon": "tray-full" },
+		{ "id": "day", "title": "Max Daily Limit", "icon": "calendar-cursor-outline" },
 		{ "id": "file", "title": "Max File Limit", "icon": "file-multiple-outline" },
-		{ "id": "day", "title": "Max Daily Limit", "icon": "calendar-cursor-outline" }
+		{ "id": "mem", "title": "Max Memory Limit", "icon": "memory" },
+		{ "id": "log", "title": "Max Output Size", "icon": "file-remove-outline" },
+		{ "id": "queue", "title": "Max Queue Limit", "icon": "tray-full" },
+		{ "id": "retry", "title": "Max Retry Limit", "icon": "redo-variant" },
+		{ "id": "time", "title": "Max Run Time", "icon": "timer-remove-outline" }
 	],
 	
 	"workflow_node_types": [
@@ -1483,6 +1491,26 @@
 		"created": "created ticket.",
 		"delete": "deleted comment."
 	},
+	
+	"new_ticket_dues": [
+		{ "id": "", "title": "(None)" },
+		{ "id": "1d", "title": "+1 Day" },
+		{ "id": "2d", "title": "+2 Days" },
+		{ "id": "3d", "title": "+3 Days" },
+		{ "id": "4d", "title": "+4 Days" },
+		{ "id": "5d", "title": "+5 Days" },
+		{ "id": "6d", "title": "+6 Days" },
+		{ "id": "7d", "title": "+1 Week" },
+		{ "id": "14d", "title": "+2 Weeks" },
+		{ "id": "21d", "title": "+3 Weeks" },
+		{ "id": "30d", "title": "+1 Month" },
+		{ "id": "60d", "title": "+2 Months" },
+		{ "id": "90d", "title": "+3 Months" },
+		{ "id": "120d", "title": "+4 Months" },
+		{ "id": "150d", "title": "+5 Months" },
+		{ "id": "180d", "title": "+6 Months" },
+		{ "id": "365d", "title": "+1 Year" }
+	],
 	
 	"new_hook_templates": [
 		{

@@ -51,38 +51,36 @@ Page.Secrets = class Secrets extends Page.PageUtils {
 		var html = '';
 		
 		if (!resp.rows) resp.rows = [];
-		this.secrets = resp.rows;
-		
-		// NOTE: Don't change these columns without also changing the responsive css column collapse rules in style.css
-		var cols = ['<i class="mdi mdi-checkbox-marked-outline"></i>', 'Vault Title', 'Vault ID', 'Author', 'Created', 'Actions'];
+		this.secrets = resp.rows.map( function(item) {
+			return { ...item, names_sort: item.names.sort().join(', ') };
+		} );
 		
 		html += '<div class="box">';
 		html += '<div class="box_title">';
+			html += '<div class="box_title_widget" style="overflow:visible; margin-left:0;"><i class="mdi mdi-magnify" onClick="$(this).next().focus()">&nbsp;</i><input type="text" placeholder="Filter" value="" data-id="t_secrets" onInput="$P().applyTableFilter(this)"></div>';
 			html += 'Secret Vaults';
 		html += '</div>';
 		html += '<div class="box_content table">';
 		
-		var grid_opts = {
-			rows: this.secrets,
-			cols: cols,
-			data_type: 'vault',
-			class: 'data_grid secret_grid',
-			grid_template_columns: 'min-content' + ' auto'.repeat( cols.length - 1 ),
-			empty_msg: 'No secret vaults found.'
+		var table_opts = {
+			id: 't_secrets',
+			item_name: 'vault',
+			sort_by: 'title',
+			sort_dir: 1,
+			filter: '',
+			column_ids: ['title', 'id', 'names_sort', 'username', 'created', '' ],
+			column_labels: ['Vault Title', 'Vault ID', 'Variable Names', 'Author', 'Created', 'Actions']
 		};
 		
-		html += this.getBasicGrid( grid_opts, function(item, idx) {
+		html += this.getSortableTable( this.secrets, table_opts, function(item) {
 			var actions = [];
-			actions.push( '<button class="link" onClick="$P().edit_secret('+idx+')"><b>Edit</b></button>' );
-			actions.push( '<button class="link danger" onClick="$P().delete_secret('+idx+')"><b>Delete</b></button>' );
+			actions.push( `<button class="link" data-secret="${item.id}" onClick="$P().edit_secret_from_list(this)"><b>Edit</b></button>` );
+			actions.push( `<button class="link danger" data-secret="${item.id}" onClick="$P().delete_secret_from_list(this)"><b>Delete</b></button>` );
 			
 			var tds = [
-				'<div class="td_drag_handle" style="cursor:default">' + self.getFormCheckbox({
-					checked: item.enabled,
-					onChange: '$P().toggle_secret_enabled(this,' + idx + ')'
-				}) + '</div>',
 				'<b>' + self.getNiceSecret(item, true) + '</b>',
 				'<span class="mono">' + item.id + '</span>',
+				'<span class="mono">' + item.names_sort + '</span>',
 				self.getNiceUser(item.username, app.isAdmin()),
 				'<span title="' + self.getNiceDateTimeText(item.created) + '">' + self.getNiceDate(item.created) + '</span>',
 				actions.join(' | ')
@@ -107,24 +105,17 @@ Page.Secrets = class Secrets extends Page.PageUtils {
 		this.addPageDescription();
 	}
 	
-	toggle_secret_enabled(elem, idx) {
-		// toggle secret checkbox, actually do the enable/disable here, update row
-		var self = this;
-		var item = this.secrets[idx];
-		
-		if (config.alt_to_toggle && !app.lastClick.altKey) {
-			$(elem).prop('checked', !$(elem).is(':checked'));
-			return app.showMessage('warning', "Accidental Click Protection: Please hold the Alt/Opt key to toggle this checkbox.", 8);
-		}
-		
-		item.enabled = !!$(elem).is(':checked');
-		
-		app.api.post( 'app/update_secret', item, function(resp) {
-			if (!self.active) return; // sanity
-			
-			if (item.enabled) $(elem).closest('ul').removeClass('disabled');
-			else $(elem).closest('ul').addClass('disabled');
-		} );
+	edit_secret_from_list(elem) {
+		// edit secret from sortable table
+		var id = $(elem).data('secret');
+		Nav.go( '#Secrets?sub=edit&id=' + id );
+	}
+	
+	delete_secret_from_list(elem) {
+		// delete secret from sortable table
+		var id = $(elem).data('secret');
+		this.secret = find_object( this.secrets, { id } );
+		this.show_delete_secret_dialog();
 	}
 	
 	edit_secret(idx) {

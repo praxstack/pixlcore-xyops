@@ -1231,6 +1231,7 @@ Page.Events = class Events extends Page.PageUtils {
 	
 	doAbortJob(id) {
 		// abort job, clicked from active or queued tables
+		// overriding this function here so queued jobs can be aborted
 		Dialog.confirmDanger( 'Abort Job', "Are you sure you want to abort the job &ldquo;<b>" + id + "</b>&rdquo;?", ['alert-decagram', 'Abort'], function(result) {
 			if (!result) return;
 			app.clearError();
@@ -2284,7 +2285,9 @@ Page.Events = class Events extends Page.PageUtils {
 		var event = this.get_event_form_json();
 		if (!event) return; // error
 		
-		var html = '<div class="dialog_box_content scroll maximize">';
+		var html = '';
+		html += `<div class="dialog_intro">Use this form to test the event in its current state.  This runs an ad-hoc test job with your edits, and any custom settings below.  The test will launch in a new browser tab in order to preserve your current context.</div>`;
+		html += '<div class="dialog_box_content scroll maximize">';
 		
 		// actions
 		html += this.getFormRow({

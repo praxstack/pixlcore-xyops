@@ -332,17 +332,19 @@ Parameters:
 | `ticket_type` | String | Yes | See [Ticket.type](data.md#ticket-type) (e.g., `issue`, `task`, etc.). |
 | `ticket_assignees` | Array(String) | Yes | Array of [User.username](data.md#user-username) assignees. |
 | `ticket_tags` | Array(String) | Optional | Array of [Tag.id](data.md#tag-id) values. |
+| `ticket_due` | String or Number | Optional | Due date for the new ticket.  This may be an absolute Unix epoch time, or a relative date delta such as `1 day`, `3 days`, or `1d`. |
 
 Example (job error):
 
 ```json
 {
-    "enabled": true,
-    "condition": "error",
-    "type": "ticket",
-    "ticket_type": "issue",
-    "ticket_assignees": ["oncall"],
-    "ticket_tags": ["production", "sev2"]
+	"enabled": true,
+	"condition": "error",
+	"type": "ticket",
+	"ticket_type": "issue",
+	"ticket_assignees": ["oncall"],
+	"ticket_tags": ["production", "sev2"],
+	"ticket_due": "3 days"
 }
 ```
 
@@ -350,16 +352,17 @@ Example (alert cleared):
 
 ```json
 {
-    "enabled": true,
-    "condition": "alert_cleared",
-    "type": "ticket",
-    "ticket_type": "task",
-    "ticket_assignees": ["sre"],
-    "ticket_tags": ["cleanup"]
+	"enabled": true,
+	"condition": "alert_cleared",
+	"type": "ticket",
+	"ticket_type": "task",
+	"ticket_assignees": ["sre"],
+	"ticket_tags": ["cleanup"],
+	"ticket_due": "1 day"
 }
 ```
 
-See [Tickets](tickets.md) for more details on tickets.
+See [Tickets](tickets.md) for more details on tickets, including the [New Ticket Template](tickets.md#new-ticket-template), which can provide default `cc`, `notify`, and `due` values.
 
 ### Plugin
 

@@ -365,20 +365,6 @@ Page.Dashboard = class Dashboard extends Page.PageUtils {
 		this.div.find('#d_dash_active > .box_content').removeClass('loading').html(html);
 	}
 	
-	doAbortJob(id) {
-		// abort job, clicked from active or queued tables
-		Dialog.confirmDanger( 'Abort Job', "Are you sure you want to abort the job &ldquo;<b>" + id + "</b>&rdquo;?", ['alert-decagram', 'Abort'], function(result) {
-			if (!result) return;
-			app.clearError();
-			Dialog.showProgress( 1.0, "Aborting Job..." );
-			
-			app.api.post( 'app/abort_job', { id: id }, function(resp) {
-				Dialog.hideProgress();
-				app.showMessage('success', config.ui.messages.job_aborted);
-			} ); // api.post
-		} ); // confirm
-	}
-	
 	renderInternalJobs() {
 		// render relevant active internal jobs for user (heavy)
 		// - Std Props: id, title, type, started, progress, username?

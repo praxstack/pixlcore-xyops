@@ -682,6 +682,11 @@ When set to `true`, will show a colored badge on sidebar sections for outdated s
 
 Provides sensible defaults for new events (triggers, limits, actions). Used to prefill the New Event form.
 
+### client.new_ticket_template
+<!-- Title: New Ticket Template -->
+
+Provides defaults for creating new tickets. Used to prefill the New Ticket form.
+
 ### client.chart_defaults
 <!-- Title: Graph Defaults -->
 

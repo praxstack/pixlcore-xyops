@@ -321,6 +321,20 @@
 			"notes": ""
 		},
 		
+		"new_ticket_template": {
+			"status": "open",
+			"assignees": [],
+			"due": "",
+			"type": "change",
+			"subject": "",
+			"body": "",
+			"category": "",
+			"server": "",
+			"cc": [],
+			"notify": [],
+			"tags": []
+		},
+		
 		"chart_defaults": {
 			"lineWidth": 2,
 			"lineJoin": "round",

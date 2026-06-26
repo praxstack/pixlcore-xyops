@@ -2223,6 +2223,41 @@ Example response:
 { "code": 0 }
 ```
 
+### job_skip_delay
+
+```
+POST /api/app/job_skip_delay/v1
+```
+
+Skip the current delay period for an active job. Requires the [run_jobs](privileges.md#run_jobs) privilege and a valid session or API Key, plus category/target access to the job's event. The job must be active and currently waiting in a delay state, such as `start_delay` or `retry_delay`.
+
+Parameters:
+
+| Property Name | Type | Description |
+|---------------|------|-------------|
+| `id` | String | **(Required)** The [Job.id](data.md#job-id). |
+
+Example request:
+
+```json
+{
+	"id": "jabc123def"
+}
+```
+
+Example response:
+
+```json
+{ "code": 0 }
+```
+
+Behavior:
+
+- Fails if the job is not active.
+- Fails if the job is not currently waiting on a delay.
+- Records a meta log entry on the job noting that the delay was manually skipped.
+- The job's delay deadline is moved to the current time, allowing normal scheduling to continue immediately.
+
 ### job_toggle_notify_me
 
 ```

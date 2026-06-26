@@ -767,6 +767,8 @@ Page.Job = class Job extends Page.PageUtils {
 		var btn = ['text-box-plus-outline', "Create Ticket"];
 		var html = '';
 		
+		var ticket_template = app.config.new_ticket_template || {};
+		
 		var event = job.event ? find_object(app.events, { id: job.event }) : { title: "n/a" };
 		if (!event) event = { title: "n/a" };
 		
@@ -821,6 +823,18 @@ Page.Job = class Job extends Page.PageUtils {
 			})
 		});
 		
+		// due
+		html += this.getFormRow({
+			id: 'd_nt_due_preset',
+			content: this.getFormMenuSingle({
+				id: 'fe_nt_due_preset',
+				options: config.ui.new_ticket_dues,
+				value: ticket_template.due || '',
+				auto_add: true,
+				// 'data-shrinkwrap': 1
+			})
+		});
+		
 		html += '</div>';
 		Dialog.confirm( title, html, btn, function(result) {
 			if (!result) return;
@@ -834,11 +848,11 @@ Page.Job = class Job extends Page.PageUtils {
 				status: 'open',
 				category: job.category || '',
 				assignees: $('#fe_nt_assignees').val(),
-				cc: [],
-				notify: [],
+				cc: ticket_template.cc || [],
+				notify: ticket_template.notify || [],
 				events: [],
 				tags: $('#fe_nt_tags').val(),
-				due: '',
+				due: $('#fe_nt_due_preset').val(),
 				server: job.server || ''
 			};
 			if (!ticket.subject.length) return app.badField('#fe_nt_subject', "Please enter a subject line for the ticket.");
@@ -864,7 +878,7 @@ Page.Job = class Job extends Page.PageUtils {
 		}); // Dialog.confirm
 		
 		MultiSelect.init( $('#fe_nt_assignees, #fe_nt_tags') );
-		SingleSelect.init( $('#fe_nt_type') );
+		SingleSelect.init( $('#fe_nt_type, #fe_nt_due_preset') );
 		Dialog.autoResize();
 		
 		$('#fe_nt_subject').focus().get(0).setSelectionRange( new_subject.length, new_subject.length );
