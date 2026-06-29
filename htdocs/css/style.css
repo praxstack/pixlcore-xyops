@@ -1424,6 +1424,45 @@ body.dark .cat_lime:hover { color: color-mix(in oklch, var(--color-lime-500) 90%
 body.dark .cat_grass { color: var(--color-grass-500); }
 body.dark .cat_grass:hover { color: color-mix(in oklch, var(--color-grass-500) 90%, white); }
 
+/* Category Progress Bar Overrides */
+
+ul.grid_row.clr_red div.progress_bar_container,
+ul.grid_row.clr_fire div.progress_bar_container,
+ul.grid_row.clr_orange div.progress_bar_container,
+ul.grid_row.clr_tangerine div.progress_bar_container,
+ul.grid_row.clr_amber div.progress_bar_container,
+ul.grid_row.clr_gold div.progress_bar_container,
+ul.grid_row.clr_yellow div.progress_bar_container,
+ul.grid_row.clr_lemon div.progress_bar_container,
+ul.grid_row.clr_lime div.progress_bar_container,
+ul.grid_row.clr_grass div.progress_bar_container,
+ul.grid_row.clr_green div.progress_bar_container,
+ul.grid_row.clr_mint div.progress_bar_container,
+ul.grid_row.clr_emerald div.progress_bar_container,
+ul.grid_row.clr_aqua div.progress_bar_container,
+ul.grid_row.clr_teal div.progress_bar_container,
+ul.grid_row.clr_turquoise div.progress_bar_container,
+ul.grid_row.clr_cyan div.progress_bar_container,
+ul.grid_row.clr_ice div.progress_bar_container,
+ul.grid_row.clr_skyblue div.progress_bar_container,
+ul.grid_row.clr_azure div.progress_bar_container,
+ul.grid_row.clr_blue div.progress_bar_container,
+ul.grid_row.clr_sapphire div.progress_bar_container,
+ul.grid_row.clr_indigo div.progress_bar_container,
+ul.grid_row.clr_lavender div.progress_bar_container,
+ul.grid_row.clr_violet div.progress_bar_container,
+ul.grid_row.clr_orchid div.progress_bar_container,
+ul.grid_row.clr_purple div.progress_bar_container,
+ul.grid_row.clr_magenta div.progress_bar_container,
+ul.grid_row.clr_fuchsia div.progress_bar_container,
+ul.grid_row.clr_hotpink div.progress_bar_container,
+ul.grid_row.clr_pink div.progress_bar_container,
+ul.grid_row.clr_blush div.progress_bar_container,
+ul.grid_row.clr_rose div.progress_bar_container {
+	background-color: color-mix(in srgb, var(--border-color) 25%, transparent);
+	box-shadow: inset -1px -1px 0px rgba(255, 255, 255, 0.25), inset 1px 1px 0px rgba(0, 0, 0, 0.25);
+}
+
 /* Box Grid */
 
 .box_grid {
@@ -1529,6 +1568,10 @@ div.header_title.error {
 
 .data_grid div.td_drag_handle > div.checkbox_container {
 	top: 4px;
+}
+
+.data_grid div.td_drag_handle[draggable]:hover {
+	color: var(--theme-color);
 }
 
 body.dark .data_grid ul.disabled div {

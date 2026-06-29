@@ -1892,6 +1892,9 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			disp.condition = { title: "On " + tag.title };
 			disp.condition.icon = tag.icon || 'tag-outline';
 		}
+		else if (!disp.condition && (action.condition == 'instant')) {
+			disp.condition = { title: "Instant", icon: 'creation' };
+		}
 		
 		switch (action.type) {
 			case 'email':
@@ -2197,7 +2200,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 				value: action.body || '',
 				style: 'display:none'
 			}) + `<div class="button small secondary" onClick="$P().edit_eja_body()"><i class="mdi mdi-text-box-edit-outline">&nbsp;</i>Edit Email Content...</div>`,
-			caption: 'Optionally provide a custom email subject and body, using Markdown source.  See [Custom Email](#Docs/actions/custom-email) for details.'
+			caption: 'Optionally provide a custom email body, using Markdown source.  See [Custom Email](#Docs/actions/custom-email) for details.'
 		});
 		
 		// web hook
@@ -2445,7 +2448,6 @@ Page.PageUtils = class PageUtils extends Page.Base {
 					action.users = $('#fe_eja_users').val();
 					action.email = $('#fe_eja_email').val();
 					action.body = $('#fe_eja_body').val().trim();
-					// if (!action.email) return app.badField('#fe_eja_email', "Please enter one or more email addresses for the action.");
 					if (!action.users.length && !action.email) {
 						return app.doError("Please select one or more users, or enter one or more custom email addresses.");
 					}
@@ -4612,7 +4614,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		var self = this;
 		var html = '';
 		var rows = this.params;
-		var cols = ['<i class="mdi mdi-menu"></i>', 'Label', 'ID', 'Type', 'Description', 'Actions'];
+		var cols = ['<i class="mdi mdi-drag-horizontal" title="Use row drag handles to reorder"></i>', 'Label', 'ID', 'Type', 'Description', 'Actions'];
 		var add_link = '<div class="button small secondary" onClick="$P().editParam(-1)"><i class="mdi mdi-plus-circle-outline">&nbsp;</i>New Param...</div>';
 		
 		if (!rows.length) return add_link;
@@ -4707,7 +4709,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			}
 			
 			return [
-				'<div class="td_drag_handle" draggable="true" title="Drag to reorder"><i class="mdi mdi-menu"></i></div>',
+				'<div class="td_drag_handle" draggable="true" title="Drag to reorder"><i class="mdi mdi-drag-horizontal"></i></div>',
 				'<div class="td_big nowrap ellip"><a class="link" onClick="$P().editParam('+idx+')"><i class="mdi mdi-' + nice_label_icon + '"></i>' + item.title + '</a></div>',
 				'<div class="ellip mono">' + nice_id + '</div>',
 				'<div class="ellip"><i class="mdi mdi-' + nice_icon + '">&nbsp;</i>' + nice_type + '</div>',

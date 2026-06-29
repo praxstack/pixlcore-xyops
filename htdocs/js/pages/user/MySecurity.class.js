@@ -83,7 +83,7 @@ Page.MySecurity = class MySecurity extends Page.Base {
 				
 				// users
 				case 'user_create':
-					desc = 'User created: <b>' + item.user.username + "</b> (" + item.user.full_name + ")";
+					desc = 'User created: <b>' + encode_entities(item.user.username) + "</b> (" + encode_entities(item.user.full_name) + ")";
 				break;
 				case 'user_update':
 					desc = 'User account details updated.';
@@ -114,7 +114,7 @@ Page.MySecurity = class MySecurity extends Page.Base {
 				'' + self.getNiceDateTimeText( item.epoch ) + '',
 				'<div class="td_big" style="white-space:nowrap; font-weight:normal;"><i class="mdi mdi-' + item_type.icon + '">&nbsp;</i>' + item_type.label + '</div>',
 				'' + desc + '',
-				'' + (item.useragent || 'n/a') + '',
+				'' + encode_entities(item.useragent || 'n/a') + '',
 				self.getNiceIP(item.ip),
 				'' + (actions.join(' | ') || '-') + ''
 			];

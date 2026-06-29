@@ -1,5 +1,23 @@
 # xyOps Changelog
 
+## Version v1.0.76
+
+> June 28, 2026
+
+- [`3ce7fb46`](https://github.com/pixlcore/xyops/commit/3ce7fb468d1cf25a255932af290dd76901dcca71): Version 1.0.76
+- [`56dbd3a4`](https://github.com/pixlcore/xyops/commit/56dbd3a40bcb66589d0254c56186ccd06435e625): Feature: Dynamically fire an action on-demand during a job: Instant Job Actions
+- [`84c2fef9`](https://github.com/pixlcore/xyops/commit/84c2fef95fc01764ce833276e260c99356a0b77f): Icons: Add xyOps logo icon into the MDI icon set.  Fixes #278.
+- [`414b70c4`](https://github.com/pixlcore/xyops/commit/414b70c432a713c7863ed8b47be88502d7af7b74): CSS: Improve progress bars in table rows with category colors, so they blend together better.
+- [`9901c8a1`](https://github.com/pixlcore/xyops/commit/9901c8a1b522027b7de5afd22c88067031f67c86): Bug Fix: Custom email action with a custom body should not need to include To/Subject macros.  Fixes #349
+- [`0266ebee`](https://github.com/pixlcore/xyops/commit/0266ebee2033aaa8aa5c259e61abc5514afd8a74): Security: Improve user field sanitization on settings update.
+- [`5e6ac1dd`](https://github.com/pixlcore/xyops/commit/5e6ac1ddf0347faff6a42f01f29b16f595410a46): Bug Fix: Do not check marketplace versions on login unless user is admin.  Fixes #348.
+- [`e0df7306`](https://github.com/pixlcore/xyops/commit/e0df73063dfbda617e2a6cbd668cc2c0234f8e8e): Security: Encode a few more user values before rendering into HTML.
+- [`c11e4417`](https://github.com/pixlcore/xyops/commit/c11e441782e9aa198f4c22c6739210224f76a2f5): Bug Fix: Tighten action controls so only official event fields may be specified.
+- [`d99a7f14`](https://github.com/pixlcore/xyops/commit/d99a7f14181a4f7a544d39e191e3884022152a6c): Bug Fix: Satellite config port was set to webserver port during bootstrap.  Fixes #345.
+- [`7f96ae47`](https://github.com/pixlcore/xyops/commit/7f96ae47e0a3c56b7dcfaff199bbd92bddfb4358): Feature: Add full sort options to draggable sort tables (Categories, Groups, Monitors).  Fixes #346
+- [`74fd36a5`](https://github.com/pixlcore/xyops/commit/74fd36a5de709f5eaf68be0dbc7732f1dbee0c0b): UI Tweak: Change Category / Group / Monitor / Param drag sort icon, to make its purpose a bit clearer.
+- [`9bcc96b5`](https://github.com/pixlcore/xyops/commit/9bcc96b5bac883b58861b46d664795f554d62ad7): Docs: Add new Trust document.
+
 ## Version v1.0.75
 
 > June 25, 2026

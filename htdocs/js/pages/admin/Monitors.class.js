@@ -57,7 +57,7 @@ Page.Monitors = class Monitors extends Page.PageUtils {
 		this.monitors = resp.rows;
 		
 		// NOTE: Don't change these columns without also changing the responsive css column collapse rules in style.css
-		var cols = ['<i class="mdi mdi-menu"></i>', 'Monitor Title', 'Monitor ID', 'Groups', 'Author', 'Created', 'Actions'];
+		var cols = ['<i class="mdi mdi-drag-horizontal" title="Use row drag handles to reorder"></i>', 'Monitor Title', 'Monitor ID', 'Groups', 'Author', 'Created', 'Actions'];
 		
 		html += '<div class="box">';
 		html += '<div class="box_title">';
@@ -78,7 +78,7 @@ Page.Monitors = class Monitors extends Page.PageUtils {
 			if (app.hasPrivilege('delete_monitors')) actions.push( '<button class="link danger" onClick="$P().delete_monitor('+idx+')"><b>Delete</b></button>' );
 			
 			var tds = [
-				'<div class="td_drag_handle" draggable="true" title="Drag to reorder"><i class="mdi mdi-menu"></i></div>',
+				'<div class="td_drag_handle" draggable="true" title="Drag to reorder"><i class="mdi mdi-drag-horizontal"></i></div>',
 				'<b>' + self.getNiceMonitor(item, app.hasPrivilege('edit_monitors')) + '</b>',
 				'<span class="mono">' + item.id + '</span>',
 				self.getNiceGroupList(item.groups, '(All)'),
@@ -94,8 +94,9 @@ Page.Monitors = class Monitors extends Page.PageUtils {
 		html += '</div>'; // box_content
 		
 		html += '<div class="box_buttons">';
-			if (app.hasAnyPrivilege('create_monitors', 'edit_monitors')) html += '<div class="button phone_collapse" onClick="$P().doFileImportPrompt()"><i class="mdi mdi-cloud-upload-outline">&nbsp;</i><span>Import File...</span></div>';
-			html += '<div class="button secondary phone_collapse" onClick="$P().go_history()"><i class="mdi mdi-history">&nbsp;</i><span>Revision History...</span></div>';
+			if (app.hasAnyPrivilege('create_monitors', 'edit_monitors')) html += '<div class="button mobile_collapse" onClick="$P().doFileImportPrompt()"><i class="mdi mdi-cloud-upload-outline">&nbsp;</i><span>Import File...</span></div>';
+			html += '<div class="button mobile_collapse" onClick="$P().do_sort()"><i class="mdi mdi-sort">&nbsp;</i><span>Sort Items...</span></div>';
+			html += '<div class="button secondary mobile_collapse" onClick="$P().go_history()"><i class="mdi mdi-history">&nbsp;</i><span>Revision History...</span></div>';
 			if (app.hasPrivilege('create_monitors')) html += '<div class="button default" id="btn_new" onClick="$P().edit_monitor(-1)"><i class="mdi mdi-plus-circle-outline">&nbsp;</i><span>New Monitor...</span></div>';
 		html += '</div>'; // box_buttons
 		
@@ -133,6 +134,104 @@ Page.Monitors = class Monitors extends Page.PageUtils {
 		app.api.post( 'app/multi_update_monitor', data, function(resp) {
 			// done
 		} );
+	}
+	
+	do_sort() {
+		// pop dialog to allow the user to select a single-time sort
+		var self = this;
+		var title = "Sort Monitors";
+		var btn = ['sort', 'Apply Sort'];
+		var html = '';
+		
+		html += `<div class="dialog_intro">This allows you to perform a one-time full sort of all your monitors.  Otherwise, drag controls are provided so you can custom sort them to your liking.</div>`;
+		html += '<div class="dialog_box_content scroll maximize">';
+		
+		// sort options
+		var sort_items = [
+			{ id: 'title_asc', title: 'Alphabetical', icon: 'sort-ascending', group: 'Title:' },
+			{ id: 'title_desc', title: 'Reverse Alphabetical', icon: 'sort-descending' },
+			
+			{ id: 'author_asc', title: 'Alphabetical', icon: 'sort-ascending', group: 'Author:' },
+			{ id: 'author_desc', title: 'Reverse Alphabetical', icon: 'sort-descending' },
+			
+			{ id: 'date_desc', title: 'Newest on Top', icon: 'sort-descending', group: 'Creation Date:' },
+			{ id: 'date_asc', title: 'Oldest on Top', icon: 'sort-ascending' }
+		];
+		html += this.getFormRow({
+			id: 'd_ml_sort',
+			label: "Sort Method:",
+			content: this.getFormMenuSingle({
+				id: 'fe_ml_sort',
+				title: "Select Sort Method",
+				options: sort_items,
+				value: ''
+			}),
+			caption: "Select the desired sort column and sort direction."
+		});
+		
+		html += '</div>';
+		
+		Dialog.confirm( title, html, btn, function(result) {
+			if (!result) return;
+			app.clearError();
+			
+			var sort_method = $('#fe_ml_sort').val();
+			var monitors = deep_copy_object( self.monitors );
+			
+			// perform sort on temp copy
+			switch (sort_method) {
+				case 'title_asc':
+					monitors.sort( function(a, b) {
+						return a.title.toLowerCase().localeCompare( b.title.toLowerCase() );
+					} );
+				break;
+				
+				case 'title_desc':
+					monitors.sort( function(a, b) {
+						return b.title.toLowerCase().localeCompare( a.title.toLowerCase() );
+					} );
+				break;
+				
+				case 'author_asc':
+					monitors.sort( function(a, b) {
+						return a.username.toLowerCase().localeCompare( b.username.toLowerCase() );
+					} );
+				break;
+				
+				case 'author_desc':
+					monitors.sort( function(a, b) {
+						return b.username.toLowerCase().localeCompare( a.username.toLowerCase() );
+					} );
+				break;
+				
+				case 'date_desc':
+					sort_by( monitors, 'created', { type: 'number', dir: -1 } );
+				break;
+				
+				case 'date_asc':
+					sort_by( monitors, 'created', { type: 'number', dir: 1 } );
+				break;
+			} // switch
+			
+			// compose request for multi_update_category api
+			var req = {
+				items: monitors.map( function(monitor, idx) {
+					return { id: monitor.id, sort_order: idx };
+				} )
+			};
+			
+			Dialog.showProgress( 1.0, "Sorting Monitors..." );
+			
+			app.api.post( 'app/multi_update_monitor', req, function(resp) {
+				Dialog.hideProgress();
+				if (!self.active) return; // sanity
+				
+				app.showMessage('success', "The monitors were sorted successfully.");
+			} ); // api.post
+		}); // Dialog.confirm
+		
+		SingleSelect.init( $('#fe_ml_sort') );
+		Dialog.autoResize();
 	}
 	
 	edit_monitor(idx) {

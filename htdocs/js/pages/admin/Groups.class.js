@@ -66,11 +66,11 @@ Page.Groups = class Groups extends Page.ServerUtils {
 		this.groups = resp.rows;
 		
 		// NOTE: Don't change these columns without also changing the responsive css column collapse rules in style.css
-		var cols = ['<i class="mdi mdi-menu"></i>', 'Group Title', 'Group ID', 'Servers', 'Hostname Pattern', 'Author', 'Created', 'Actions'];
+		var cols = ['<i class="mdi mdi-drag-horizontal" title="Use row drag handles to reorder"></i>', 'Group Title', 'Group ID', 'Servers', 'Hostname Pattern', 'Author', 'Created', 'Actions'];
 		// if (app.isGroupLimited()) cols.shift();
 		
-		var drag_handle = app.isGroupLimited() ? '<div class="td_drag_handle" style="cursor:default"><i class="mdi mdi-menu"></i></div>' : 
-			'<div class="td_drag_handle" draggable="true" title="Drag to reorder"><i class="mdi mdi-menu"></i></div>';
+		var drag_handle = app.isGroupLimited() ? '<div class="td_drag_handle" style="cursor:default"><i class="mdi mdi-drag-horizontal"></i></div>' : 
+			'<div class="td_drag_handle" draggable="true" title="Drag to reorder"><i class="mdi mdi-drag-horizontal"></i></div>';
 		
 		html += '<div class="box">';
 		html += '<div class="box_title">';
@@ -116,8 +116,9 @@ Page.Groups = class Groups extends Page.ServerUtils {
 		html += '</div>'; // box_content
 		
 		html += '<div class="box_buttons">';
-			if (app.hasAnyPrivilege('create_groups', 'edit_groups')) html += '<div class="button phone_collapse" onClick="$P().doFileImportPrompt()"><i class="mdi mdi-cloud-upload-outline">&nbsp;</i><span>Import File...</span></div>';
-			html += '<div class="button secondary phone_collapse" onClick="$P().go_history()"><i class="mdi mdi-history">&nbsp;</i><span>Revision History...</span></div>';
+			if (app.hasAnyPrivilege('create_groups', 'edit_groups')) html += '<div class="button mobile_collapse" onClick="$P().doFileImportPrompt()"><i class="mdi mdi-cloud-upload-outline">&nbsp;</i><span>Import File...</span></div>';
+			html += '<div class="button mobile_collapse" onClick="$P().do_sort()"><i class="mdi mdi-sort">&nbsp;</i><span>Sort Items...</span></div>';
+			html += '<div class="button secondary mobile_collapse" onClick="$P().go_history()"><i class="mdi mdi-history">&nbsp;</i><span>Revision History...</span></div>';
 			if (app.hasPrivilege('create_groups')) html += '<div class="button default" id="btn_new" onClick="$P().do_new_from_list()"><i class="mdi mdi-plus-circle-outline">&nbsp;</i><span>New Group...</span></div>';
 		html += '</div>'; // box_buttons
 		
@@ -165,6 +166,104 @@ Page.Groups = class Groups extends Page.ServerUtils {
 		app.api.post( 'app/multi_update_group', data, function(resp) {
 			// done
 		} );
+	}
+	
+	do_sort() {
+		// pop dialog to allow the user to select a single-time sort
+		var self = this;
+		var title = "Sort Groups";
+		var btn = ['sort', 'Apply Sort'];
+		var html = '';
+		
+		html += `<div class="dialog_intro">This allows you to perform a one-time full sort of all your groups.  Otherwise, drag controls are provided so you can custom sort them to your liking.</div>`;
+		html += '<div class="dialog_box_content scroll maximize">';
+		
+		// sort options
+		var sort_items = [
+			{ id: 'title_asc', title: 'Alphabetical', icon: 'sort-ascending', group: 'Title:' },
+			{ id: 'title_desc', title: 'Reverse Alphabetical', icon: 'sort-descending' },
+			
+			{ id: 'author_asc', title: 'Alphabetical', icon: 'sort-ascending', group: 'Author:' },
+			{ id: 'author_desc', title: 'Reverse Alphabetical', icon: 'sort-descending' },
+			
+			{ id: 'date_desc', title: 'Newest on Top', icon: 'sort-descending', group: 'Creation Date:' },
+			{ id: 'date_asc', title: 'Oldest on Top', icon: 'sort-ascending' }
+		];
+		html += this.getFormRow({
+			id: 'd_gl_sort',
+			label: "Sort Method:",
+			content: this.getFormMenuSingle({
+				id: 'fe_gl_sort',
+				title: "Select Sort Method",
+				options: sort_items,
+				value: ''
+			}),
+			caption: "Select the desired sort column and sort direction."
+		});
+		
+		html += '</div>';
+		
+		Dialog.confirm( title, html, btn, function(result) {
+			if (!result) return;
+			app.clearError();
+			
+			var sort_method = $('#fe_gl_sort').val();
+			var groups = deep_copy_object( self.groups );
+			
+			// perform sort on temp copy
+			switch (sort_method) {
+				case 'title_asc':
+					groups.sort( function(a, b) {
+						return a.title.toLowerCase().localeCompare( b.title.toLowerCase() );
+					} );
+				break;
+				
+				case 'title_desc':
+					groups.sort( function(a, b) {
+						return b.title.toLowerCase().localeCompare( a.title.toLowerCase() );
+					} );
+				break;
+				
+				case 'author_asc':
+					groups.sort( function(a, b) {
+						return a.username.toLowerCase().localeCompare( b.username.toLowerCase() );
+					} );
+				break;
+				
+				case 'author_desc':
+					groups.sort( function(a, b) {
+						return b.username.toLowerCase().localeCompare( a.username.toLowerCase() );
+					} );
+				break;
+				
+				case 'date_desc':
+					sort_by( groups, 'created', { type: 'number', dir: -1 } );
+				break;
+				
+				case 'date_asc':
+					sort_by( groups, 'created', { type: 'number', dir: 1 } );
+				break;
+			} // switch
+			
+			// compose request for multi_update_category api
+			var req = {
+				items: groups.map( function(group, idx) {
+					return { id: group.id, sort_order: idx };
+				} )
+			};
+			
+			Dialog.showProgress( 1.0, "Sorting Groups..." );
+			
+			app.api.post( 'app/multi_update_group', req, function(resp) {
+				Dialog.hideProgress();
+				if (!self.active) return; // sanity
+				
+				app.showMessage('success', "The groups were sorted successfully.");
+			} ); // api.post
+		}); // Dialog.confirm
+		
+		SingleSelect.init( $('#fe_gl_sort') );
+		Dialog.autoResize();
 	}
 	
 	do_new_from_list() {

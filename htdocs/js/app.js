@@ -51,6 +51,10 @@ app.extend({
 		delete resp.code;
 		window.config = resp.config;
 		
+		// add our custom icon names
+		iconFontNames.push('xyops');
+		iconFontNames.sort();
+		
 		// add progress bar into CodeEditor
 		CodeEditor.showProgress = Dialog.showProgress;
 		CodeEditor.hideProgress = Dialog.hideProgress;
@@ -778,7 +782,7 @@ app.extend({
 		// check all installed marketplace plugins to see if any are out of date
 		var self = this;
 		if (config.outdated_badges === false) return;
-		if (!this.hasPrivilege('create_plugins') || !this.hasPrivilege('edit_plugins')) return;
+		if (!this.isAdmin()) return;
 		
 		// fetch data if needed
 		if (!this.marketRows) {
