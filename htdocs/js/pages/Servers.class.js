@@ -840,6 +840,7 @@ Page.Servers = class Servers extends Page.ServerUtils {
 		this.server = server;
 		var snapshot = this.snapshot = data;
 		this.online = online;
+		this.dummy = snapshot.data && snapshot.data.dummy;
 		this.charts = {};
 		
 		this.updateHeaderNav();
@@ -1119,6 +1120,10 @@ Page.Servers = class Servers extends Page.ServerUtils {
 		
 		SingleSelect.init( this.div.find('select.sel_chart_size') );
 		
+		if (this.dummy) {
+			this.div.find('#d_vs_quickmon, #d_vs_mem, #d_vs_cpus, #d_vs_dash_grid, #d_vs_monitors, #d_vs_conts, #d_vs_procs, #d_vs_conns, #d_vs_ifaces, #d_vs_fs').hide();
+		}
+		
 		this.updateServerStats();
 		this.renderMonitorGrid();
 		this.renderMemDetails();
@@ -1146,6 +1151,7 @@ Page.Servers = class Servers extends Page.ServerUtils {
 	
 	renderContainers() {
 		// show containers if server is a docker host
+		if (this.dummy) return;
 		if (!this.snapshot || !this.snapshot.data || !this.snapshot.data.docker) {
 			this.div.find('#d_vs_conts').hide();
 			return;
@@ -1516,9 +1522,9 @@ Page.Servers = class Servers extends Page.ServerUtils {
 				// self.getShortDateTime( job.started ),
 				'<div id="d_vs_jt_server_' + job.id + '">' + self.getNiceServer(job.server, true) + '</div>',
 				'<div id="d_vs_jt_state_' + job.id + '">' + self.getNiceJobState(job) + '</div>',
-				'<div id="d_vs_jt_elapsed_' + job.id + '">' + self.getNiceJobElapsedTime(job, false) + '</div>',
+				'<div id="d_vs_jt_elapsed_' + job.id + '">' + self.getNiceJobElapsedTime(job, true, false) + '</div>',
 				'<div id="d_vs_jt_progress_' + job.id + '">' + self.getNiceJobProgressBar(job) + '</div>',
-				'<div id="d_vs_jt_remaining_' + job.id + '">' + self.getNiceJobRemainingTime(job, false) + '</div>',
+				'<div id="d_vs_jt_remaining_' + job.id + '">' + self.getNiceJobRemainingTime(job, true, true) + '</div>',
 				
 				'<button class="link danger" onClick="$P().doAbortJob(\'' + job.id + '\')"><b>Abort Job</b></button>'
 			];
@@ -1544,16 +1550,19 @@ Page.Servers = class Servers extends Page.ServerUtils {
 	
 	renderMonitorGrid() {
 		// show grid of monitors
+		if (this.dummy) return;
 		this.div.find('#d_vs_dash_grid').html( this.getMonitorGrid(this.snapshot) );
 	}
 	
 	renderMemDetails() {
 		// show memory details
+		if (this.dummy) return;
 		this.div.find('#d_vs_mem > .box_content').html( this.getMemDetails(this.snapshot) );
 	}
 	
 	renderCPUDetails() {
 		// show cpu details
+		if (this.dummy) return;
 		this.div.find('#d_vs_cpus > .box_content').html( this.getCPUDetails(this.snapshot) );
 	}
 	
@@ -1565,6 +1574,7 @@ Page.Servers = class Servers extends Page.ServerUtils {
 		
 		// check for quickmon support on server
 		if (!server.info.quickmon) return;
+		if (this.dummy) return;
 		
 		html += '<div class="chart_grid_horiz ' + (app.getPref('chart_size_quick') || 'medium') + '">';
 		
@@ -1784,6 +1794,8 @@ Page.Servers = class Servers extends Page.ServerUtils {
 		var monitors = this.monitors = [];
 		var min_epoch = app.epoch - 3600;
 		var html = '';
+		if (this.dummy) return;
+		
 		html += '<div class="chart_grid_horiz ' + (app.getPref('chart_size') || 'medium') + '">';
 		
 		app.monitors.forEach( function(mon_def) {
@@ -1977,8 +1989,8 @@ Page.Servers = class Servers extends Page.ServerUtils {
 			jobs.forEach( function(job) {
 				div.find('#d_vs_jt_state_' + job.id).html( self.getNiceJobState(job) );
 				div.find('#d_vs_jt_server_' + job.id).html( self.getNiceServer(job.server, true) );
-				div.find('#d_vs_jt_elapsed_' + job.id).html( self.getNiceJobElapsedTime(job, false) );
-				div.find('#d_vs_jt_remaining_' + job.id).html( self.getNiceJobRemainingTime(job, false) );
+				div.find('#d_vs_jt_elapsed_' + job.id).html( self.getNiceJobElapsedTime(job, true, false) );
+				div.find('#d_vs_jt_remaining_' + job.id).html( self.getNiceJobRemainingTime(job, true, true) );
 				
 				// update progress bar without redrawing it (so animation doesn't jitter)
 				self.updateJobProgressBar(job, '#d_vs_jt_progress_' + job.id + ' > div.progress_bar_container');

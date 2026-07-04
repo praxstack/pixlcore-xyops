@@ -3387,7 +3387,7 @@ Page.Base = class Base extends Page {
 		var self = this;
 		var $file = $('#fe_code_import');
 		if ($file.length) $file.remove();
-		$file = $('<input type="file" id="fe_code_import" accept=".txt,.html,.css,.js,.json,.ts,.jsx,.tsx,.py,.sh,.c,.cpp,.h,.hpp,.md,.yaml,.yml,.xml,.csv,.ini,.log,.conf,.php,.rb,.pl" style="display:none">').appendTo('body');
+		$file = $('<input type="file" id="fe_code_import" accept=".txt,.html,.css,.js,.json,.ts,.jsx,.tsx,.py,.sh,.c,.cpp,.h,.hpp,.md,.yaml,.yml,.xml,.csv,.ini,.log,.conf,.php,.rb,.pl,.ics,.ical" style="display:none">').appendTo('body');
 		
 		$file.on('change', function() {
 			if (this.files && this.files.length && CodeEditor.onDragDrop) CodeEditor.onDragDrop( this.files );

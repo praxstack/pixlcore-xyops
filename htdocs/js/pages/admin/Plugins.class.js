@@ -79,9 +79,11 @@ Page.Plugins = class Plugins extends Page.PageUtils {
 		
 		html += this.getSortableTable( this.plugins, table_opts, function(item) {
 			var actions = [];
-			if (item.marketplace && app.hasPrivilege('create_plugins')) actions.push( `<button class="link" data-plugin="${item.id}" onClick="$P().clone_plugin_from_list(this)"><b>Clone</b></button>` );
+			if (item.marketplace && app.hasPrivilege('edit_plugins')) actions.push( `<button class="link" data-plugin="${item.id}" onClick="$P().view_mkt_plugin_from_list(this)"><b>View</b></button>` );
 			else if (app.hasPrivilege('edit_plugins')) actions.push( `<button class="link" data-plugin="${item.id}" onClick="$P().edit_plugin_from_list(this)"><b>Edit</b></button>` );
-			if (app.hasPrivilege('delete_plugins')) actions.push( `<button class="link danger" data-plugin="${item.id}" onClick="$P().delete_plugin_from_list(this)"><b>Delete</b></button>` );
+			
+			if (item.marketplace && app.hasPrivilege('edit_plugins')) actions.push( `<button class="link danger" data-plugin="${item.id}" onClick="$P().delete_plugin_from_list(this)"><b>Uninstall</b></button>` );
+			else if (app.hasPrivilege('delete_plugins')) actions.push( `<button class="link danger" data-plugin="${item.id}" onClick="$P().delete_plugin_from_list(this)"><b>Delete</b></button>` );
 			
 			var tds = [
 				'<b>' + self.getNicePlugin(item, app.hasPrivilege('edit_plugins')) + '</b>',
@@ -109,6 +111,13 @@ Page.Plugins = class Plugins extends Page.PageUtils {
 		this.div.html( html ).buttonize();
 		this.setupBoxButtonFloater();
 		this.addPageDescription();
+	}
+	
+	view_mkt_plugin_from_list(elem) {
+		// jump to marketplace detail page for plugin
+		var id = $(elem).data('plugin');
+		var plugin = find_object( this.plugins, { id } );
+		Nav.go('#Marketplace?id=' + encodeURIComponent(plugin.marketplace.id));
 	}
 	
 	clone_plugin_from_list(elem) {
@@ -282,7 +291,8 @@ Page.Plugins = class Plugins extends Page.PageUtils {
 	cancel_plugin_edit() {
 		// cancel editing plugin and return to list
 		$('.button.save').removeClass('primary');
-		Nav.go( '#Plugins?sub=list' );
+		if (this.plugin.marketplace) Nav.go('#Marketplace?id=' + encodeURIComponent(this.plugin.marketplace.id));
+		else Nav.go( '#Plugins?sub=list' );
 	}
 	
 	do_new_plugin(force) {
@@ -336,10 +346,31 @@ Page.Plugins = class Plugins extends Page.PageUtils {
 			{ icon: this.plugin.icon || 'power-plug-outline', title: this.plugin.title }
 		]);
 		
+		if (this.plugin.marketplace) {
+			// render inline banner
+			var desc = `This Plugin was installed from the Marketplace.  You can edit it here, but changing its settings may prevent it from working correctly.\n\nAlso, if you upgrade the Plugin later, your local edits will be overwritten.\n\nTo customize it safely, consider cloning the Plugin first and editing the copy.`;
+			html += `
+				<div class="box">
+					<div class="box_title">
+						<span class="cat_yellow"><i class="mdi mdi-alert-rhombus">&nbsp;</i>Warning: Marketplace Plugin</span>
+					</div>
+					<div class="box_content table">
+						<div class="markdown-body desc-body">${marked.parse(desc, config.ui.marked_config)}</div>
+					</div>
+				</div>
+			`;
+		}
+		
 		html += '<div class="box">';
 		html += '<div class="box_title">';
-			html += 'Edit Plugin Details';
-			html += '<div class="box_subtitle"><a href="#Plugins?sub=list">&laquo; Back to Plugin List</a></div>';
+			if (this.plugin.marketplace) {
+				html += 'Edit Marketplace Plugin';
+				html += '<div class="box_subtitle"><a href="#Marketplace?id=' + encodeURIComponent(this.plugin.marketplace.id) + '">&laquo; Back to Marketplace Page</a></div>';
+			}
+			else {
+				html += 'Edit Plugin Details';
+				html += '<div class="box_subtitle"><a href="#Plugins?sub=list">&laquo; Back to Plugin List</a></div>';
+			}
 		html += '</div>';
 		html += '<div class="box_content">';
 		
@@ -369,6 +400,13 @@ Page.Plugins = class Plugins extends Page.PageUtils {
 		this.renderParamEditor();
 		this.setupBoxButtonFloater();
 		this.setupEditTriggers();
+		
+		if (this.plugin.marketplace) {
+			this.div.find('#d_ep_uid, #d_ep_gid').hide();
+		}
+		
+		if (this.args.delete) this.show_delete_plugin_dialog();
+		else if (this.args.test) this.do_test();
 	}
 	
 	do_test() {
@@ -1168,6 +1206,7 @@ Page.Plugins = class Plugins extends Page.PageUtils {
 		
 		// UID
 		html += this.getFormRow({
+			id: 'd_ep_uid',
 			label: 'Run as User:',
 			content: this.getFormText({
 				id: 'fe_ep_uid',
@@ -1180,6 +1219,7 @@ Page.Plugins = class Plugins extends Page.PageUtils {
 		
 		// GID
 		html += this.getFormRow({
+			id: 'd_ep_gid',
 			label: 'Run as Group:',
 			content: this.getFormText({
 				id: 'fe_ep_gid',

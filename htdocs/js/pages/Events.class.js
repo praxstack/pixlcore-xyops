@@ -673,11 +673,11 @@ Page.Events = class Events extends Page.PageUtils {
 					html += '<div class="button default right phone_collapse" onClick="$P().do_edit_from_view()" title="' + edit_btn_text + '"><i class="mdi mdi-file-edit-outline">&nbsp;</i><span>' + edit_btn_text + '</span></div>';
 				}
 				if (event.enabled && app.hasPrivilege('run_jobs')) {
-					html += '<div class="button secondary right mobile_collapse" onClick="$P().do_run_current_event()" title="Run Now..." ><i class="mdi mdi-run-fast">&nbsp;</i><span>Run Now...</span></div>';
+					html += '<div class="button right mobile_collapse" onClick="$P().do_run_current_event()" title="Run Now..." ><i class="mdi mdi-run-fast">&nbsp;</i><span>Run Now...</span></div>';
 				}
 				
 				var is_fav = !!(app.user.favorites && app.user.favorites.events && app.user.favorites.events.includes(event.id));
-				html += '<div id="btn_ve_fav" class="button right mobile_collapse mobile_hide ' + (is_fav ? 'favorite' : '') + '" onClick="$P().do_toggle_favorite()" title="Toggle Favorite"><i class="mdi mdi-'+(is_fav ? 'heart' : 'heart-plus-outline')+'">&nbsp;</i><span>Favorite</span></div>';
+				html += '<div id="btn_ve_fav" class="button right mobile_collapse mobile_hide pink ' + (is_fav ? 'favorite' : '') + '" onClick="$P().do_toggle_favorite()" title="Toggle Favorite"><i class="mdi mdi-'+(is_fav ? 'heart' : 'heart-plus-outline')+'">&nbsp;</i><span>Favorite</span></div>';
 				
 				html += '<div class="clear"></div>';
 			html += '</div>'; // title

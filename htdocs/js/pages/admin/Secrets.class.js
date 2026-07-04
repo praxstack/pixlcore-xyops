@@ -667,6 +667,18 @@ Page.Secrets = class Secrets extends Page.PageUtils {
 		if (idx == -1) $('#fe_sev_name').focus();
 		
 		Dialog.autoResize();
+		
+		// handle files dropped onto dialog
+		Dialog.onDragDrop = function(files) {
+			var file = files[0]; // only one file
+			var reader = new FileReader();
+			
+			reader.onload = function(e) {
+				$('#fe_sev_value').focus().val( e.target.result );
+			};
+			
+			reader.readAsText(file);
+		};
 	}
 	
 	deleteVariable(idx) {

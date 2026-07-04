@@ -604,11 +604,15 @@
 			},
 			"d_wfd_split": {
 				"label": "Split Expression:",
-				"caption": "Specify the path to the array for splitting, using [XYEXP](#Docs/xyexp), e.g. `data.items`.  Use the special `files` keyword to split the input files."
+				"caption": "Specify the path to the array for splitting, using [XYEXP](#Docs/xyexp), e.g. `data.myItems`.  Use the special `files` keyword to split the input files."
 			},
 			"d_wfd_split_filter": {
 				"label": "Item Filter:",
 				"caption": "Optionally enter an expression to filter items, e.g. `item.random > 0.5`.  If false, the item will be excluded from the set.  [Learn More](#Docs/workflows/split-item-filter)"
+			},
+			"d_wfd_split_chunk": {
+				"label": "Batch Size:",
+				"caption": "Optionally batch multiple items per job by increasing this value.  The default is `1`, meaning each job receives exactly one item.  [Learn More](#Docs/workflows/split-batch-size)"
 			},
 			"d_wfd_if": {
 				"label": "Expression:",

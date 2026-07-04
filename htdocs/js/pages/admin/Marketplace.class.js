@@ -423,7 +423,7 @@ Page.Marketplace = class Marketplace extends Page.PageUtils {
 		app.setWindowTitle( product.title );
 		app.setHeaderNav([
 			{ icon: 'cart-variant', loc: '#Marketplace?sub=search', title: 'Marketplace' },
-			{ icon: type_def.icon, title: product.title }
+			{ icon: (installed && installed.icon) ? installed.icon : type_def.icon, title: product.title }
 		]);
 		
 		var install_btn_text = installed ? `Upgrade...` : `Install ${ucfirst(product.type)}...`;
@@ -453,7 +453,7 @@ Page.Marketplace = class Marketplace extends Page.PageUtils {
 						html += '<div class="button right icon ' + install_btn_class + '" title="' + install_btn_text + '" onClick="$P().do_install_select_version()"><i class="mdi mdi-package-up"></i></div>';
 					}
 					
-					html += '<div class="button right secondary icon" title="Clone for editing..." onClick="$P().do_clone()"><i class="mdi mdi-file-edit-outline"></i></div>';
+					html += '<div class="button right secondary icon" title="Edit Plugin..." onClick="$P().do_edit()"><i class="mdi mdi-file-edit-outline"></i></div>';
 					if (show_vault) html += '<div class="button right secondary icon" title="Secret Vault..." onClick="$P().go_vault()"><i class="mdi mdi-shield-lock-outline"></i></div>';
 				}
 				else {
@@ -519,6 +519,21 @@ Page.Marketplace = class Marketplace extends Page.PageUtils {
 			html += '</div>'; // box content
 		html += '</div>'; // box
 		
+		if (show_vault && app.isAdmin()) {
+			var secret = app.secrets.find( function(secret) {
+				return secret.plugins && secret.plugins.includes(installed.id);
+			} );
+			if (!secret) {
+				html += '<div class="box message inline info" onClick="$P().go_vault()">';
+					html += '<div class="message_inner" style="cursor:pointer">';
+						html += `<div style="float:right"><i class="mdi mdi-play">&nbsp;</i>Setup Vault...</div>`;
+						html += '<i class="mdi mdi-shield-lock-outline">&nbsp;&nbsp;&nbsp;</i>';
+						html += encode_entities( `Click here to create a secret vault for the Plugin.` );
+					html += '</div>';
+				html += '</div>';
+			}
+		}
+		
 		// markdown
 		html += '<div class="box">';
 		
@@ -530,6 +545,18 @@ Page.Marketplace = class Marketplace extends Page.PageUtils {
 		
 		html += '</div>'; // markdown-body
 		html += '</div>'; // box_content
+		
+		if (installed) {
+			// buttons at bottom
+			html += '<div class="box_buttons">';
+				html += `<div class="box_buttons_badge_left mobile_hide" style="color:var(--green)"><i class="mdi mdi-check-circle-outline"></i>Installed</div>`;
+				html += '<div class="button danger mobile_collapse" onClick="$P().do_delete_plugin()"><i class="mdi mdi-trash-can-outline">&nbsp;</i><span>Uninstall...</span></div>';
+				html += '<div class="button secondary mobile_collapse" onClick="$P().do_clone_plugin()"><i class="mdi mdi-content-copy">&nbsp;</i><span>Clone...</span></div>';
+				html += '<div class="button secondary mobile_collapse" onClick="$P().do_test_plugin()"><i class="mdi mdi-test-tube">&nbsp;</i><span>Test...</span></div>';
+				html += '<div class="button secondary mobile_collapse" onClick="$P().go_plugin_history()"><i class="mdi mdi-history">&nbsp;</i><span>History...</span></div>';
+			html += '</div>'; // box_buttons
+		}
+		
 		html += '</div>'; // box
 		
 		this.div.html(html);
@@ -538,6 +565,25 @@ Page.Marketplace = class Marketplace extends Page.PageUtils {
 		this.expandInlineImages();
 		this.highlightCodeBlocks();
 		this.fixMarketDocumentLinks();
+		if (installed) this.setupBoxButtonFloater();
+	}
+	
+	do_delete_plugin() {
+		// jump over to plugins page and popup the delete dialog
+		var installed = this.installed;
+		Nav.go( 'Plugins?sub=edit&id=' + installed.id + '&delete=1' );
+	}
+	
+	do_test_plugin() {
+		// jump over to plugins page and popup the test dialog
+		var installed = this.installed;
+		Nav.go( 'Plugins?sub=edit&id=' + installed.id + '&test=1' );
+	}
+	
+	go_plugin_history() {
+		// nav to installed plugin history
+		var installed = this.installed;
+		Nav.go( '#Plugins?sub=history&id=' + installed.id );
 	}
 	
 	go_vault() {
@@ -664,7 +710,7 @@ Page.Marketplace = class Marketplace extends Page.PageUtils {
 		else return '<span style="color:var(--gray)"><i class="mdi mdi-cancel">&nbsp;</i>Not Installed</span>';
 	}
 	
-	do_clone() {
+	do_clone_plugin() {
 		// clone thing for editing
 		var product = this.product;
 		var installed = this.installed;
@@ -912,6 +958,7 @@ Page.Marketplace = class Marketplace extends Page.PageUtils {
 	
 	onDeactivate() {
 		// called when page is deactivated
+		this.cleanupBoxButtonFloater();
 		this.div.html('');
 		
 		delete this.lastSearchResp;

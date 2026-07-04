@@ -2215,6 +2215,21 @@ Page.Workflows = class Workflows extends Page.Events {
 			})
 		});
 		
+		// split chunk
+		html += this.getFormRow({
+			id: 'd_wfd_split_chunk',
+			content: this.getFormText({
+				id: 'fe_wfd_split_chunk',
+				type: 'number',
+				spellcheck: 'false',
+				autocomplete: 'off',
+				maxlength: 32,
+				min: 1,
+				step: 1,
+				value: node.data.chunk || '1'
+			})
+		});
+		
 		// decision expression
 		html += this.getFormRow({
 			id: 'd_wfd_if',
@@ -2300,6 +2315,7 @@ Page.Workflows = class Workflows extends Page.Events {
 					node.data.split = $('#fe_wfd_split').val().trim();
 					if (!node.data.split.length) return app.badField('#fe_wfd_split');
 					node.data.filter = $('#fe_wfd_split_filter').val().trim();
+					node.data.chunk = parseInt( $('#fe_wfd_split_chunk').val() ) || 1;
 					node.data.continue = parseInt( $('#fe_wfd_continue').val() ) || 0;
 				break;
 				
@@ -2355,14 +2371,14 @@ Page.Workflows = class Workflows extends Page.Events {
 		// handle type change
 		var do_change_type = function() {
 			// show/hide sections based on type
-			$('#d_wfd_stagger, #d_wfd_wait, #d_wfd_repeat, #d_wfd_split, #d_wfd_split_filter, #d_wfd_if, #d_wfd_if_abort, #d_wfd_title, #d_wfd_icon, #d_wfd_continue').hide();
+			$('#d_wfd_stagger, #d_wfd_wait, #d_wfd_repeat, #d_wfd_split, #d_wfd_split_filter, #d_wfd_split_chunk, #d_wfd_if, #d_wfd_if_abort, #d_wfd_title, #d_wfd_icon, #d_wfd_continue').hide();
 			
 			var type = $('#fe_wfd_type').val();
 			switch (type) {
 				case 'multiplex': $('#d_wfd_stagger, #d_wfd_continue').show(); break;
 				case 'wait': $('#d_wfd_wait').show(); break;
 				case 'repeat': $('#d_wfd_repeat, #d_wfd_continue').show(); break;
-				case 'split': $('#d_wfd_split, #d_wfd_split_filter, #d_wfd_continue').show(); break;
+				case 'split': $('#d_wfd_split, #d_wfd_split_filter, #d_wfd_split_chunk, #d_wfd_continue').show(); break;
 				case 'decision': $('#d_wfd_if, #d_wfd_if_abort, #d_wfd_title, #d_wfd_icon').show(); break;
 			}
 			

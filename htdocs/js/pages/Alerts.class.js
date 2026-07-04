@@ -913,7 +913,7 @@ Page.Alerts = class Alerts extends Page.PageUtils {
 		
 		var grid_args = {
 			rows: this.jobs,
-			cols: ['Job ID', 'Server', 'Source', 'Started', 'Elapsed', 'Avg CPU/Mem', 'Result'],
+			cols: ['Job ID', 'Event', 'Source', 'Started', 'Elapsed', 'Avg CPU/Mem', 'Result'],
 			data_type: 'job',
 			class: 'data_grid job_history_grid'
 		};
@@ -923,7 +923,8 @@ Page.Alerts = class Alerts extends Page.PageUtils {
 			
 			var tds = [
 				'<b>' + self.getNiceJob(job, true) + '</b>',
-				self.getNiceServer(job.server, true),
+				// self.getNiceServer(job.server, true),
+				self.getNiceJobEvent(job, true),
 				self.getNiceJobSource(job),
 				self.getShortDateTime( job.started ),
 				self.getNiceJobElapsedTime(job, true),

@@ -3226,9 +3226,9 @@ For controller nodes, see the following table for details on how the `data` prop
 | `multiplex` | Will contain `stagger` (delay in seconds) for staggering jobs across servers, and `continue` (percentage) for gating success. |
 | `wait` | Will contain `wait` (delay in seconds). |
 | `repeat` | Will contain `repeat` (iteration count), and `continue` (percentage) for gating success. |
-| `split` | Will contain `split` (expression to split on), and `continue` (percentage) for gating success. |
+| `split` | Will contain `split` (expression to split on), `continue` (percentage) for gating success, an optional `filter` for filtering items, and optional `chunk` for batch size. |
 | `join` | Not used. |
-| `decision` | Will contain `label` (custom title), `icon` (custom icon), and `decision` (expression to evaluate). |
+| `decision` | Will contain `label` (custom title), `icon` (custom icon), `decision` (expression to evaluate), and `abort` (abort entire workflow on false eval). |
 
 #### WorkflowNode.x
 

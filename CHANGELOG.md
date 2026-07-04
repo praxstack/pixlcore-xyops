@@ -1,5 +1,21 @@
 # xyOps Changelog
 
+## Version v1.0.77
+
+> July 2, 2026
+
+- [`744c1389`](https://github.com/pixlcore/xyops/commit/744c138966b5e8a53ff9dff7453286e82344ed85): Version 1.0.77
+- [`cf115e81`](https://github.com/pixlcore/xyops/commit/cf115e81876f2ab5013d30e08c7b6745c669e71b): Feature: Allow xySat monitoring to be disabled for some or all servers.
+- [`a906e493`](https://github.com/pixlcore/xyops/commit/a906e49309c78b396faa8cb23c3f7a1974e615ad): UI Tweak: On alert detail page, show job event (not job server) in job table.
+- [`226e2e7e`](https://github.com/pixlcore/xyops/commit/226e2e7e1fa0401fd71f12edd132705c9ddf9083): UI Tweak: Improve active jobs table display re: job elapsed and remaining time.
+- [`13d1f0e6`](https://github.com/pixlcore/xyops/commit/13d1f0e62dd1b1b41fd4baeb6b995b6dee636ec4): Feature: Add "Batch Size" to the workflow split controller, to send multiple items to each job.
+- [`28dbba1c`](https://github.com/pixlcore/xyops/commit/28dbba1cbe5602618eb2a094be7a769670d5a728): Feature: Improve UX around Marketplace Plugins
+- [`c51ae97d`](https://github.com/pixlcore/xyops/commit/c51ae97d7f5ac8278ac67dfad1214e7039b612c6): Feature: Marketplace Plugins: Show banner to setup secret vault for installed plugins that need one.
+- [`7c5ac6f7`](https://github.com/pixlcore/xyops/commit/7c5ac6f7a684538a6248e4f66c9003cff6fc5fb8): Feature: Allow users to edit marketplace plugins locally (after displaying a warning).
+- [`05f6d131`](https://github.com/pixlcore/xyops/commit/05f6d131cde18ed84048080676c027b15466dbc1): UI Tweak: Fix button colors on event detail screen.
+- [`ca17bd31`](https://github.com/pixlcore/xyops/commit/ca17bd313d1d5d2c76d47b14d9f2ca42940ee02d): UI Tweak: Allow ics / ical files as uploads into code editor.
+- [`c51168b3`](https://github.com/pixlcore/xyops/commit/c51168b3130bb80caad6374f6bfbba6de4ecc953): Feature: Allow file drag-drop onto secret variable editor.
+
 ## Version v1.0.76
 
 > June 28, 2026
