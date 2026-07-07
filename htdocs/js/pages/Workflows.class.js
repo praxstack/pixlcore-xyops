@@ -2423,6 +2423,16 @@ Page.Workflows = class Workflows extends Page.Events {
 			}) + `<div class="button small secondary" onClick="$P().edit_wfd_body()"><i class="mdi mdi-note-edit-outline">&nbsp;</i>${config.ui.buttons.wfd_edit_note_content}</div>`
 		});
 		
+		// color
+		html += this.getFormRow({
+			id: 'd_wfd_color',
+			content: this.getFormMenuSingle({
+				id: 'fe_wfd_color',
+				options: config.ui.category_colors,
+				value: node.data.color || ''
+			})
+		});
+		
 		// wide
 		html += this.getFormRow({
 			id: 'd_wfd_wide',
@@ -2447,6 +2457,7 @@ Page.Workflows = class Workflows extends Page.Events {
 			app.clearError();
 			
 			node.data.body = $('#fe_wfd_body').val().trim();
+			node.data.color = $('#fe_wfd_color').val();
 			node.data.wide = $('#fe_wfd_wide').is(':checked');
 			node.data.show = $('#fe_wfd_show').is(':checked');
 			
@@ -2482,6 +2493,7 @@ Page.Workflows = class Workflows extends Page.Events {
 			self.addState();
 		}); // Dialog.confirm
 		
+		SingleSelect.init( $('#fe_wfd_color') );
 		Dialog.autoResize();
 	}
 	

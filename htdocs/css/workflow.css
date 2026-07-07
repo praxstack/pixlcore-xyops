@@ -537,7 +537,12 @@ body.dark .wf_condition {
 	height: auto;
 	border-radius: 16px;
 	background-color: var(--box-background-color);
+	color: var(--body-text-color);
 	font-size: 13px;
+	--color-mix-base: var(--box-background-color);
+}
+body.dark .wf_note {
+	--color-mix-base: rgb(32, 32, 32);
 }
 .wf_note.wf_wide {
 	width: 550px;
@@ -547,7 +552,13 @@ body.dark .wf_condition {
 }
 
 .wf_note .markdown-body {
-	padding: 10px;
+	padding: 20px;
+}
+.wf_note .markdown-body table tr th {
+	background-color: color-mix(in srgb, var(--label-color) 10%, transparent);
+}
+.wf_note .markdown-body * {
+	border-color: color-mix(in srgb, var(--label-color) 20%, transparent);
 }
 
 /* Misc */

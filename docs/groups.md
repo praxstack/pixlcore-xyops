@@ -86,6 +86,7 @@ Selection algorithms:
 - `prefer_last`: Pick the last server after sorting by label or hostname ascending.
 - `least_cpu`: Pick the server with the lowest current average CPU load (`info.cpu.avgLoad`).
 - `least_mem`: Pick the server with the lowest current active memory usage (`info.memory.active`).
+- `fewest_jobs`: Pick the server with the fewest active jobs.
 - `monitor:<id>`: Pick the server with the lowest value of the specified monitor.
 
 Details:

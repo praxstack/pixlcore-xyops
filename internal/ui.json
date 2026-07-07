@@ -645,6 +645,13 @@
 				"label": "Note Content:",
 				"caption": "Enter the note body text using [GitHub Flavored Markdown](https://guides.github.com/features/mastering-markdown/) syntax."
 			},
+			"d_wfd_color": {
+				"label": "Highlight Color:",
+				"caption": "Optionally select a highlight color for the note."
+			},
+			"fe_wfd_color": {
+				"title": "Select Highlight Color"
+			},
 			"d_wfd_wide": {
 				"label": "Size:",
 				"caption": "Optionally give the note extra horizontal space."
@@ -1214,7 +1221,8 @@
 		{ "id": "prefer_first", "title": "Prefer First (Alphabetical)", "icon": "sort-ascending" },
 		{ "id": "prefer_last", "title": "Prefer Last (Alphabetical)", "icon": "sort-descending" },
 		{ "id": "least_cpu", "title": "Least CPU Usage", "icon": "chip" },
-		{ "id": "least_mem", "title": "Least Memory Usage", "icon": "memory" }
+		{ "id": "least_mem", "title": "Least Memory Usage", "icon": "memory" },
+		{ "id": "fewest_jobs", "title": "Fewest Active Jobs", "icon": "run-fast" }
 	],
 	
 	"action_condition_menu": [ 

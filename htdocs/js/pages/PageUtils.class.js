@@ -4369,6 +4369,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		var pos = this.getWFPos(node);
 		var classes = ['wf_node', 'wf_note'];
 		if (node.data.wide) classes.push('wf_wide');
+		if (node.data.color) classes.push('note_' + node.data.color);
 		
 		var text = strip_html( node.data.body.trim() || config.ui.messages.wf_note_empty );
 		var body = marked.parse(text, config.ui.marked_config);
