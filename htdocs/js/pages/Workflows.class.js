@@ -269,6 +269,7 @@ Page.Workflows = class Workflows extends Page.Events {
 		this.setupBoxButtonFloater();
 		this.setupWorkflowEditor();
 		this.setupEditTriggers();
+		this.checkUserEditWarning('workflow');
 		
 		if (this.args.scroll == 'bottom') app.scrollToBottom();
 	}
@@ -524,6 +525,11 @@ Page.Workflows = class Workflows extends Page.Events {
 				return;
 			} // shiftKey
 			
+			if ($(event.target).hasClass('toggle_compact')) {
+				self.toggleCompactNode(id);
+				return;
+			}
+			
 			if (!self.wfSelection[id]) {
 				// node is not yet selected, so deselect all and then select it
 				self.wfSelection = {};
@@ -568,6 +574,19 @@ Page.Workflows = class Workflows extends Page.Events {
 		
 		// update selection after all full draws
 		this.updateSelection();
+	}
+	
+	toggleCompactNode(id) {
+		// toggle node compact mode and redraw
+		var workflow = this.workflow;
+		var node = find_object( workflow.nodes, { id: id } );
+		if (!node) return; // sanity
+		
+		node.compact = !node.compact;
+		
+		this.drawWorkflow(true);
+		this.afterDraw();
+		this.addState();
 	}
 	
 	quickEditCondition($trig, id) {
@@ -1305,11 +1324,23 @@ Page.Workflows = class Workflows extends Page.Events {
 		
 		// actions
 		html += this.getFormRow({
-			id: 'd_ete_actions',
-			content: this.getFormCheckbox({
-				id: 'fe_ete_actions',
-				checked: true
-			})
+			label: 'Action Conditions:',
+			content: this.getFormMenuMulti({
+				id: 'fe_ete_conditions',
+				title: 'Select Conditions',
+				placeholder: '(None)',
+				options: [ 
+					...config.ui.action_condition_menu.filter( function(item) { return item.id != 'continue'; } )
+				].concat(
+					this.buildOptGroup( app.tags, "On Custom Tag:", 'tag-outline', 'tag:' )
+				),
+				values: app.getPref('test_conds') ?? ['start', 'complete', 'success'],
+				'data-hold': 1,
+				'data-shrinkwrap': 1,
+				'data-select-all': 1
+				// 'data-compact': 1
+			}),
+			caption: "Select which action conditions to enable for the test job."
 		});
 		
 		// limits
@@ -1317,7 +1348,7 @@ Page.Workflows = class Workflows extends Page.Events {
 			id: 'd_ete_limits',
 			content: this.getFormCheckbox({
 				id: 'fe_ete_limits',
-				checked: true
+				checked: app.getPref('test_limits') ?? true
 			})
 		});
 		
@@ -1361,6 +1392,7 @@ Page.Workflows = class Workflows extends Page.Events {
 			job.label = "Test";
 			job.icon = "test-tube";
 			job.workflow.start = node.id; // set starting node
+			job.test_conditions = $('#fe_ete_conditions').val();
 			
 			var scope = $('#fe_ete_scope').val();
 			if (scope == 'single') {
@@ -1369,14 +1401,6 @@ Page.Workflows = class Workflows extends Page.Events {
 				job.workflow.connections = [];
 			}
 			
-			if (!$('#fe_ete_actions').is(':checked')) {
-				// disable both workflow actions and action nodes
-				job.actions = [];
-				job.test_actions = false;
-				if (scope != 'single') find_objects( job.workflow.nodes, { type: 'action' } ).forEach( function(action) {
-					action.enabled = false;
-				} );
-			}
 			if (!$('#fe_ete_limits').is(':checked')) {
 				// disable both workflow limits and limit nodes
 				job.limits = [];
@@ -1440,8 +1464,13 @@ Page.Workflows = class Workflows extends Page.Events {
 			// cleanup
 			// FUTURE: If self.dialogFiles still exists here, delete in background (user canceled job)
 			delete self.dialogFiles;
+			
+			// save settings in user prefs
+			app.setPref('test_conds', $('#fe_ete_conditions').val());
+			app.setPref('test_limits', $('#fe_ete_limits').is(':checked'));
 		};
 		
+		MultiSelect.init( $('#fe_ete_conditions') );
 		Dialog.autoResize();
 	}
 	
@@ -1483,6 +1512,17 @@ Page.Workflows = class Workflows extends Page.Events {
 		if (!do_create) title += ` <div class="dialog_title_widget mobile_hide"><span class="monospace">${this.getNiceCopyableID(node.id)}</span></div>`;
 		
 		var html = '<div class="dialog_box_content scroll maximize">';
+		
+		// title
+		html += this.getFormRow({
+			id: 'd_wfde_title',
+			content: this.getFormText({
+				id: 'fe_wfde_title',
+				spellcheck: 'false',
+				autocomplete: 'off',
+				value: node.data.label || ''
+			})
+		});
 		
 		// event
 		html += this.getFormRow({
@@ -1571,6 +1611,7 @@ Page.Workflows = class Workflows extends Page.Events {
 			if (!result) return;
 			app.clearError();
 			
+			node.data.label = strip_html( $('#fe_wfde_title').val() );
 			node.data.event = $('#fe_wfde_event').val();
 			node.data.targets = $('#fe_wfde_targets').val();
 			node.data.expression = $('#fe_wfde_expression').val();

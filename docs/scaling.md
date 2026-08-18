@@ -194,6 +194,67 @@ limit_req_status 429;
 
 This would limit traffic to 100 requests/sec per IP, utilizing up to 20MB of IP cache (around 300K IPs).  For more details see the [ngx_http_limit_req_module](https://nginx.org/en/docs/http/ngx_http_limit_req_module.html).
 
+## Database Maintenance
+
+xyOps performs nightly database maintenance, specifically chopping tables to a max row count by deleting the oldest rows.  Here is the default configuration, which is located in the `/opt/xyops/conf/config.json` file as a top-level `db_maint` property:
+
+```json
+"db_maint": {
+	"jobs": {
+		"max_rows": 100000
+	},
+	"alerts": {
+		"max_rows": 100000
+	},
+	"snapshots": {
+		"max_rows": 100000
+	},
+	"activity": {
+		"max_rows": 100000
+	},
+	"servers": {
+		"max_rows": 10000
+	}
+}
+```
+
+It is highly recommended that you do **not** increase these row limits unless you have a *very* powerful storage backend, tested at high scale, and a high-powered xyOps conductor server.
+
+### Maintenance Queries
+
+You can customize the DB queries used to locate rows for deletion, by adding a `query` string property in the DB table sub-object.  The string should be formatted as an [Unbase-style query](https://github.com/jhuckaby/pixl-server-storage/blob/master/docs/Indexer.md#simple-queries), and use only the indexed columns defined in the [Database](db.md) document for the respective table.  For example, if you want to only delete old jobs that were successful (i.e. keep all the failed jobs), add this query to the `db_maint.jobs` object:
+
+```json
+"jobs": {
+	"max_rows": 100000,
+	"query": "tags:_success"
+}
+```
+
+The special `_success` system tag is applied to all jobs that succeeded.
+
+### Maintenance Backups
+
+If you want to keep backups of all the chopped table rows, add a `backup` property in the DB table sub-object, set to a destination file path on disk.  The files will be written in [XYBK](xybk.md) format, and contain all the chopped database records during the maintenance run.  You can also include simple [date/time placeholders](https://github.com/jhuckaby/pixl-tools#getdateargs) in the file paths if you'd like (local server time), and parent directories will be created as needed.  Example:
+
+```json
+"jobs": {
+	"max_rows": 100000,
+	"backup": "/path/to/backups/xyops/maint/jobs-db-backup-[yyyy]-[mm]-[dd].txt"
+}
+```
+
+The files are not automatically compressed, but if you specify a file path in your xyOps `logs` directory, and use a `.log` file extension, the files will be rotated, gzip-compressed and archived along with the other xyOps daily logs at the next midnight rollover:
+
+```json
+"jobs": {
+	"max_rows": 100000,
+	"backup": "logs/jobs-db-backup.log"
+}
+```
+
+In this case you don't need to add date/time placeholders, as the log rotation / archival process typically does that automatically.
+
 ## Additional Tuning Ideas
 
 - Job throughput: Increase [max_jobs_per_min](config.md#max_jobs_per_min) prudently and monitor worker CPU/RAM. Align with your per-category limits and workflow constraints.

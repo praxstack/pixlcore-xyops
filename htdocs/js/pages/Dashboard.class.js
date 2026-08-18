@@ -179,12 +179,14 @@ Page.Dashboard = class Dashboard extends Page.PageUtils {
 		
 		// masters
 		html += '<div class="dash_unit_box clicky" onClick="Nav.go(\'Conductors\')">';
+			html += '<div class="dash_unit_icon"><i class="mdi mdi-chevron-right"></i></div>';
 			html += '<div class="dash_unit_value">' + num_keys(app.masters) + '</div>';
 			html += '<div class="dash_unit_label">Conductors</div>';
 		html += '</div>';
 		
 		// servers
 		html += '<div class="dash_unit_box clicky" onClick="Nav.go(\'Servers\')">';
+			html += '<div class="dash_unit_icon"><i class="mdi mdi-chevron-right"></i></div>';
 			html += '<div class="dash_unit_value">' + num_keys(app.servers) + '</div>';
 			html += '<div class="dash_unit_label">Servers</div>';
 		html += '</div>';
@@ -192,6 +194,7 @@ Page.Dashboard = class Dashboard extends Page.PageUtils {
 		// alerts
 		var num_alerts = num_keys(app.activeAlerts);
 		html += '<div class="dash_unit_box clicky ' + (num_alerts ? 'warning' : '') + '" onClick="Nav.go(\'Alerts\')">';
+			html += '<div class="dash_unit_icon"><i class="mdi mdi-chevron-right"></i></div>';
 			html += '<div class="dash_unit_value">' + num_alerts + '</div>';
 			html += '<div class="dash_unit_label">Current Alerts</div>';
 		html += '</div>';
@@ -204,12 +207,14 @@ Page.Dashboard = class Dashboard extends Page.PageUtils {
 		
 		// completed
 		html += '<div class="dash_unit_box clicky" onClick="Nav.go(\'Search?date=today\')">';
+			html += '<div class="dash_unit_icon"><i class="mdi mdi-chevron-right"></i></div>';
 			html += '<div class="dash_unit_value">' + this.getNiceDashNumber(trans.job_complete) + '</div>';
 			html += '<div class="dash_unit_label">Jobs Today</div>';
 		html += '</div>';
 		
 		// failed
 		html += '<div class="dash_unit_box clicky ' + (trans.job_error ? 'warning' : '') + '" onClick="Nav.go(\'Search?result=error&date=today\')">';
+			html += '<div class="dash_unit_icon"><i class="mdi mdi-chevron-right"></i></div>';
 			html += '<div class="dash_unit_value">' + this.getNiceDashNumber(trans.job_error) + '</div>';
 			html += '<div class="dash_unit_label">Jobs Failed Today</div>';
 		html += '</div>';
@@ -316,6 +321,10 @@ Page.Dashboard = class Dashboard extends Page.PageUtils {
 		var self = this;
 		var html = '';
 		var rows = Object.values(app.activeJobs).sort( function(a, b) {
+			// keep workflow parent jobs directly above their sub-jobs
+			if (b.workflow && (b.workflow.job == a.id)) return -1;
+			if (a.workflow && (a.workflow.job == b.id)) return 1;
+
 			return (a.started < b.started) ? 1 : -1;
 		} );
 		
@@ -470,7 +479,7 @@ Page.Dashboard = class Dashboard extends Page.PageUtils {
 		
 		var opts = {
 			rows: events,
-			cols: ['Event Title', 'Category', 'Tags', 'Plugin', 'Targets', 'Triggers', 'Status', 'Actions'],
+			cols: ['Event Title', 'Category', 'Tags', 'Plugin', 'Targets', 'Triggers', 'Modified', 'Status', 'Actions'],
 			data_type: 'event'
 		};
 		
@@ -490,6 +499,7 @@ Page.Dashboard = class Dashboard extends Page.PageUtils {
 				(item.plugin == '_workflow') ? '(Workflow)' : self.getNicePlugin(item.plugin, true),
 				self.getNiceTargetList(item.targets, true),
 				summarize_event_timings(item),
+				self.getRelativeDateTime(item.modified),
 				
 				'<div id="d_el_jt_status_' + item.id + '">' + self.getNiceEventStatus(item) + '</div>',
 				
@@ -576,6 +586,13 @@ Page.Dashboard = class Dashboard extends Page.PageUtils {
 		// update internal jobs (heavy or light)
 		if (data.internalJobsChanged) this.renderInternalJobs();
 		else this.updateInternalJobs();
+		
+		// update fav events if nav changed
+		if (data.navChanged) {
+			(this.favoriteEvents || []).forEach( function(item, idx) {
+				self.div.find('#d_el_jt_status_' + item.id).html( self.getNiceEventStatus(item) );
+			} );
+		}
 	}
 	
 	jobActiveNav(offset) {
@@ -712,7 +729,7 @@ Page.Dashboard = class Dashboard extends Page.PageUtils {
 		});
 		
 		// request all data from server
-		app.api.post( 'app/get_quickmon_data', {}, function(resp) {
+		app.api.get( 'app/get_quickmon_data', {}, function(resp) {
 			if (!self.active) return; // sanity
 			
 			// now iterate over all quick monitors

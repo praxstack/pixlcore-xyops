@@ -224,6 +224,18 @@ Page.MySettings = class MySettings extends Page.Base {
 			caption: 'Enable or disable color assistance, which uses indicators other than color for differentiation.'
 		});
 		
+		// wide tables
+		html += this.getFormRow({
+			label: 'Tables:',
+			content: this.getFormCheckbox({
+				id: 'fe_ms_widetables',
+				label: 'Scroll Tables Horizontally',
+				checked: !!user.wide_tables,
+				onChange: '$P().saveChanges()'
+			}),
+			caption: 'When enabled, tables will scroll horiztonally instead of compressing and collapsing columns to fit the window.'
+		});
+		
 		// show page descriptions
 		html += this.getFormRow({
 			label: 'Assistance:',
@@ -440,6 +452,17 @@ Page.MySettings = class MySettings extends Page.Base {
 					onChange: '$P().saveChanges()'
 				}),
 				caption: 'Check this box to show notifications for user activity, including every time a user makes a change.'
+			});
+			
+			html += this.getFormRow({
+				label: 'Show Invisibles:',
+				content: this.getFormCheckbox({
+					id: 'fe_ms_admin_show_invisibles',
+					label: 'Show Invisible Jobs',
+					checked: !!user.admin_show_invisibles,
+					onChange: '$P().saveChanges()'
+				}),
+				caption: 'Check this box to show all invisible jobs (those running with the [Quiet Modifier](#Docs/triggers/quiet) and "Invisible Jobs" mode set).'
 			});
 			
 			html += '</div>'; // box_content
@@ -754,6 +777,7 @@ Page.MySettings = class MySettings extends Page.Base {
 			motion: this.div.find('#fe_ms_motionacc').val(),
 			contrast: this.div.find('#fe_ms_contrastacc').val(),
 			color_acc: this.div.find('#fe_ms_coloracc').is(':checked'),
+			wide_tables: this.div.find('#fe_ms_widetables').is(':checked'),
 			privacy_mode: this.div.find('#fe_ms_privacy').is(':checked'),
 			page_info: this.div.find('#fe_ms_pageinfo').is(':checked'),
 			notifications: this.div.find('#fe_ms_notify').is(':checked'),
@@ -773,6 +797,7 @@ Page.MySettings = class MySettings extends Page.Base {
 		if (app.isAdmin()) {
 			settings.admin_hide_notify_sys = !this.div.find('#fe_ms_admin_notify_sys').is(':checked');
 			settings.admin_hide_notify_user = !this.div.find('#fe_ms_admin_notify_user').is(':checked');
+			settings.admin_show_invisibles = this.div.find('#fe_ms_admin_show_invisibles').is(':checked');
 		}
 		
 		return settings;

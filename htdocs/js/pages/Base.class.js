@@ -399,7 +399,7 @@ Page.Base = class Base extends Page {
 		return html;
 	}
 	
-	getNiceEvent(item, link) {
+	getNiceEvent(item, link, opts = {}) {
 		// get formatted event with icon, plus optional link
 		if (typeof(item) == 'string') item = find_object(app.events, { id: item });
 		if (!item) return '(None)';
@@ -425,14 +425,16 @@ Page.Base = class Base extends Page {
 			if (category.color) cat_class = 'cat_' + category.color;
 		}
 		
-		var html = '<span class="nowrap ' + cat_class + '" title="' + encode_attrib_entities(item.title) + '">';
-		var icon = '<i class="mdi mdi-' + (item.icon || default_icon) + '"></i>';
+		var title = opts.title || item.title;
+		var tooltip = opts.title ? `${opts.title} (${item.title})` : item.title;
+		var html = '<span class="nowrap ' + cat_class + '" title="' + encode_attrib_entities(tooltip) + '">';
+		var icon = '<i class="mdi mdi-' + (opts.icon || item.icon || default_icon) + '"></i>';
 		if (link) {
 			html += '<a href="' + loc + '?id=' + item.id + '" class="' + cat_class + '">';
-			html += icon + '<span>' + item.title + '</span></a>';
+			html += icon + '<span>' + title + '</span></a>';
 		}
 		else {
-			html += icon + item.title;
+			html += icon + title;
 		}
 		
 		html += '</span>';
@@ -491,6 +493,12 @@ Page.Base = class Base extends Page {
 			
 			html += '</span>';
 			return html;
+		}
+		else if ('plabel' in job) {
+			// custom label for event (from workflow node)
+			return this.getNiceEvent(job.event, link, {
+				title: job.plabel
+			});
 		}
 		else if (job.event_revision) {
 			var event = find_object(app.events, { id: job.event });
@@ -943,6 +951,15 @@ Page.Base = class Base extends Page {
 		else return value;
 	}
 	
+	getTextFromSecondsShort(sec) {
+		if (sec >= 31536000) return '' + Math.floor(sec / 31536000) + 'y';
+		if (sec >= 2592000) return '' + Math.floor(sec / 2592000) + 'mo';
+		if (sec >= 86400) return '' + Math.floor(sec / 86400) + 'd';
+		if (sec >= 3600) return '' + Math.floor(sec / 3600) + 'h';
+		if (sec >= 60) return '' + Math.floor(sec / 60) + 'm';
+		return '' + Math.floor(sec / 1) + 's';
+	}
+	
 	getUserLocale() {
 		// get user customized locale, default to current detected one
 		var user = app.user;
@@ -1277,7 +1294,7 @@ Page.Base = class Base extends Page {
 			}
 		}
 		else if (event) {
-			event_title = event.title;
+			event_title = job.plabel || event.title;
 			event_icon = event.icon || ((event.type == 'workflow') ? 'clipboard-flow-outline' : 'file-clock-outline');
 		}
 		
@@ -1315,6 +1332,7 @@ Page.Base = class Base extends Page {
 		else if (job.workflow) icon = '<i class="mdi mdi-clipboard-clock-outline"></i>';
 		
 		var html = '<span class="nowrap">';
+		if (job.workflow && job.workflow.job) html += '<i class="mdi mdi-arrow-right-bottom-bold" title="Workflow Sub-Job"></i>';
 		if (link) {
 			html += '<a href="#Job?id=' + job.id + '">';
 			html += icon + '<span>' + nice_id + '</span></a>';
@@ -1436,12 +1454,14 @@ Page.Base = class Base extends Page {
 	getNiceProgressBar(amount = 0, extra_classes = '', show_label = false) {
 		// render nice progress bar for arbitrary value
 		var html = '';
-		var counter = Math.min(1, Math.max(0, amount || 0));
+		var counter = Math.min(1, Math.max(0, amount || 1));
 		var bar_width = this.bar_width || 100;
 		if (extra_classes.match(/\b(wider)\b/)) bar_width = 150;
 		var cx = Math.floor( counter * bar_width );
 		var label = '' + Math.floor( (counter / 1.0) * 100 ) + '%';
 		var extra_attribs = show_label ? '' : ('title="' + label + '"');
+		var indeterminate = !!(counter == 1.0);
+		if (indeterminate && !extra_classes.match(/\b(static)\b/)) extra_classes += ' indeterminate';
 		
 		html += '<div class="progress_bar_container ' + extra_classes + '" style="width:' + bar_width + 'px; margin:0;" ' + extra_attribs + ' role="progressbar">';
 			if (show_label) html += '<div class="progress_bar_label first_half" style="width:' + bar_width + 'px;">' + label + '</div>';
@@ -1676,9 +1696,37 @@ Page.Base = class Base extends Page {
 		var args = this.getJobResultArgs(job);
 		var url = '#Job?id=' + job.id;
 		var tooltip = job.completed ? this.getNiceDateTimeText(job.completed, true) : "";
+		var suffix = '';
+		
+		if (job.completed && ((app.epoch - job.completed) >= 60)) {
+			suffix = ' ' + this.getTextFromSecondsShort( app.epoch - job.completed ) + ' ago';
+		}
 		
 		return '<span class="color_label ' + args.color + ' nowrap linky" onClick="Nav.go(\'' + url + '\')" title="' + tooltip + '">' + 
-			'<i class="mdi mdi-' + args.icon + '"></i>' + args.text + '</span>';
+			'<i class="mdi mdi-' + args.icon + '"></i>' + args.text + suffix + '</span>';
+	}
+	
+	getUsersEditingEvent(event) {
+		// locate all users editing event (besides us)
+		if (!app.socketNav) return [];
+		var users = {};
+		var found = 0;
+		
+		Object.values(app.socketNav).forEach( function(socket) {
+			if (!socket.loc || !socket.loc.query) return; // sanity
+			if ((socket.username != app.username) && (socket.loc.query.sub == 'edit') && (socket.loc.query.id == event.id)) {
+				users[ socket.username ] = 1;
+				found++;
+			}
+		} );
+		if (!found) return [];
+		
+		var user_list = Object.keys(users).map( username => {
+			var user = find_object( app.users, { username } );
+			return user ? user : { username: username, full_name: username };
+		} );
+		
+		return user_list;
 	}
 	
 	getNiceEventStatus(event) {
@@ -1692,7 +1740,12 @@ Page.Base = class Base extends Page {
 		var nice_status = 'Idle';
 		var event_state = get_path( app.state, 'events/' + event.id );
 		
-		if (num_jobs) {
+		var users = this.getUsersEditingEvent(event);
+		if (users.length) {
+			var tooltip = 'Being edited by: ' + users.map( user => user.full_name ).join(', ');
+			nice_status = '<span class="color_label cyan nowrap" title="' + encode_attrib_entities(tooltip) + '"><i class="mdi mdi-account-edit"></i>Editing...</span>';
+		}
+		else if (num_jobs) {
 			var url = (num_jobs > 1) ? ('#Events?sub=view&id=' + event.id) : ('#Job?id=' + last_job_id);
 			nice_status = '<span class="color_label blue nowrap linky" onClick="Nav.go(\'' + url + '\')"><i class="mdi mdi-autorenew mdi-spin"></i>' + num_jobs + ' Active</span>';
 		}
@@ -1799,13 +1852,13 @@ Page.Base = class Base extends Page {
 		} );
 	}
 	
-	getCategorizedEvents() {
+	getCategorizedEvents(all_events) {
 		// get list of categorized events for menu
 		// sorted by category, then by title
 		var last_cat_id = '';
 		var cat_map = obj_array_to_hash( app.categories, 'id' );
 		
-		var events = deep_copy_object(app.events).sort( function(a, b) {
+		var events = deep_copy_object(all_events || app.events).sort( function(a, b) {
 			if (a.category == b.category) {
 				return a.title.toLowerCase().localeCompare( b.title.toLowerCase() );
 			}
@@ -2133,7 +2186,10 @@ Page.Base = class Base extends Page {
 			
 			// quiet (invisible) mode
 			var quiet = find_object( triggers, { type: 'quiet' } );
-			if (quiet && quiet.invisible) return false;
+			if (quiet && quiet.invisible) {
+				if (!app.isAdmin() || !app.user.admin_show_invisibles) return false;
+				event.invisible = true;
+			}
 			
 			// setup all unique timezones (intl formatters)
 			schedules.forEach( function(trigger) {
@@ -2289,6 +2345,9 @@ Page.Base = class Base extends Page {
 				
 				// add plugin modifier if applicable
 				if (event.plugin_trigger) extras.plugin = event.plugin_trigger.plugin_id;
+				
+				// add invisible flag if applicable
+				if (event.invisible) extras.invisible = true;
 				
 				// add job!
 				opts.jobs.push({ event: event.id, epoch: opts.epoch, type: scheduled, ...extras });
@@ -2715,8 +2774,15 @@ Page.Base = class Base extends Page {
 							if (variant_def) elem_icon = variant_def.icon;
 							if ((param.variant == 'number') && (elem_value === null)) elem_value = '(None)';
 						}
-						html += '<i class="link mdi mdi-' + elem_icon + '" onClick="$P().copyPluginParamValue(this)" title="Copy to Clipboard">&nbsp;</i>';
-						html += '<span class="data_value">' + encode_entities(elem_value) + '</span>';
+						if (param.variant === 'password') {
+							html += '<i class="link mdi mdi-' + elem_icon + '" onClick="$P().copyPluginParamValue(this)" title="Copy to Clipboard">&nbsp;</i>';
+							html += '<button class="link" onClick="$P().viewPluginParamValue(this)">Click to View...</button>';
+							html += '<span class="data_value" style="display:none" data-title="' + encode_attrib_entities(param.title) + '">' + encode_entities(elem_value) + '</span>';
+						}
+						else {
+							html += '<i class="link mdi mdi-' + elem_icon + '" onClick="$P().copyPluginParamValue(this)" title="Copy to Clipboard">&nbsp;</i>';
+							html += '<span class="data_value">' + encode_entities(elem_value) + '</span>';
+						}
 					}
 					else html += none;
 				break;
@@ -3817,11 +3883,11 @@ Page.Base = class Base extends Page {
 			
 			html += '</div>';
 			
-			html += '<div style="margin-top:5px;">';
+			html += '<div ' + ((app.user?.wide_tables) ? 'class="data_grid_horiz_scroll_wrapper"' : '') + ' style="margin-top:5px;">';
 		}
 		else {
 			// no pagination
-			html += '<div>';
+			html += '<div ' + ((app.user?.wide_tables) ? 'class="data_grid_horiz_scroll_wrapper"' : '') + '>';
 		}
 		
 		var tattrs = opts.attribs || {};
@@ -3830,6 +3896,7 @@ Page.Base = class Base extends Page {
 			tattrs.class = 'data_grid';
 			if (opts.item_name.match(/^\w+$/)) tattrs.class += ' ' + opts.item_name + '_grid';
 		}
+		if (app.user?.wide_tables) tattrs.class = 'data_grid';
 		if (!tattrs.style) tattrs.style = '';
 		tattrs.style += 'grid-template-columns: repeat(' + opts.column_ids.length + ', auto);';
 		html += '<div id="st_' + opts.id + '" ' + compose_attribs(tattrs) + '>';

@@ -865,7 +865,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			nice_skip = app.hasPrivilege('edit_events') ? `<button class="link danger" onClick="$P().doSkipUpcomingJob(${idx})"><b>Skip Job...</b></button>` : '-';
 			
 			var tds = [
-				'<b>' + self.getNiceEvent(job.event, true) + '</b>',
+				'<b>' + self.getNiceEvent(job.event, true, { icon: job.invisible ? 'selection-ellipse' : '' }) + '</b>',
 				self.getNiceCategory(event.category, true),
 				self.getNiceTargetList(event.targets),
 				nice_source,
@@ -1392,6 +1392,19 @@ Page.PageUtils = class PageUtils extends Page.Base {
 				short_desc = commify(item.amount) + " x " + item.condition;
 				icon = 'calendar-cursor-outline';
 			break;
+			
+			case 'tag':
+				nice_title = "Max Tags";
+				if (!item.amount) {
+					nice_desc = "No tags allowed";
+					short_desc = "None";
+				}
+				else {
+					nice_desc = "Up to " + commify(item.amount) + " " + pluralize("tag", item.amount);
+					short_desc = commify(item.amount) + ' ' + pluralize("tag", item.amount);
+				}
+				icon = 'tag-multiple-outline';
+			break;
 		} // switch item.type
 		
 		return { nice_title, nice_desc, short_desc, icon };
@@ -1770,6 +1783,10 @@ Page.PageUtils = class PageUtils extends Page.Base {
 					limit.condition = $('#fe_erl_day_condition').val();
 					limit.amount = parseInt( $('#fe_erl_day_amount').val() );
 				break;
+				
+				case 'tag':
+					limit.amount = parseInt( $('#fe_erl_raw_amount').val() );
+				break;
 			} // switch limit.type
 			
 			Dialog.hide();
@@ -1808,7 +1825,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 				
 				case 'job':
 					$('#d_erl_raw_amount').show();
-					$('#s_erl_raw_amount_cap').html('Enter the maximum number to concurrent jobs to allow.');
+					$('#s_erl_raw_amount_cap').html('Enter the maximum number of concurrent jobs to allow.');
 					$('#d_erl_job_weight').show();
 				break;
 				
@@ -1834,6 +1851,11 @@ Page.PageUtils = class PageUtils extends Page.Base {
 				case 'day':
 					$('#d_erl_day_condition').show();
 					$('#d_erl_day_amount').show();
+				break;
+				
+				case 'tag':
+					$('#d_erl_raw_amount').show();
+					$('#s_erl_raw_amount_cap').html('Enter the maximum number of tags to allow on jobs.');
 				break;
 			} // switch new_type
 		}; // change_limit_type
@@ -1975,6 +1997,13 @@ Page.PageUtils = class PageUtils extends Page.Base {
 				disp.text = this.getNiceTagListText(action.tags);
 				disp.desc = this.getNiceTagList(action.tags, link);
 				disp.icon = 'tag-plus-outline';
+			break;
+			
+			case 'label':
+				disp.type = "Apply Label";
+				disp.text = '"' + strip_html(action.label) + '"';
+				disp.desc = `&ldquo;${strip_html(action.label)}&rdquo;`;
+				disp.icon = 'label-outline';
 			break;
 			
 			case 'disable':
@@ -2411,6 +2440,21 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			caption: 'Select one or more tags to apply.'
 		});
 		
+		// label
+		html += this.getFormRow({
+			id: 'd_eja_label',
+			label: 'Custom Label:',
+			content: this.getFormText({
+				id: 'fe_eja_label',
+				spellcheck: 'false',
+				autocomplete: 'off',
+				maxlength: 8192,
+				placeholder: '',
+				value: action.label || ''
+			}),
+			caption: 'Enter a custom label to apply to the job.'
+		});
+		
 		// plugin
 		html += this.getFormRow({
 			id: 'd_eja_plugin',
@@ -2507,6 +2551,11 @@ Page.PageUtils = class PageUtils extends Page.Base {
 					if (!action.tags.length) return app.badField('#fe_eja_tags', "Please select one or more tags to apply.");
 				break;
 				
+				case 'label':
+					action.label = strip_html($('#fe_eja_label').val()).trim();
+					if (!action.label.length) return app.badField('#fe_eja_label', "Please enter a custom label to apply.");
+				break;
+				
 				case 'plugin':
 					action.plugin_id = $('#fe_eja_plugin').val();
 					if (!action.plugin_id) return app.badField('#fe_eja_plugin', "Please select a Plugin for the action.");
@@ -2520,7 +2569,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		} ); // Dialog.confirm
 		
 		var change_action_type = function(new_type) {
-			$('#d_eja_email, #d_eja_users, #d_eja_body, #d_eja_web_hook, #d_eja_web_hook_text, #d_eja_run_job, #d_eja_target_server, #d_eja_clear_alert, #d_eja_event_params, #d_eja_start_delay, #d_eja_channel, #d_eja_bucket, #d_eja_bucket_sync, #d_eja_bucket_glob, #d_nt_type, #d_nt_assignees, #d_nt_tags, #d_nt_due_preset, #d_eja_tags, #d_eja_suspend_sources, #d_eja_plugin, #d_eja_plugin_params').hide();
+			$('#d_eja_email, #d_eja_users, #d_eja_body, #d_eja_web_hook, #d_eja_web_hook_text, #d_eja_run_job, #d_eja_target_server, #d_eja_clear_alert, #d_eja_event_params, #d_eja_start_delay, #d_eja_channel, #d_eja_bucket, #d_eja_bucket_sync, #d_eja_bucket_glob, #d_nt_type, #d_nt_assignees, #d_nt_tags, #d_nt_due_preset, #d_eja_tags, #d_eja_label, #d_eja_suspend_sources, #d_eja_plugin, #d_eja_plugin_params').hide();
 			
 			switch (new_type) {
 				case 'email':
@@ -2573,6 +2622,10 @@ Page.PageUtils = class PageUtils extends Page.Base {
 				
 				case 'tag':
 					$('#d_eja_tags').show();
+				break;
+				
+				case 'label':
+					$('#d_eja_label').show();
 				break;
 				
 				case 'disable':
@@ -3990,13 +4043,15 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		
 		var params = node.data.params;
 		var default_icon = (event.type == 'workflow') ? 'clipboard-flow-outline' : config.ui.data_types.event.icon;
+		var title = node.data.label || event.title;
 		var icon = event.icon || default_icon;
-		var pill = node.data.replay ? `<div class="wf_event_title_pill replay"><i class="mdi mdi-replay"></i>Replay</div>` : '';
+		var replay = node.data.replay ? `<i class="mdi mdi-replay replay" title="Replay"></i>` : '';
+		var toggle = (this.ID == 'Workflows') ? `<i class="mdi mdi-unfold-more-horizontal toggle_compact clicky" title="Toggle Compact"></i>` : '';
 		
-		html += `<div id="d_wfn_${node.id}" class="${classes.join(' ')}" style="left:${pos.x}px; top:${pos.y}px;" aria-label="${encode_attrib_entities(event.title)}">
+		html += `<div id="d_wfn_${node.id}" class="${classes.join(' ')}" style="left:${pos.x}px; top:${pos.y}px;" aria-label="${encode_attrib_entities(title)}">
 			<div class="wf_event_title">
-				<div class="wf_event_title_text"><i class="mdi mdi-drag"></i><i class="mdi mdi-${icon}"></i>${event.title}</div>
-				${pill}
+				<div class="wf_event_title_text"><i class="mdi mdi-drag"></i><i class="mdi mdi-${icon}"></i>${title}</div>
+				<div class="wf_event_title_widget">${replay}${toggle}</div>
 			</div>
 			<div class="wf_body">
 				<div class="wf_fallback_icon"><i class="mdi mdi-${icon}"></i></div>
@@ -4030,15 +4085,17 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		
 		html += '</div>'; // summary_grid
 		
-		if (event.fields && event.fields.filter( function(param) { return param.type != 'hidden'; } ).length) {
-			html += `<div class="info_group"><span>User Parameters:</span></div>`;
-			html += '<div class="summary_grid single">';
-			html += this.getWFParamPreviewHTML(event.fields, params);
-			html += '</div>'; // summary_grid
+		if (!node.compact) {
+			if (event.fields && event.fields.filter( function(param) { return param.type != 'hidden'; } ).length) {
+				html += `<div class="info_group"><span>User Parameters:</span></div>`;
+				html += '<div class="summary_grid single">';
+				html += this.getWFParamPreviewHTML(event.fields, params);
+				html += '</div>'; // summary_grid
+			}
+			
+			html += this.getWFEventActionPreviewHTML(event);
+			html += this.getWFEventLimitPreviewHTML(event);
 		}
-		
-		html += this.getWFEventActionPreviewHTML(event);
-		html += this.getWFEventLimitPreviewHTML(event);
 		
 		html += '</div>'; // wf_body
 		
@@ -4067,12 +4124,13 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		var params = node.data.params;
 		var title = node.data.label || plugin.title;
 		var icon = plugin.icon || config.ui.data_types.plugin.icon;
-		var pill = node.data.replay ? `<div class="wf_event_title_pill replay"><i class="mdi mdi-replay"></i>Replay</div>` : '';
+		var replay = node.data.replay ? `<i class="mdi mdi-replay replay" title="Replay"></i>` : '';
+		var toggle = (this.ID == 'Workflows') ? `<i class="mdi mdi-unfold-more-horizontal toggle_compact clicky" title="Toggle Compact"></i>` : '';
 		
 		html += `<div id="d_wfn_${node.id}" class="${classes.join(' ')}" style="left:${pos.x}px; top:${pos.y}px;" aria-label="${encode_attrib_entities(title)}">
 			<div class="wf_event_title">
 				<div class="wf_event_title_text"><i class="mdi mdi-drag"></i><i class="mdi mdi-${icon}"></i>${title}</div>
-				${pill}
+				<div class="wf_event_title_widget">${replay}${toggle}</div>
 			</div>
 			<div class="wf_body">
 				<div class="wf_fallback_icon"><i class="mdi mdi-${icon}"></i></div>
@@ -4105,15 +4163,17 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		
 		html += '</div>'; // summary_grid
 		
-		if (plugin.params && plugin.params.filter( function(param) { return param.type != 'hidden'; } ).length) {
-			html += `<div class="info_group"><span>Plugin Parameters:</span></div>`;
-			html += '<div class="summary_grid single">';
-			html += this.getWFParamPreviewHTML(plugin.params, params);
-			html += '</div>'; // summary_grid
+		if (!node.compact) {
+			if (plugin.params && plugin.params.filter( function(param) { return param.type != 'hidden'; } ).length) {
+				html += `<div class="info_group"><span>Plugin Parameters:</span></div>`;
+				html += '<div class="summary_grid single">';
+				html += this.getWFParamPreviewHTML(plugin.params, params);
+				html += '</div>'; // summary_grid
+			}
+			
+			html += this.getWFEventActionPreviewHTML(node.data);
+			html += this.getWFEventLimitPreviewHTML(node.data);
 		}
-		
-		html += this.getWFEventActionPreviewHTML(node.data);
-		html += this.getWFEventLimitPreviewHTML(node.data);
 		
 		html += '</div>'; // wf_body
 		
@@ -4210,6 +4270,12 @@ Page.PageUtils = class PageUtils extends Page.Base {
 				title = "Apply Tags";
 				label = this.getNiceTagListText(action.tags);
 				icon = 'tag-plus-outline';
+			break;
+			
+			case 'label':
+				title = "Apply Label";
+				label = `&ldquo;${strip_html(action.label)}&rdquo;`;
+				icon = 'label-outline';
 			break;
 			
 			case 'disable':
@@ -5972,6 +6038,8 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		var self = this;
 		var title = "Run Event";
 		var btn = ['run-fast', 'Run Now'];
+		var re_config = config.run_event_dialog || {};
+		var html = '';
 		app.clearError();
 		
 		if (typeof(event) == 'string') {
@@ -5979,86 +6047,134 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			if (!event) return app.doError("Event not found.");
 		}
 		
-		var html = '';
-		html += `<div class="dialog_intro">You are about to manually launch a job for the event &ldquo;<b>${event.title}</b>&rdquo;.  Please enter values for all the event-defined parameters if applicable.</div>`;
-		html += '<div class="dialog_box_content scroll maximize">';
+		var category = find_object( app.categories, { id: event.category } );
+		if (!category) return app.doError("Cannot run event: Category not found: " + event.category);
+		
+		// create temp combo limits array, with full inheritance
+		var limits = [];
+		if (event.limits && event.limits.length) limits = limits.concat( event.limits );
+		if (category.limits && category.limits.length) limits = limits.concat( category.limits.filter( limit => limit.enabled ) );
+		
+		var temp_job_type = (event.type == 'workflow') ? 'workflow' : 'default';
+		if (config.job_universal_limits && config.job_universal_limits[temp_job_type]) {
+			limits = limits.concat( config.job_universal_limits[temp_job_type].filter( limit => limit.enabled && limit.type ) );
+		}
 		
 		// event may disallow files
 		var ok_show_files = true;
-		var limit = find_object( event.limits || [], { type: 'file', enabled: true } );
+		var limit = find_object( limits, { type: 'file', enabled: true } );
 		if (limit && (limit.amount == 0)) ok_show_files = false;
+		if (re_config.hide_files) ok_show_files = false;
 		
-		if (ok_show_files) {
-			// user files
-			var cap_suffix = '';
-			if (limit) {
-				var limit_args = this.getResLimitDisplayArgs(limit);
-				cap_suffix += "  " + limit_args.nice_desc + " allowed.";
+		// event may disallow tags
+		var ok_show_tags = true;
+		var tag_limit = find_object( limits, { type: 'tag', enabled: true } );
+		if (tag_limit && (tag_limit.amount == 0)) ok_show_tags = false;
+		if (re_config.hide_tags) ok_show_tags = false;
+		
+		// queue priority
+		var queue_limit = find_object( limits, { type: 'queue', enabled: true } );
+		var ok_show_priority = !!(queue_limit && queue_limit.amount);
+		if (re_config.hide_priority) ok_show_priority = false;
+		
+		// show or hide params as needed
+		var ok_show_params = !!(event.fields && event.fields.length);
+		if (re_config.hide_params) ok_show_params = false;
+		
+		if (ok_show_params || ok_show_files || ok_show_tags || ok_show_priority) {
+			// complex dialog with form fields
+			html += `<div class="dialog_intro">You are about to manually launch a job for the event &ldquo;<b>${event.title}</b>&rdquo;.`;
+			if (ok_show_params) html += `  Please enter values for all the event-defined parameters below.`;
+			html += `</div>`;
+			html += '<div class="dialog_box_content scroll maximize">';
+			
+			if (ok_show_files) {
+				// user files
+				var cap_suffix = '';
+				if (limit) {
+					var limit_args = this.getResLimitDisplayArgs(limit);
+					cap_suffix += "  " + limit_args.nice_desc + " allowed.";
+				}
+				
+				html += this.getFormRow({
+					label: 'User Files:',
+					content: this.getDialogFileUploader(limit),
+					caption: 'Optionally upload and attach files to the job.' + cap_suffix
+				});
 			}
 			
-			html += this.getFormRow({
-				label: 'User Files:',
-				content: this.getDialogFileUploader(limit),
-				caption: 'Optionally upload and attach files to the job.' + cap_suffix
-			});
+			if (ok_show_tags) {
+				// tags
+				html += this.getFormRow({
+					id: 'd_re_tags',
+					content: this.getFormMenuMulti({
+						id: 'fe_re_tags',
+						options: app.tags,
+						values: [],
+						default_icon: 'tag-outline',
+						// 'data-shrinkwrap': 1
+					})
+				});
+			}
+			
+			if (ok_show_priority) {
+				html += this.getFormRow({
+					label: 'Queue Hint:',
+					content: this.getFormCheckbox({
+						id: 'fe_re_priority',
+						label: 'High Priority',
+						checked: false
+					}),
+					caption: 'Optionally prioritize job so it jumps to the front of the queue (if applicable).'
+				});
+			}
+			
+			// user form fields
+			if (ok_show_params) {
+				html += this.getFormRow({
+					label: 'User Parameters:',
+					content: '<div class="plugin_param_editor_cont">' + this.getParamEditor(event.fields, {}) + '</div>',
+					// caption: 'Enter values for all the event-defined parameters here.'
+				});
+			}
+			
+			html += '</div>';
+		}
+		else {
+			// simple confirmation dialog
+			html += `Are you sure you want to manually launch a job for the event &ldquo;<b>${event.title}</b>&rdquo;?`;
 		}
 		
-		// tags
-		html += this.getFormRow({
-			id: 'd_re_tags',
-			content: this.getFormMenuMulti({
-				id: 'fe_re_tags',
-				options: app.tags,
-				values: [],
-				default_icon: 'tag-outline',
-				// 'data-shrinkwrap': 1
-			})
-		});
-		
-		// priority
-		var queue_limit = find_object( event.limits || [], { type: 'queue', enabled: true } );
-		var ok_show_priority = !!(queue_limit && queue_limit.amount);
-		if (ok_show_priority) {
-			html += this.getFormRow({
-				label: 'Queue Hint:',
-				content: this.getFormCheckbox({
-					id: 'fe_re_priority',
-					label: 'High Priority',
-					checked: false
-				}),
-				caption: 'Optionally prioritize job so it jumps to the front of the queue (if applicable).'
-			});
-		}
-		
-		// user form fields
-		html += this.getFormRow({
-			label: 'User Parameters:',
-			content: '<div class="plugin_param_editor_cont">' + this.getParamEditor(event.fields, {}) + '</div>',
-			// caption: 'Enter values for all the event-defined parameters here.'
-		});
-		
-		html += '</div>';
 		Dialog.confirm( title, html, btn, function(result) {
 			if (!result) return;
 			app.clearError();
 			
-			var fields = self.getParamValues(event.fields || []);
-			if (!fields) return; // validation error
-			
 			var job = deep_copy_object(event);
 			if (!job.params) job.params = {};
-			merge_hash_into( job.params, fields );
+			
+			if (ok_show_params) {
+				var fields = self.getParamValues(event.fields || []);
+				if (!fields) return; // validation error
+				merge_hash_into( job.params, fields );
+			}
+			
+			// add tags if specified
+			if (ok_show_tags) {
+				var tags = $('#fe_re_tags').val();
+				if (tags.length) {
+					job.tags = tags;
+					if (tag_limit && (tags.length > tag_limit.amount)) {
+						return app.badField('#fe_re_tags', "The selected tags exceed the event limit of " + commify(tag_limit.amount) + ".");
+					}
+				}
+			}
 			
 			// add files if user uploaded
 			if (self.dialogFiles && self.dialogFiles.length) {
 				if (!job.input) job.input = {};
 				job.input.files = self.dialogFiles;
-				delete self.dialogFiles;
+				delete self.dialogFiles; // destructive
 			}
-			
-			// add tags if specified
-			var tags = $('#fe_re_tags').val();
-			if (tags.length) job.tags = tags;
 			
 			// add priority if checked
 			if (ok_show_priority && $('#fe_re_priority').is(':checked')) job.priority = true;
@@ -6238,13 +6354,6 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			} );
 			// md += "\n";
 		}
-		if (deps.workflows.length) {
-			// md += `\n#### Workflows:\n\n`;
-			deps.workflows.forEach( function(id) {
-				md += '- **' + self.getNiceEvent(id, true) + "**\n";
-			} );
-			// md += "\n";
-		}
 		if (deps.categories.length) {
 			// md += `\n#### Categories:\n\n`;
 			deps.categories.forEach( function(id) {
@@ -6273,7 +6382,6 @@ Page.PageUtils = class PageUtils extends Page.Base {
 	get_plugin_dependants(plugin) {
 		// get lists of things that depend on the current plugin
 		var self = this;
-		var flows = {};
 		var events = {};
 		var cats = {};
 		var groups = {};
@@ -6291,7 +6399,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			if (plugin.type == 'scheduler') {
 				(event.triggers || []).forEach( function(trigger) {
 					if ((trigger.type == 'plugin') && (trigger.plugin_id == plugin.id)) {
-						if (event.workflow) flows[ event.id ] = 1; else events[ event.id ] = 1;
+						events[ event.id ] = 1;
 					}
 				} );
 			}
@@ -6299,14 +6407,14 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			if (plugin.type == 'action') {
 				(event.actions || []).forEach( function(action) {
 					if ((action.type == 'plugin') && (action.plugin_id == plugin.id)) {
-						if (event.workflow) flows[ event.id ] = 1; else events[ event.id ] = 1;
+						events[ event.id ] = 1;
 					}
 				} );
 			}
 			
 			if (event.workflow && event.workflow.nodes) event.workflow.nodes.forEach( function(node) {
-				if ((node.type == 'job') && node.data && node.data.plugin && (node.data.plugin == plugin.id)) flows[ event.id ] = 1;
-				if ((node.type == 'action') && node.data && node.data.plugin_id && (node.data.plugin_id == plugin.id)) flows[ event.id ] = 1;
+				if ((node.type == 'job') && node.data && node.data.plugin && (node.data.plugin == plugin.id)) events[ event.id ] = 1;
+				if ((node.type == 'action') && node.data && node.data.plugin_id && (node.data.plugin_id == plugin.id)) events[ event.id ] = 1;
 			} );
 		} ); // foreach event
 		
@@ -6334,13 +6442,12 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		
 		var info = {
 			events: Object.keys(events),
-			workflows: Object.keys(flows),
 			categories: Object.keys(cats),
 			groups: Object.keys(groups),
 			alerts: Object.keys(alerts)
 		};
 		
-		if (!info.events.length && !info.workflows.length && !info.categories.length && !info.groups.length && !info.alerts.length) return false;
+		if (!info.events.length && !info.categories.length && !info.groups.length && !info.alerts.length) return false;
 		else return info;
 	}
 	
@@ -6424,6 +6531,51 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		MultiSelect.init( $('#fe_se_ex_cols') );
 		SingleSelect.init( $('#fe_se_ex_fmt') );
 		Dialog.autoResize();
+	}
+	
+	compLoc(sock_loc, crit_loc) {
+		// compare location and query string using criteria object
+		if (sock_loc.id != crit_loc.id) return false;
+		
+		var num_crit = num_keys(crit_loc.query);
+		var num_matched = 0;
+		
+		for (var key in crit_loc.query) {
+			if (sock_loc.query[key] == crit_loc.query[key]) num_matched++;
+		}
+		
+		return (num_matched == num_crit);
+	}
+	
+	checkUserEditWarning(thing) {
+		// see if any other users are on the same page and sub-page, and display a warning
+		var self = this;
+		if (!app.socketNav) return; // sanity
+		
+		var loc = {
+			id: this.ID,
+			loc: Nav.currentAnchor,
+			query: this.args
+		};
+		var users = {};
+		
+		Object.values(app.socketNav).forEach( function(socket) {
+			if ((socket.username != app.username) && self.compLoc(socket.loc, loc)) users[ socket.username ] = 1;
+		} );
+		
+		var user_list = Object.keys(users);
+		var name_list = user_list.map( username => {
+			var user = find_object( app.users, { username } );
+			return user ? user.full_name : username;
+		} );
+		
+		if (user_list.length) {
+			var msg = '';
+			if (user_list.length > 1) msg = `Multiple users are currently editing this ${thing}: ` + name_list.join(', ');
+			else msg = name_list[0] + ` is currently editing this ${thing}`;
+			msg += `.  Please proceed with caution, as your edits may collide.`;
+			app.showMessage('warning', msg, 0);
+		}
 	}
 	
 };

@@ -979,11 +979,24 @@ Each parameter is stored as an object inside the Plugin's `params` array.  Every
 
 A "text" parameter type is presented to the user as a single-line text field.
 
-An optional "variant" property may be included, which changes the visible UI control in the browser: `color`, `date`, `datetime-local`, `email`, `number`, `password`, `text`, `time`, `tel` or `url`.
+An optional "variant" property may be included, which changes the visible UI control in the browser.  Internally, this is rendered as a native HTML input using `type="VARIANT"`, so the browser provides the exact picker, keyboard, validation and display behavior.  Here are the supported variants:
 
-Note that the parameter value is almost always set to a string -- the "variant" only controls the visual UI control and behavior.  However, the "number" variant is a special case, where the value will actually be parsed and stored in the parameters as an actual JavaScript Number, or `null` when empty.
+| Variant | Browser UI |
+|---------|------------|
+| `color` | A native color picker, rendered as `<input type="color">`. |
+| `date` | A native date picker, rendered as `<input type="date">`. |
+| `datetime-local` | A native local date and time picker, rendered as `<input type="datetime-local">`. |
+| `email` | A single-line email field with browser email validation, rendered as `<input type="email">`. |
+| `number` | A numeric input, usually with spinner controls and numeric validation, rendered as `<input type="number">`. |
+| `password` | A visually masked single-line field, rendered as `<input type="password">`. |
+| `text` | A standard single-line text field, rendered as `<input type="text">`. |
+| `time` | A native time picker, rendered as `<input type="time">`. |
+| `tel` | A telephone-style text field, usually with a phone keypad on mobile browsers, rendered as `<input type="tel">`. |
+| `url` | A single-line URL field with browser URL validation, rendered as `<input type="url">`. |
 
-The "number" variant is also special in that you can specify a `range` property (string), which limits the minimum, maximum, and step increment for the value.  The range should be in the format: `MIN - MAX / STEP`.  So for example, to limit the number range from 0 to 100 with increments of 5, use `0 - 100 / 5`.  Floats and negatives are allowed, and the step can be the special keyword `any` (for no enforced step increment).
+Note that the parameter value is almost always set to a string -- the "variant" only controls the visual UI control and behavior.  However, the `number` variant is a special case, where the value will actually be parsed and stored in the parameters as an actual [JavaScript Number](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number), or `null` when empty.
+
+The `number` variant is also special in that you can specify a `range` property (string), which limits the minimum, maximum, and step increment for the value.  The range should be in the format: `MIN - MAX / STEP`.  So for example, to limit the number range from 0 to 100 with increments of 5, use `0 - 100 / 5`.  Floats and negatives are allowed, and the step can be the special keyword `any` (for no enforced step increment).
 
 Example text parameter definition:
 
@@ -1014,6 +1027,9 @@ Example number variant definition:
 	"required": true
 }
 ```
+
+> [!NOTE]
+> The `password` text variant only masks the value while the user is entering it, which can help protect against prying eyes and shoulder surfing.  For example, it can be useful on a [Magic Link](triggers.md#magic-link) form.  It does not encrypt the value or store it as a secret.  After submission, the value becomes a regular plain-text parameter on the event or job, and any xyOps user with access to the event or category can easily retrieve it.  Event and job detail screens initially hide the value behind a "Click to View" link, but this is only a visual convenience.  Use a [Secret Vault](secrets.md) for sensitive values that require actual protection.
 
 ### Textarea
 
@@ -1420,7 +1436,11 @@ The toolset "data" is entered in JSON format, and describes all the tools and su
 
 Here the toolset menu would show two tools: "Upload Files" and "List Files".  When "Upload Files" was selected in the menu, three new sub-parameters would appear in a box under the menu: "Local Path", "Filename Pattern" and "Remote Path".  If the user selected a different tool, e.g. "List Files", then the sub-parameters would change, and a different set would be shown.
 
-Tool fields use the same internal format as plugin parameters, but only [checkbox](#checkbox), [code](#code), [json](#json), [hidden](#hidden), [select](#select), [text](#text) and [textarea](#textarea) field types are allowed inside a toolset.  Here is another example showing all the available field types in a single tool:
+Tool fields use the same internal format as plugin parameters, but only [checkbox](#checkbox), [code](#code), [json](#json), [hidden](#hidden), [select](#select), [text](#text) and [textarea](#textarea) field types are allowed inside a toolset.
+
+For text fields inside a toolset, you can use all the same [text variants](#text) described above.  In other words, a tool field with `"type": "text"` may also include `"variant": "date"`, `"variant": "number"`, `"variant": "url"` and so on.  These are still normal text fields in the toolset schema, but they are rendered in the browser as native `input type=VARIANT` controls.
+
+Here is another example showing all the available field types in a single tool:
 
 ```json
 {
@@ -1532,6 +1552,8 @@ My favorite animal is {{ data.animal }}, and my favorite color is {{ data.color 
 When the job runs, those `{{ mustache }}` placeholders are automatically expanded using the [Job](data.md#job) object as the context.  In addition, the [Job.input](data.md#job-input) sub-object is "flattened" into the outer context for convenience (just so you can skip the `input` prefix in the macros).  This allows you to access all the output data from the previous job in the current job, and copy it into Plugin parameters.
 
 The mustache macros can do more than just data lookups.  They can also evaluate simple JavaScript-style expressions as well.  For more on this, see [xyOps Expression Syntax](xyexp.md).
+
+If a property name or Plugin Parameter ID contains a hyphen, space, or other special character, use bracket notation.  For example, use `{{ params['a-number'] }}` instead of `{{ params.a-number }}`.  See [Object Property Names](xyexp.md#object-property-names) for more examples and details.
 
 ## Built-in Plugins
 

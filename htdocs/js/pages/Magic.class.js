@@ -60,8 +60,11 @@ Page.Magic = class Magic extends Page.PageUtils {
 		var html = '';
 		this.files = [];
 		
+		var ok_show_params = !!(this.fields && this.fields.length);
+		
 		if (!this.body.trim().length) {
-			this.body = `You are about to manually launch a job for the event &ldquo;<b>${this.title}</b>&rdquo;.  Please enter values for all the event-defined parameters if applicable.`
+			this.body = `You are about to manually launch a job for the event &ldquo;<b>${this.title}</b>&rdquo;.`;
+			if (ok_show_params) this.body += `Please enter values for all the event-defined parameters below.`
 		}
 		
 		// extract html comment variables from markdown body (e.g. button)
@@ -119,12 +122,14 @@ Page.Magic = class Magic extends Page.PageUtils {
 				});
 			} // files
 			
-			// user form fields
-			html += this.getFormRow({
-				label: 'Parameters:',
-				content: '<div class="plugin_param_editor_cont">' + this.getParamEditor(this.fields, {}) + '</div>',
-				// caption: 'Enter values for all the event-defined parameters here.'
-			});
+			if (ok_show_params) {
+				// user form fields
+				html += this.getFormRow({
+					label: 'Parameters:',
+					content: '<div class="plugin_param_editor_cont">' + this.getParamEditor(this.fields, {}) + '</div>',
+					// caption: 'Enter values for all the event-defined parameters here.'
+				});
+			}
 			
 			html += '</div>'; // dialog_box_content
 			
@@ -454,7 +459,7 @@ Page.Magic = class Magic extends Page.PageUtils {
 		html += '</div>';
 		
 		// simple 2D data table
-		if (job.table && job.table.header && job.table.rows) {
+		if (job.table && job.table.header && job.table.rows && Array.isArray(job.table.rows)) {
 			html += '<div class="magic_section">';
 			if (job.table.title) {
 				html += '<div class="dialog_title">' + encode_entities(job.table.title) + '</div>';

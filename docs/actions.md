@@ -536,6 +536,27 @@ Example (job complete):
 
 Note that tags are deduplicated when the job completes.
 
+### Apply Label
+
+Apply a custom label to the job or workflow, which will be displayed alongside the Job ID.
+
+Parameters:
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `label` | String | Yes | A short string to display next to the Job ID. |
+
+Example (job start):
+
+```json
+{
+    "enabled": true,
+    "condition": "start",
+    "type": "label",
+    "label": "Database Backup"
+}
+```
+
 ## Notes and Tips
 
 - For job actions, the email/web hook payloads include job links, log excerpts, performance metrics and any attached files (where applicable).

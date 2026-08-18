@@ -23,6 +23,23 @@ async function waitForJob(ctx, job_id, opts = {}) {
 	throw new Error('Timed out waiting for job to finish');
 }
 
+// helper: poll until xySat has taken ownership of a standard job
+async function waitForRemoteJob(ctx, job_id, opts = {}) {
+	const timeout = opts.timeout || 20000;
+	const interval = opts.interval || 250;
+	const start = performance.now();
+	
+	while (performance.now() - start < timeout) {
+		let { data } = await ctx.request.json(ctx.api_url + '/app/get_active_jobs/v1', { id: job_id });
+		if (data.code !== 0) throw new Error('get_active_jobs failed');
+		let job = data.rows.find(function(row) { return row.id === job_id; });
+		if (job && job.remote) return job;
+		await sleep(interval);
+	}
+	
+	throw new Error('Timed out waiting for remote job: ' + job_id);
+}
+
 // helper: wait for all jobs, with optional criteria
 async function waitForAllJobs(ctx, opts = {}) {
 	const timeout = opts.timeout || 20000;
@@ -155,15 +172,42 @@ exports.tests = [
 	},
 	
 	async function test_run_job_basic(test) {
-		// run basic job
+		// Run a simulated two-second job, leaving time to exercise the live log API.
 		let { data } = await this.request.json( this.api_url + '/app/run_event/v1', {
 			id: this.event_id,
-			params: { duration: 1 },
+			params: { duration: 2 },
 			tags: [ this.tag_id ]
 		});
 		assert.ok( data.code === 0, "successful api response" );
 		assert.ok( data.id, "expected id in response" );
 		this.job_id = data.id;
+		
+		// Once xySat owns a standard job, its full status updates become the source
+		// of truth.  The conductor must reject local mutations that would be lost.
+		await waitForRemoteJob( this, this.job_id );
+		let { data:update_data } = await this.request.json( this.api_url + '/app/update_active_job/v1', {
+			id: this.job_id,
+			title: 'This Update Must Be Rejected'
+		});
+		assert.ok( update_data.code !== 0, "remote active job update was rejected" );
+		assert.match( update_data.description, /running remotely/i, "remote update returned a useful error" );
+		
+		// Query string parameters arrive as strings.  This exact request used to
+		// pass "32768" to Buffer.alloc() and crash the entire server process.
+		var tail_url = this.api_url + '/app/tail_live_job_log/v1?id=' + this.job_id;
+		let { data: tail_raw } = await this.request.get( tail_url + '&bytes=32768' );
+		var tail_data = JSON.parse( tail_raw.toString() );
+		assert.ok( tail_data.code === 0, "string byte count is safely coerced" );
+		
+		// Invalid and excessive allocations should return normal API errors while
+		// leaving the server alive for the remaining tests.
+		let { data: invalid_raw } = await this.request.get( tail_url + '&bytes=32KB' );
+		var invalid_data = JSON.parse( invalid_raw.toString() );
+		assert.ok( invalid_data.code !== 0, "malformed byte count is rejected" );
+		
+		let { data: oversized_raw } = await this.request.get( tail_url + '&bytes=1048577' );
+		var oversized_data = JSON.parse( oversized_raw.toString() );
+		assert.ok( oversized_data.code !== 0, "oversized byte count is rejected" );
 		
 		// wait for job to complete
 		await waitForJob( this, this.job_id );
@@ -263,6 +307,42 @@ exports.tests = [
 		job_ids.forEach( function(job_id, idx) {
 			assert.ok( !!Tools.findObject(data.jobs, { id: job_id }), "found job idx " + idx );
 		} );
+		
+		// Save one general-category job for the positional authorization test.
+		this.simple_job_id = job_ids[0];
+	},
+	
+	async function test_get_jobs_preserves_forbidden_positions(test) {
+		// A category-limited caller should receive one response position for
+		// every requested ID, with forbidden jobs represented like missing jobs.
+		let created = await this.request.json( this.api_url + '/app/create_api_key/v1', {
+			title: 'Unit Test Restricted Job API Key',
+			description: 'Created by job unit tests',
+			active: 1,
+			privileges: {},
+			categories: [this.category_id]
+		});
+		assert.ok( created.data.code === 0, "successful restricted api key creation" );
+		
+		var key_id = created.data.api_key.id;
+		var key_opts = {
+			headers: { 'X-Session-ID': '', 'X-API-Key': created.data.plain_key }
+		};
+		
+		try {
+			let { data } = await this.request.json( this.api_url + '/app/get_jobs/v1', {
+				ids: [this.job_id, this.simple_job_id, this.job_id]
+			}, key_opts );
+			assert.ok( data.code === 0, "restricted multi-job request succeeds" );
+			assert.ok( data.jobs.length === 3, "job response positions are preserved" );
+			assert.ok( data.jobs[0].id === this.job_id, "first allowed job retains its position" );
+			assert.ok( data.jobs[1].err && !data.jobs[1].id, "forbidden job uses a not-found placeholder" );
+			assert.ok( data.jobs[2].id === this.job_id, "duplicate allowed job retains its position" );
+		}
+		finally {
+			await this.request.json( this.api_url + '/app/delete_api_key/v1', { id: key_id } );
+			delete this.simple_job_id;
+		}
 	},
 	
 	async function test_update_simple_event_queue(test) {

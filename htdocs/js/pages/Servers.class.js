@@ -120,6 +120,7 @@ Page.Servers = class Servers extends Page.ServerUtils {
 				id: item.id,
 				hostname: item.hostname,
 				title: item.title || '',
+				enabled: item.enabled,
 				info: item.info,
 				offline: item.offline,
 				label: (item.title || item.hostname).toLowerCase(), // for sorting
@@ -193,7 +194,7 @@ Page.Servers = class Servers extends Page.ServerUtils {
 				nice_alerts // no need for div here: alert change redraws entire table
 			];
 			
-			if (item.offline) classes.push('disabled');
+			if (item.offline || !item.enabled) classes.push('disabled');
 			if (num_alerts > 0) classes.push( 'clr_red' );
 			if (classes.length) tds.className = classes.join(' ');
 			return tds;
@@ -868,7 +869,7 @@ Page.Servers = class Servers extends Page.ServerUtils {
 				if (app.isAdmin()) html += '<div class="button icon right danger" title="Delete Server..." onClick="$P().goDeleteServer()"><i class="mdi mdi-trash-can-outline"></i></div>';
 				html += '<div class="button icon right secondary sm_hide" title="Job History..." onClick="$P().goJobHistory()"><i class="mdi mdi-cloud-search-outline"></i></div>';
 				html += '<div class="button icon right secondary sm_hide" title="Alert History..." onClick="$P().goAlertHistory()"><i class="mdi mdi-restore-alert"></i></div>';
-				if (app.isAdmin()) html += '<div class="button icon right secondary" title="Server History..." onClick="$P().goServerHistory()"><i class="mdi mdi-script-text-outline"></i></div>';
+				if (app.isAdmin()) html += '<div class="button icon right secondary" title="Server History..." onClick="$P().goServerHistory()"><i class="mdi mdi-history"></i></div>';
 				
 				// if (!online) html += '<div class="box_title_note">As of ' + this.getShortDateTimeText(snapshot.date) + '</div>';
 				// html += '<div class="button right danger" onClick="$P().showDeleteSnapshotDialog()"><i class="mdi mdi-trash-can-outline">&nbsp;</i>Delete...</div>';
@@ -1611,7 +1612,7 @@ Page.Servers = class Servers extends Page.ServerUtils {
 		});
 		
 		// request all data from server
-		app.api.post( 'app/get_quickmon_data', { server: this.server.id }, function(resp) {
+		app.api.get( 'app/get_quickmon_data', { server: this.server.id }, function(resp) {
 			if (!self.active) return; // sanity
 			
 			// now iterate over all quick monitors
@@ -1834,7 +1835,7 @@ Page.Servers = class Servers extends Page.ServerUtils {
 		});
 		
 		// request last hour from server
-		app.api.post( 'app/get_latest_monitor_data', { server: server.id, sys: 'hourly', limit: 60 }, function(resp) {
+		app.api.get( 'app/get_latest_monitor_data', { server: server.id, sys: 'hourly', limit: 60 }, function(resp) {
 			if (!self.active) return; // sanity
 			
 			// prune based on latest sample, not "now" (server may be offline and we're rendering the last known state)

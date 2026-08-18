@@ -84,8 +84,7 @@ In addition to the [Standard Response Format](#standard-response-format), this w
 			"expression": "monitors.load_avg >= (cpu.cores + 1)",
 			"message": "CPU load average is too high: {{float(monitors.load_avg)}} ({{cpu.cores}} CPU cores)",
 			"groups": [],
-			"email": "",
-			"web_hook": "",
+			"actions": [],
 			"monitor_id": "load_avg",
 			"enabled": true,
 			"samples": 1,
@@ -134,8 +133,7 @@ And an example response:
 		"expression": "monitors.load_avg >= (cpu.cores + 1)",
 		"message": "CPU load average is too high: {{float(monitors.load_avg)}} ({{cpu.cores}} CPU cores)",
 		"groups": [],
-		"email": "",
-		"web_hook": "",
+		"actions": [],
 		"monitor_id": "load_avg",
 		"enabled": true,
 		"samples": 1,
@@ -165,8 +163,7 @@ This creates a new alert definition.  The [create_alerts](privileges.md#create_a
 	"expression": "monitors.load_avg >= (cpu.cores + 1)",
 	"message": "CPU load average is too high: {{float(monitors.load_avg)}} ({{cpu.cores}} CPU cores)",
 	"groups": [],
-	"email": "",
-	"web_hook": "",
+	"actions": [],
 	"monitor_id": "load_avg",
 	"enabled": true,
 	"samples": 1,
@@ -270,6 +267,106 @@ Here is an example request:
 ```
 
 And an example response:
+
+```json
+{
+	"code": 0
+}
+```
+
+Deletions are permanent and cannot be undone.
+
+### get_alert_invocations
+
+```
+GET /api/app/get_alert_invocations/v1
+```
+
+Fetch multiple alert invocations by ID.  No specific privilege is required, besides a valid user session or API Key.  Both HTTP GET with query string parameters and HTTP POST with JSON are accepted.
+
+Parameters:
+
+| Property Name | Type | Description |
+|---------------|------|-------------|
+| `ids` | Array(String) or String | **(Required)** One or more [AlertInvocation.id](data.md#alertinvocation-id) values.  For GET requests, this may be a comma-separated string. |
+
+Example request:
+
+```json
+{
+	"ids": ["amk123abcde", "amk456fghij"]
+}
+```
+
+Example response:
+
+```json
+{
+	"code": 0,
+	"alerts": [
+		{ "id": "amk123abcde", "active": true },
+		{ "err": "Alert invocation not found" }
+	]
+}
+```
+
+The `alerts` array preserves the order of the requested IDs.  If an individual invocation cannot be loaded, its array position contains an object with an `err` property instead.  See [AlertInvocation](data.md#alertinvocation) for the complete object structure.
+
+### manage_alert_invocation_tickets
+
+```
+POST /api/app/manage_alert_invocation_tickets/v1
+```
+
+Replace the Ticket associations on a stored alert invocation.  This requires the [edit_tickets](privileges.md#edit_tickets) privilege and a valid user session or API Key.
+
+Parameters:
+
+| Property Name | Type | Description |
+|---------------|------|-------------|
+| `id` | String | **(Required)** The [AlertInvocation.id](data.md#alertinvocation-id) to update. |
+| `tickets` | Array(String) | **(Required)** The complete replacement array of [Ticket.id](data.md#ticket-id) values. |
+
+Example request:
+
+```json
+{
+	"id": "amk123abcde",
+	"tickets": ["tmk987zyxwv"]
+}
+```
+
+Example response:
+
+```json
+{
+	"code": 0
+}
+```
+
+### delete_alert_invocation
+
+```
+POST /api/app/delete_alert_invocation/v1
+```
+
+Delete a stored alert invocation.  This requires the [delete_alerts](privileges.md#delete_alerts) privilege and a valid user session or API Key.
+
+Parameters:
+
+| Property Name | Type | Description |
+|---------------|------|-------------|
+| `id` | String | **(Required)** The [AlertInvocation.id](data.md#alertinvocation-id) to delete. |
+
+Example request:
+
+```json
+{
+	"id": "amk123abcde"
+}
+```
+
+Example response:
 
 ```json
 {
@@ -513,6 +610,26 @@ Note that bucket files are automatically added or replaced based on their normal
 
 This API is designed to be called from within jobs (i.e. Event Plugin scripts), so it does not update the bucket record itself, nor log a user transaction.
 
+In addition to the [Standard Response Format](#standard-response-format), the response includes a `files` array containing the complete updated file list for the bucket, including both existing files and the files from this upload.
+
+Example response:
+
+```json
+{
+	"code": 0,
+	"files": [
+		{
+			"id": "fme4wijr73h",
+			"date": 1754783040,
+			"filename": "test.png",
+			"path": "files/bucket/bme4wi6pg35/bdY8zZ9nKynfFUb4xH6fA/test.png",
+			"size": 92615,
+			"username": "admin"
+		}
+	]
+}
+```
+
 ### delete_bucket_file
 
 ```
@@ -524,14 +641,14 @@ This API deletes a file from a storage bucket. The [edit_buckets](privileges.md#
 | Property Name | Type | Description |
 |---------------|------|-------------|
 | `id` | String | **(Required)** The alphanumeric ID of the bucket to delete the file from. |
-| `filename` | String | **(Required)** The normalized filename of the file to delete. |
+| (Criteria) | Various | **(Required)** One or more [File](data.md#file) properties used to locate the file: `filename`, `path`, `date`, `size`, or `username`.  All supplied criteria must match the same file. |
 	
 Here is an example request:
 
 ```json
 {
 	"id": "bme4wi6pg35",
-	"filename": "test.png"
+	"path": "files/bucket/bme4wi6pg35/bdY8zZ9nKynfFUb4xH6fA/test.png"
 }
 ```
 
@@ -556,9 +673,11 @@ This API empties a bucket, meaning it will delete all files and/or data, but lea
 | Property Name | Type | Description |
 |---------------|------|-------------|
 | `id` | String | **(Required)** The alphanumeric ID of the bucket to empty. |
-| `files` | Boolean | **(Required)** Set to `true` to delete all files from the bucket. |
-| `data` | Boolean | **(Required)** Set to `true` to delete all data from the bucket. |
+| `files` | Boolean | Optional. Set to `true` to delete all files from the bucket. |
+| `data` | Boolean | Optional. Set to `true` to delete all data from the bucket. |
 	
+At least one of `files` or `data` must be set to `true`.  You may set either option by itself, or both together.
+
 Here is an example request:
 
 ```json
@@ -776,13 +895,13 @@ Deletions are permanent and cannot be undone.
 POST /api/app/multi_update_category/v1
 ```
 
-Update multiple categories in a single call. This endpoint is intended for updating `sort_order` only (e.g., after drag-and-drop reordering in the UI). Requires the [edit_categories](privileges.md#edit_categories) privilege and category-level access to all categories (`*`), plus a valid user session or API Key.
+Update multiple categories in a single call. Each item is shallow-merged into its matching category, so any category properties may be bulk-updated. Requires the [edit_categories](privileges.md#edit_categories) privilege and category-level access to all categories (`*`), plus a valid user session or API Key.
 
 Parameters:
 
 | Property Name | Type | Description |
 |---------------|------|-------------|
-| `items` | Array(Object) | **(Required)** Array of objects, each with an `id` and the new `sort_order`. |
+| `items` | Array(Object) | **(Required)** Array of objects, each with an `id` and one or more [Category](data.md#category) properties to update. |
 
 Example request:
 
@@ -805,8 +924,8 @@ Example response:
 
 Notes:
 
-- Only `sort_order` is updated by this endpoint.
-- `modified` and `revision` are not updated by design for multi-updates of sort order.
+- Each item is shallow-merged into the matching category, so properties not included in an item are left unchanged.
+- `modified` and `revision` are not updated by design for multi-updates.
 
 
 
@@ -1142,8 +1261,7 @@ Example response:
 {
     "code": 0,
     "rows": [
-        { "action": "event_update", "username": "admin", "description": "Updated title", "date": 1754784000 }
-        
+        { "action": "event_update", "username": "admin", "description": "Updated title", "epoch": 1754784000 }
     ],
     "list": { "length": 1 }
 }
@@ -1161,7 +1279,7 @@ Create a new event. Requires the [create_events](privileges.md#create_events) pr
 
 Notes:
 
-- For non-workflow events, `targets` and `plugin` are required.
+- For non-workflow events, `targets`, `algo`, and `plugin` are required.
 - For workflow events (`type: "workflow"`), the server sets `plugin` to `_workflow` and requires a `workflow` object; `targets` are not required.
 - Locked plugin/event parameters are enforced for non-admins and required fields are validated.
 
@@ -1169,13 +1287,14 @@ Example request (non-workflow event):
 
 ```json
 {
-    "title": "Diverse heuristic complexity",
-    "enabled": true,
-    "category": "cat9",
-    "targets": ["main"],
-    "plugin": "shellplug",
-    "params": { "script": "#!/bin/bash\necho HELLO\n" },
-    "triggers": [ { "type": "manual", "enabled": true } ]
+	"title": "Diverse heuristic complexity",
+	"enabled": true,
+	"category": "cat9",
+	"targets": ["main"],
+	"algo": "random",
+	"plugin": "shellplug",
+	"params": { "script": "#!/bin/bash\necho HELLO\n" },
+	"triggers": [ { "type": "manual", "enabled": true } ]
 }
 ```
 
@@ -1272,9 +1391,12 @@ Deletions are permanent and cannot be undone.
 
 ```
 POST /api/app/run_event/v1
+POST /api/app/run_event/v1/wait
 ```
 
 Run an event on demand with optional overrides and optional file uploads. Requires the [run_jobs](privileges.md#run_jobs) privilege, plus category/target access to the event, and a valid user session or API Key.
+
+By default, this API starts the job in the background and immediately returns its [Job.id](data.md#job-id).  To wait for the job to finish, add `/wait` to the URL.  The request will remain open until the job completes, and the response will contain the full completed [Job](data.md#job) record, including any output [Job.data](data.md#job-data) and [Job.files](data.md#job-files).  If the launched job is a workflow, the response will also include a `jobs` array containing the full completed Job record for every workflow sub-job.
 
 Manual run rules:
 
@@ -1349,10 +1471,76 @@ Example response:
 
 In addition to the [Standard Response Format](#standard-response-format), this will include an `id` property containing the newly created [Job.id](data.md#job-id).
 
+When using the `/wait` URL, the response instead includes a `job` property containing the full completed [Job](data.md#job) record:
+
+```json
+{
+	"code": 0,
+	"job": {
+		"id": "jabc123def",
+		"code": 0,
+		"description": "Success!",
+		"completed": 1766379212.239,
+		"elapsed": 1.234,
+		"data": {
+			"failed_events": 3
+		},
+		"files": [
+			{
+				"filename": "report.csv",
+				"path": "files/jobs/jabc123def/abc123/report.csv",
+				"size": 1234
+			}
+		]
+	}
+}
+```
+
+Output file `path` values are URL paths relative to the xyOps base URL.  For example, the file above is available at `https://xyops.example.com/files/jobs/jabc123def/abc123/report.csv`.
+
+If the launched job is a workflow, the `/wait` response includes an additional top-level `jobs` array.  Each item is a full [Job](data.md#job) object for one workflow sub-job, including its own output data and files.  The `jobs` property is omitted for non-workflow jobs.
+
+Here is an abbreviated workflow response showing the structure:
+
+```json
+{
+	"code": 0,
+	"job": {
+		"id": "jworkflow123",
+		"type": "workflow",
+		"code": 0,
+		"description": "Success!",
+		"data": {
+			"total": 3
+		}
+	},
+	"jobs": [
+		{
+			"id": "jsubjob123",
+			"code": 0,
+			"description": "Success!",
+			"workflow": {
+				"job": "jworkflow123",
+				"node": "node100"
+			},
+			"data": {
+				"result": 3
+			},
+			"files": []
+		}
+	]
+}
+```
+
+The `/wait` form is best suited to jobs that complete within the timeout limits of the calling client and any intervening HTTP proxies.
+
 ### magic
 
 ```
 GET /api/app/magic/v1/TOKEN
+POST /api/app/magic/v1/TOKEN
+GET /api/app/magic/v1/TOKEN/wait
+POST /api/app/magic/v1/TOKEN/wait
 ```
 
 Start a job using a "Magic Link".  This is a unique URL with an embedded cryptographic token, which is keyed to fire off a specific event via a special magic trigger.  This API does not require a user session or API key -- the authentication is built right into the URL.  Any parameters passed to the API, either via query string parameters or POST parameters, are passed directly into the job as event parameters.
@@ -1372,6 +1560,12 @@ Example response:
 ```
 
 In addition to the [Standard Response Format](#standard-response-format), this will include an `id` property containing the newly created [Job.id](data.md#job-id), and a special "stream token" in a property named `stream`.  This token can be provided to the [stream_job](#stream_job) API to stream job updates via [Server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events).
+
+To wait for the Magic Link job to finish, add `/wait` after the token in the URL.  This keeps the HTTP request open and returns a `job` property containing the full completed [Job](data.md#job) record instead of returning an `id` and `stream` token.  The completed record includes output [Job.data](data.md#job-data) and [Job.files](data.md#job-files), when present.  If the launched job is a workflow, the response also includes a top-level `jobs` array containing the full completed Job record for every workflow sub-job.  See the [`run_event` wait response](#run_event) above for the response format, workflow sub-job structure, and output file URL behavior.
+
+The `/wait` suffix is part of the URL path, so it is not passed to the job as an Event parameter.  Query string and POST parameters continue to work normally as Event parameter overrides.
+
+As with `run_event`, the `/wait` form is best suited to jobs that complete within the timeout limits of the calling client and any intervening HTTP proxies.
 
 ### form
 
@@ -1402,7 +1596,7 @@ Upload one or more files for the authenticated user. This is a general-purpose u
 Notes:
 
 - Files are stored under a user-specific path and automatically expire per server configuration (see [file_expiration](config.md#file_expiration)).
-- All file paths will contain a unique cryptographic hash, rendering the URLs undiscoverable.
+- Each file is stored at `files/USERNAME/FILENAME`, using a sanitized version of the uploaded filename.  Uploading the same filename again for the same user replaces the previous file.
 - This API is used by the graphing library to provide links to chart snapshot images.
 - HTTP POST field names are arbitrary; all files in the request are processed.
 
@@ -1414,7 +1608,7 @@ Example response:
 {
     "code": 0,
     "urls": [
-        "https://example.xyops.io/files/admin/vphJjp2KSaqleXhZog1P2w57bl3DSjGW2kPeOS_7mpc/report.csv"
+        "https://example.xyops.io/files/admin/report.csv"
     ]
 }
 ```
@@ -1762,13 +1956,13 @@ Deletions are permanent and cannot be undone.
 POST /api/app/multi_update_group/v1
 ```
 
-Update multiple groups in a single call. This endpoint is intended for updating `sort_order` only (e.g., after drag-and-drop reordering in the UI). Requires the [edit_groups](privileges.md#edit_groups) privilege and group-level access to all groups (`*`), plus a valid user session or API Key.
+Update multiple groups in a single call. Each item is shallow-merged into its matching group, so any group properties may be bulk-updated. Requires the [edit_groups](privileges.md#edit_groups) privilege and group-level access to all groups (`*`), plus a valid user session or API Key.
 
 Parameters:
 
 | Property Name | Type | Description |
 |---------------|------|-------------|
-| `items` | Array(Object) | **(Required)** Array of objects, each with an `id` and the new `sort_order`. |
+| `items` | Array(Object) | **(Required)** Array of objects, each with an `id` and one or more [Group](data.md#group) properties to update. |
 
 Example request:
 
@@ -1791,8 +1985,8 @@ Example response:
 
 Notes:
 
-- Only `sort_order` is updated by this endpoint.
-- `modified` and `revision` are not updated by design for multi-updates of sort order.
+- Each item is shallow-merged into the matching group, so properties not included in an item are left unchanged.
+- `modified` and `revision` are not updated by design for multi-updates.
 
 ### watch_group
 
@@ -2011,17 +2205,18 @@ Example response:
 
 ```json
 {
-    "code": 0,
-    "jobs": [
-        { /* Job 1 (pruned by default) */ },
-        { /* Job 2 (pruned by default) */ }
-    ]
+	"code": 0,
+	"jobs": [
+		{ /* Job 1 (pruned by default) */ },
+		{ "err": "Job not found" }
+	]
 }
 ```
 
 Notes:
 
 - When `verbose` is not set, the following heavy fields are removed: `actions`, `activity`, `html`, `limits`, `procs`, `conns`, `table`, `timelines`, `input`, `data`, `files`.
+- The `jobs` array preserves the order of the requested IDs.  If an individual Job cannot be loaded, its array position contains an object with an `err` property instead of a Job.
 - See [Job](data.md#job) for details on the job object.
 
 ### get_job_log
@@ -2096,7 +2291,7 @@ Parameters:
 | Property Name | Type | Description |
 |---------------|------|-------------|
 | `id` | String | **(Required)** The [Job.id](data.md#job-id). |
-| `bytes` | Number | Optional. Approximate number of bytes to return from the end. Defaults to `32678` (32K). |
+| `bytes` | Number | Optional. Approximate number of bytes to return from the end. Must be an integer from `1` to `1048576`. Defaults to `32768` (32K). |
 
 Example response:
 
@@ -2159,6 +2354,47 @@ The stream will always start with a `start` event, and an empty data record.
 The intermediate updates include relevant job properties that frequently change or were updated (e.g. [Job.progress](data.md#job-progress), [Job.cpu](data.md#job-cpu), [Job.mem](data.md#job-mem), etc.).  The final update is sent once the job completes, and it includes properties such as [Job.code](data.md#job-code), [Job.description](data.md#job-description) and [Job.elapsed](data.md#job-elapsed).  It also includes the job's output [Job.data](data.md#job-data) and [Job.files](data.md#job-files) if applicable.
 
 After all updates are complete, a final `end` event is sent (with an empty data record).
+
+### update_active_job
+
+```
+POST /api/app/update_active_job/v1
+```
+
+Update an active [Job](data.md#job) record while it is owned by the conductor.  This requires the [update_jobs](privileges.md#update_jobs) privilege and a valid user session or API Key.  The caller must have access to the job's category and targets.  For workflows, the caller must also have access to all referenced events, categories, targets and replayed jobs, both before and after the update.
+
+This API updates the live in-memory [Job](data.md#job) record.  The resulting values become part of the completed Job record when the job finishes.  It does not modify the source Event.
+
+Standard jobs can only be updated before they are dispatched to xySat, while the conductor is still the source of truth.  This includes jobs in states such as `queued`, `ready` and `starting`.  Once a standard job has been sent to xySat, its [Job.remote](data.md#job-remote) property is set and this API rejects the update.  xySat sends complete Job updates back to the conductor during execution, so any local changes made during that period would otherwise be overwritten.
+
+Top-level workflow jobs remain on the conductor throughout execution, so they can be updated while their sub-jobs are running.  See [Update a Live Workflow](https://github.com/pixlcore/xyops/wiki/Update-Live-Workflow) for a complete example, including changing future node targets and adding new nodes dynamically.
+
+Parameters:
+
+| Property Name | Type | Description |
+|---------------|------|-------------|
+| `id` | String | **(Required)** The active [Job.id](data.md#job-id) to update. |
+| (Other) | Various | Optional [Job](data.md#job) properties to update. |
+
+The Job `type` and `category` cannot be changed.  Process launch properties such as `command`, `script`, `uid`, `gid`, `cwd`, `env`, `kill` and `runner` are ignored.  Target changes and workflow node changes are checked against the caller's privileges.  Locked Plugin parameters cannot be changed by non-administrator accounts.
+
+Here is a simple request that updates the title and targets of a queued job before it is dispatched:
+
+```json
+{
+	"id": "jmjgok2xeb5ufrcl",
+	"title": "Updated Before Dispatch",
+	"targets": ["production"]
+}
+```
+
+Example response:
+
+```json
+{
+	"code": 0
+}
+```
 
 ### update_job
 
@@ -2316,6 +2552,40 @@ Example response:
 Notes:
 
 - The job's activity log is appended to with a summary of tag changes.
+
+### manage_job_tickets
+
+```
+POST /api/app/manage_job_tickets/v1
+```
+
+Replace the Ticket associations on a completed Job.  This requires the [edit_tickets](privileges.md#edit_tickets) privilege and a valid user session or API Key.  It cannot be used on a running Job, and the caller must have category and target access to the completed Job.
+
+Parameters:
+
+| Property Name | Type | Description |
+|---------------|------|-------------|
+| `id` | String | **(Required)** The [Job.id](data.md#job-id) to update. |
+| `tickets` | Array(String) | **(Required)** The complete replacement array of [Ticket.id](data.md#ticket-id) values. |
+
+Example request:
+
+```json
+{
+	"id": "jabc123def",
+	"tickets": ["tmk987zyxwv"]
+}
+```
+
+Example response:
+
+```json
+{
+	"code": 0
+}
+```
+
+The Job's activity log is appended with a summary of the Ticket changes.
 
 ### abort_job
 
@@ -2602,13 +2872,13 @@ Deletions are permanent and cannot be undone.
 POST /api/app/multi_update_monitor/v1
 ```
 
-Update multiple monitors in a single call. This endpoint is intended for updating `sort_order` only (e.g., after drag-and-drop reordering in the UI). Requires the [edit_monitors](privileges.md#edit_monitors) privilege and a valid user session or API Key.
+Update multiple monitors in a single call. Each item is shallow-merged into its matching monitor, so any monitor properties may be bulk-updated. Requires the [edit_monitors](privileges.md#edit_monitors) privilege and a valid user session or API Key.
 
 Parameters:
 
 | Property Name | Type | Description |
 |---------------|------|-------------|
-| `items` | Array(Object) | **(Required)** Array of objects, each with an `id` and the new `sort_order`. |
+| `items` | Array(Object) | **(Required)** Array of objects, each with an `id` and one or more [Monitor](data.md#monitor) properties to update. |
 
 Example request:
 
@@ -2629,8 +2899,8 @@ Example response:
 
 Notes:
 
-- Only `sort_order` is updated by this endpoint.
-- `modified` and `revision` are not updated by design for multi-updates of sort order.
+- Each item is shallow-merged into the matching monitor, so properties not included in an item are left unchanged.
+- `modified` and `revision` are not updated by design for multi-updates.
 
 ### get_quickmon_data
 
@@ -2682,13 +2952,24 @@ Example response:
 
 ```json
 {
-    "code": 0,
-    "rows": [ /* timeline entries */ ],
-    "data": { /* server host data snapshot */ }
+	"code": 0,
+	"rows": [ /* timeline entries */ ],
+	"data": {
+		"date": 1754872218,
+		"ip": "::ffff:10.1.10.241",
+		"hostname": "centos-9-arm",
+		"groups": ["main"],
+		"alerts": {},
+		"data": {
+			"cpu": { "currentLoad": 0.14, "cores": 10 },
+			"memory": { "total": 16810385408, "used": 572403712 },
+			"jobs": 0
+		}
+	}
 }
 ```
 
-In addition to the [Standard Response Format](#standard-response-format), this will include a `rows` array containing [ServerTimelineData](data.md#servertimelinedata) entries, and a `data` object containing the server's current [ServerMonitorData](data.md#servermonitordata).
+In addition to the [Standard Response Format](#standard-response-format), this will include a `rows` array containing [ServerTimelineData](data.md#servertimelinedata) entries, and a `data` object containing the complete stored host record.  The current [ServerMonitorData](data.md#servermonitordata) is nested under `data.data`.  The host record may also include top-level properties such as `date`, `ip`, `hostname`, `groups`, and `alerts`.
 
 See [Monitors](monitors.md) for more details on the monitoring subsystem.
 
@@ -2879,10 +3160,90 @@ Example request:
 Example response:
 
 ```json
-{ "code": 0 }
+{
+	"code": 0,
+	"plugin": { /* complete updated Plugin */ }
+}
 ```
 
-The above example would update the `title` and `enabled` properties of the plugin with ID `shellplug`. Other properties will not be touched (aside from `modified` and `revision`, which are updated automatically).
+The above example would update the `title` and `enabled` properties of the plugin with ID `shellplug`. Other properties will not be touched (aside from `modified` and `revision`, which are updated automatically).  The response includes the complete updated [Plugin](data.md#plugin) object.
+
+### test_monitor_plugin
+
+```
+POST /api/app/test_monitor_plugin/v1
+```
+
+Run an existing monitor Plugin on a specific server and return its raw output.  This requires the [edit_plugins](privileges.md#edit_plugins) privilege and a valid user session or API Key.  The selected server must be online and running a version of xySat that supports monitor Plugin tests.  The request times out after 10 seconds.
+
+Parameters:
+
+| Property Name | Type | Description |
+|---------------|------|-------------|
+| `id` | String | **(Required)** The [Plugin.id](data.md#plugin-id) of an existing monitor Plugin. |
+| `server` | String | **(Required)** The [Server.id](data.md#server-id) on which to run the test. |
+
+Example request:
+
+```json
+{
+	"id": "disk_temperature",
+	"server": "sorbstack01"
+}
+```
+
+Example response:
+
+```json
+{
+	"code": 0,
+	"result": { "temperature": 42 },
+	"stderr": ""
+}
+```
+
+In addition to the [Standard Response Format](#standard-response-format), the response includes the Plugin's raw `result`, which may be text or an object.  It may also include `stderr` output.
+
+### test_scheduler_plugin
+
+```
+POST /api/app/test_scheduler_plugin/v1
+```
+
+Run an existing scheduler Plugin once using a simulated Job.  This requires the [edit_plugins](privileges.md#edit_plugins) privilege and a valid user session or API Key.
+
+Parameters:
+
+| Property Name | Type | Description |
+|---------------|------|-------------|
+| `id` | String | **(Required)** The [Plugin.id](data.md#plugin-id) of an existing scheduler Plugin. |
+| `params` | Object | Optional Plugin-defined parameter values.  Defaults to an empty object. |
+| `timezone` | String | Optional timezone used to generate the scheduler date arguments.  Defaults to the xyOps configured timezone. |
+| `epoch` | Number | Optional Unix timestamp for the simulated run.  Defaults to the current time and is normalized to the start of its minute. |
+
+Example request:
+
+```json
+{
+	"id": "custom_calendar",
+	"timezone": "America/Los_Angeles",
+	"params": {}
+}
+```
+
+Example response:
+
+```json
+{
+	"code": 0,
+	"data": {
+		"items": [true]
+	},
+	"stdout": ""
+}
+```
+
+The response always uses `code: 0` for a completed test request.  If the Plugin reports an error, the response includes `err: true` and its `description`.  Depending on Plugin output, the response may also include `data`, `stdout`, `stderr`, and `child_cmd`.
 
 ### delete_plugin
 
@@ -3022,16 +3383,16 @@ Example request:
 
 ```json
 {
-    "title": "Operators",
-    "enabled": true,
-    "icon": "account-hard-hat",
-    "notes": "Ops can run jobs and view logs.",
-    "categories": ["cat1", "cat2"],
-    "groups": ["main"],
-    "privileges": {
-        "run_jobs": true,
-        "view_jobs": true
-    }
+	"title": "Operators",
+	"enabled": true,
+	"icon": "account-hard-hat",
+	"notes": "Ops can run jobs and view logs.",
+	"categories": ["cat1", "cat2"],
+	"groups": ["main"],
+	"privileges": {
+		"run_jobs": true,
+		"tag_jobs": true
+	}
 }
 ```
 
@@ -3130,7 +3491,7 @@ Parameters:
 | `query` | String | Optional. [Unbase-style search query](https://github.com/jhuckaby/pixl-server-storage/blob/master/docs/Indexer.md#simple-queries). Defaults to `*` if omitted. |
 | `offset` | Number | Optional. Zero-based row offset for pagination. Defaults to `0`. |
 | `limit` | Number | Optional. Number of rows to return. Defaults to `1`. |
-| `sort_by` | String | Optional. Field to sort by. Defaults to `completed`. |
+| `sort_by` | String | Optional. Field to sort by. Defaults to `_id`. |
 | `sort_dir` | Number | Optional. Sort direction: `1` for ascending or `-1` for descending. Defaults to `-1`. |
 | `verbose` | Boolean | Optional. If `true`, include verbose job fields (`actions`, `activity`, `input`, `files`, etc.). Defaults to `false` (i.e. these are pruned). |
 | `select` | Array | Optional.  If included, will only return the [Job](data.md#job) properties specified in the array, e.g. `["id", "files"]`.  Overrides `verbose`. |
@@ -3166,7 +3527,7 @@ Date and number fields (like `date`) accept:
 
 Example date range for all jobs in the year 2025: `date:>=2025-01-01 date:<2026-01-01`.
 
-Sorting: use `sort_by=completed` to sort by job completion time (not quantized), or `sort_by=elapsed` to sort by elapsed time. Set `sort_dir=1` for ascending or `sort_dir=-1` for descending. To find the longest running jobs, set `query=*`, `sort_by=elapsed`, and `sort_dir=-1`.
+Sorting: the default `_id` sort is very fast and effectively sorts by Job start time because Job IDs are time-based.  Use `sort_by=completed` to sort by job completion time (not quantized), or `sort_by=elapsed` to sort by elapsed time. Set `sort_dir=1` for ascending or `sort_dir=-1` for descending. To find the longest running jobs, set `query=*`, `sort_by=elapsed`, and `sort_dir=-1`.
 
 Example response:
 
@@ -3528,7 +3889,7 @@ Response: `200 OK` with a streamed file. CSV and TSV responses include a header 
 GET /api/app/marketplace/v1
 ```
 
-Search listings and fetch detailed product information from the [xyOps Marketplace](marketplace.md).  The marketplace data exists only on GitHub, so this will trigger an external request, but the data is cached locally after the first fetch (default TTL is 1 hour).  The API has three different modes, triggered by different parameters:
+Search listings and fetch detailed product information from the [xyOps Marketplace](marketplace.md).  All Marketplace modes require a valid administrator session or API Key.  The marketplace data exists only on GitHub, so this will trigger an external request, but the data is cached locally after the first fetch (default TTL is 1 hour).  The API has three different modes, triggered by different parameters:
 
 **Search Listings:**
 
@@ -3538,6 +3899,9 @@ The default action of the API is to search the marketplace for plugins.  The fol
 |----------------|-------------|
 | `query` | Optional keywords, matches case-insensitively against various product properties (title, description, tags, license, etc.). |
 | `type` | Optionally limit results to one specific type, e.g. `plugin`. |
+| `plugin_type` | Optionally limit Plugin products to one Plugin type, e.g. `event`, `monitor`, `action`, or `scheduler`. |
+| `author` | Optionally limit results to one author.  Matching is case-insensitive and ignores punctuation and whitespace. |
+| `status` | Optionally filter by installation status.  Set to `installed` for installed products, or `not` for products that are not installed. |
 | `license` | Optionally limit results to one specific license, e.g. `mit` (case-insensitive). |
 | `tags` | Optionally limit results to one or more tags, comma separated and case-insensitive.  All must match to be included. |
 | `requires` | Optionally limit results to one or more requirements, comma separated and case-insensitive.  All must match to be included. |
@@ -3580,7 +3944,7 @@ The `list.length` is the total number of matched rows before pagination chop.
 
 **Fetch Metadata:**
 
-Fetch general marketplace metadata, specifically all the unique product types, requirements, tags, and licenses.  To use this mode, set the `fields` query string parameter to any true value.  Example:
+Fetch general marketplace metadata, specifically all the unique product types, Plugin types, requirements, tags, licenses, and authors.  To use this mode, set the `fields` query string parameter to any true value.  Example:
 
 ```
 GET /api/app/marketplace/v1?fields=1
@@ -3593,12 +3957,16 @@ Response:
 	"code": 0,
 	"fields": {
 		"types": ["plugin"],
-		"requirements": ["npx", "uvx", "docker"],
+		"plugin_types": ["event", "monitor", "scheduler"],
+		"requires": ["npx", "uvx", "docker"],
 		"tags": ["backup", "notification", "cleanup", "reporting"],
-		"licenses": ["MIT", "GPL-3.0", "Apache-2.0"]
+		"licenses": ["MIT", "GPL-3.0", "Apache-2.0"],
+		"authors": ["PixlCore"]
 	}
 }
 ```
+
+The `fields` object always contains these six arrays: `types`, `plugin_types`, `requires`, `tags`, `licenses`, and `authors`.
 
 **Get Product Details:**
 
@@ -4034,19 +4402,26 @@ Example response:
 
 ```json
 {
-  "code": 0,
-  "server": { "id": "sorbstack01", "hostname": "centos-9-arm", "groups": ["main"], "enabled": true },
-  "data": {
-    "cpu": { "currentLoad": 0.14, "cores": 10 },
-    "memory": { "total": 16810385408, "used": 572403712 },
-    "load": [0.00, 0.04, 0.08],
-    "jobs": 0
-  },
-  "online": true
+	"code": 0,
+	"server": { "id": "sorbstack01", "hostname": "centos-9-arm", "groups": ["main"], "enabled": true },
+	"data": {
+		"date": 1754872218,
+		"ip": "::ffff:10.1.10.241",
+		"hostname": "centos-9-arm",
+		"groups": ["main"],
+		"alerts": {},
+		"data": {
+			"cpu": { "currentLoad": 0.14, "cores": 10 },
+			"memory": { "total": 16810385408, "used": 572403712 },
+			"load": [0.00, 0.04, 0.08],
+			"jobs": 0
+		}
+	},
+	"online": true
 }
 ```
 
-In addition to the [Standard Response Format](#standard-response-format), this will include a [Server](data.md#server) object, a `data` object containing [ServerMonitorData](data.md#servermonitordata), and an `online` boolean indicating current connection status.
+In addition to the [Standard Response Format](#standard-response-format), this will include a [Server](data.md#server) object, the complete stored host record in `data`, and an `online` boolean indicating current connection status.  The current [ServerMonitorData](data.md#servermonitordata) is nested under `data.data`.  The host record may also include top-level properties such as `date`, `ip`, `hostname`, `groups`, and `alerts`.
 
 ### update_server
 
@@ -4121,8 +4496,16 @@ Example request:
 Example response:
 
 ```json
-{ "code": 0 }
+{
+	"code": 0,
+	"data": {
+		"foo": "bar",
+		"region": "west"
+	}
+}
 ```
+
+The response `data` property contains the complete resulting [Server.userData](data.md#server-userdata) object after the merge or replacement.
 
 ### delete_server
 
@@ -4366,14 +4749,16 @@ In addition to the [Standard Response Format](#standard-response-format), this w
 POST /api/app/update_tag/v1
 ```
 
-Update an existing tag by ID. Requires the [edit_tags](privileges.md#edit_tags) privilege and a valid user session or API Key. Send as HTTP POST with JSON. The request is shallow-merged into the existing tag, so you can provide a sparse set of properties to update.
+Update an existing tag by ID. Requires the [edit_tags](privileges.md#edit_tags) privilege and a valid user session or API Key. Send as HTTP POST with JSON. You can provide a sparse set of editable properties. The server sets `modified` and increments `revision` automatically.
 
 Parameters:
 
 | Property Name | Type | Description |
 |---------------|------|-------------|
 | `id` | String | **(Required)** The tag ID to update. |
-| (Other) | Various | Any updatable [Tag](data.md#tag) fields (e.g. `title`, `icon`, `notes`). |
+| `title` | String | Optional non-empty display title. |
+| `icon` | String | Optional icon name for the tag. |
+| `notes` | String | Optional notes or comments about the tag. |
 
 Example request:
 
@@ -4671,13 +5056,15 @@ Parameters (JSON):
 | `ticket` | String | **(Required)** The [Ticket.id](data.md#ticket-id) to attach files to. |
 | `save` | Boolean | Optional. If present and `true` the files will be attached to the ticket.  Otherwise, they are considered to be user content dropped onto the body. |
 
-Attach one or more file fields (any field names). Files are saved and added to [Ticket.files](data.md#ticket-files) with metadata. Files auto-expire per [file_expiration](config.md#file_expiration) configuration setting.
+Attach one or more file fields (any field names). Files auto-expire per [file_expiration](config.md#file_expiration) configuration setting.
+
+When `save` is `true`, the uploaded files are attached to the Ticket and the response contains its complete updated [Ticket.files](data.md#ticket-files) array.  When `save` is omitted or false, the files are intended for links embedded in the Ticket body, are not attached to the Ticket, and the response contains only the newly uploaded files.  These unattached body-editor files remain available until their configured expiration time.
 
 Example request (JSON):
 
 ```json
 {
-  "id": "tmi9kl02hbb",
+  "ticket": "tmi9kl02hbb",
   "save": true
 }
 ```
@@ -4701,7 +5088,7 @@ Example response:
 }
 ```
 
-In addition to the [Standard Response Format](#standard-response-format), this includes a `files` array containing all the [Ticket.files](data.md#ticket.files), including the newly uploaded ones.
+In addition to the [Standard Response Format](#standard-response-format), this includes a `files` array.  With `save: true`, it contains the complete updated attachment list.  Otherwise, it contains only the newly uploaded, unattached body-editor files.
 
 ### delete_ticket_file
 
@@ -4987,7 +5374,8 @@ Create a new web hook. Requires the [create_web_hooks](privileges.md#create_web_
 
 Notes:
 
-- The server validates `id` (alphanumeric/underscore), `method` (letters only), and `url` (must be `http` or `https`).
+- The server validates `id` (alphanumeric/underscore), `method` (letters only), and `url`.  The URL must either begin with `http://` or `https://`, or begin with `{{` so the entire URL can come from a template expression.
+- URL template expressions are evaluated at runtime and inserted without URL encoding.  This allows a complete URL to come from a template, but the resulting value must already be a valid, safely escaped URL.
 - If `body` is provided, any `{{ ... }}` templates are precompiled and a syntax error returns an error response.
 - Web hooks can expand secrets at runtime when allowed via [Secret.web_hooks](data.md#secret-web_hooks).
 
@@ -5394,6 +5782,40 @@ Example response:
 ```json
 { "code": 0 }
 ```
+
+### admin_broadcast_message
+
+```
+POST /api/app/admin_broadcast_message/v1
+```
+
+Send a custom notification to all currently connected users.  Admin only.  The request must be sent as an HTTP POST with a JSON body, and must be directed to the primary conductor.
+
+Parameters:
+
+| Property Name | Type | Description |
+|---------------|------|-------------|
+| `type` | String | **(Required)** Notification style.  Must be one of: `info`, `warning`, `error`, or `critical`. |
+| `message` | String | **(Required)** Message text to display.  Must contain at least one non-whitespace character. |
+| `sound` | String | Optional sound filename to play with the notification, such as `attention-1.mp3`.  Omit this property or pass an empty string for no sound. |
+
+Example request:
+
+```json
+{
+	"type": "warning",
+	"message": "The system will enter maintenance mode in 10 minutes.",
+	"sound": "attention-1.mp3"
+}
+```
+
+Example response:
+
+```json
+{ "code": 0 }
+```
+
+The notification is delivered immediately over the live WebSocket connection to each authenticated user.  It is not queued for users who are offline.  Sound playback also depends on the user's volume setting and browser audio permissions.
 
 ### get_transfer_token
 
@@ -6360,6 +6782,7 @@ Emails are always sent from the [email_from](config.md#email_from) global config
 
 - Pure JSON: Send `Content-Type: application/json` with a JSON body.
 - Multipart form-data (for file uploads): Send `Content-Type: multipart/form-data` and include a `json` field containing the full JSON payload (as a string), plus one or more file fields. All uploaded files are attached to the email.
+- Every attachment must contain at least one byte.  Zero-byte uploads are rejected.
 
 **Parameters:**
 
@@ -6373,6 +6796,8 @@ Emails are always sent from the [email_from](config.md#email_from) global config
 | `title` | String | Optional "title" shown in large bold font next to the logo (HTML emails only). |
 | `button` | String | Optional clickable button shown in the top-right corner (HTML emails only). |
 | `headers` | Object | Optional MIME headers to send along with the email, e.g. `{ "Importance": "High", "X-Priority": "1", "X-MSMail-Priority": "High" }`. |
+
+For HTML email mode, the `body` is always processed as Markdown.  While you can specify HTML (either inside of Markdown or on its own), the Markdown processor still treats the whole body as a Markdown document.  So avoid things like indenting your HTML tags (as Markdown will convert this to a plain text block).  In text email mode, the body is sent as plain text and is not processed as Markdown.
 
 For the optional `button` parameter please use this syntax: `LABEL | URL`.  So for example: `Visit Disney | https://disney.com`.
 
@@ -6413,11 +6838,122 @@ hello world
 
 ```json
 {
-    "code": 0,
-    "details": "Mailer debug log contents..." 
+	"code": 0,
+	"description": "Email sent successfully to: test@example.com",
+	"details": "Mailer debug log contents..."
 }
 ```
 
-In addition to the [Standard Response Format](#standard-response-format), this will include a `details` property containing the mailer debug log (useful for troubleshooting).
+In addition to the [Standard Response Format](#standard-response-format), this will include a `description` containing the successful recipient summary or delivery error, and a `details` property containing the mailer debug log (useful for troubleshooting).
 
 **Note:** This API is rate-limited by the [max_emails_per_day](config.md#max_emails_per_day) configuration property.  If exceeded, it will fail with an error.
+
+### get_multiple
+
+```
+GET /api/app/get_multiple/v1
+POST /api/app/get_multiple/v1
+```
+
+Fetch multiple in-memory data lists from the primary conductor in a single request.  This is useful when a client needs several types of configuration data at once and wants to avoid making a separate API call for each one.  No specific privilege is required, besides a valid user session or API Key.
+
+For a GET request, pass parameters in the query string.  For a POST request, send them in a JSON body.  The input parameters are as follows:
+
+| Property Name | Type | Description |
+|---------------|------|-------------|
+| `lists` | Array or String | **(Required)** A list of data set names to fetch.  This may be a JSON array, a comma-separated string, or the string `all`. |
+| `jobs` | Boolean | Optional.  Include current job data in the `activeJobs` and `internalJobs` response properties.  Active jobs exclude queued jobs and verbose internal properties. |
+| `alerts` | Boolean | Optional.  Include current active alerts in the `activeAlerts` response property, keyed by global Alert ID. |
+| `state` | Boolean | Optional.  Include the current global application state. |
+| `stats` | Boolean | Optional.  Include the current conductor statistics, including resource usage and current time-period counters. |
+| `servers` | Boolean | Optional.  Include the current online servers, keyed by Server ID. |
+| `serverCache` | Boolean | Optional.  Include cached information for recently disconnected servers, keyed by Server ID. |
+
+The following values are accepted in `lists`:
+
+| List Name | Contents |
+|-----------|----------|
+| `api_keys` | [API Key](data.md#api-key) definitions. |
+| `groups` | [Group](data.md#group) definitions. |
+| `plugins` | [Plugin](data.md#plugin) definitions. |
+| `categories` | [Category](data.md#category) definitions. |
+| `events` | [Event](data.md#event) definitions. |
+| `channels` | [Channel](data.md#channel) definitions. |
+| `web_hooks` | [Web Hook](data.md#webhook) definitions. |
+| `buckets` | [Bucket](data.md#bucket) definitions. |
+| `secrets` | [Secret](data.md#secret) definitions. |
+| `monitors` | [Monitor](data.md#monitor) definitions. |
+| `alerts` | [Alert](data.md#alert) definitions. |
+| `tags` | [Tag](data.md#tag) definitions. |
+| `roles` | [Role](data.md#role) definitions. |
+
+To fetch every available list, set `lists` to the string `all`.  List names are case-sensitive.  The optional live data properties are independent of `lists`, so they may be requested alongside any list selection.
+
+Example request:
+
+```json
+{
+	"lists": ["events", "categories", "plugins"],
+	"jobs": true,
+	"alerts": true,
+	"state": true,
+	"stats": true,
+	"servers": true
+}
+```
+
+Example GET request using a comma-separated list:
+
+```
+GET /api/app/get_multiple/v1?lists=events,categories,plugins&jobs=1
+```
+
+In addition to the [Standard Response Format](#standard-response-format), the response always contains an `epoch` property with the current Unix timestamp in seconds.  It also contains one property for each requested list and optional live data set.  List properties contain arrays.  The `activeJobs`, `internalJobs`, `activeAlerts`, `servers`, and `serverCache` properties contain objects keyed by their respective IDs.
+
+Example response (abbreviated):
+
+```json
+{
+	"code": 0,
+	"epoch": 1785275100,
+	"events": [
+		{
+			"id": "nightly_backup",
+			"title": "Nightly Backup"
+		}
+	],
+	"categories": [
+		{
+			"id": "maintenance",
+			"title": "Maintenance"
+		}
+	],
+	"plugins": [],
+	"activeJobs": {
+		"j1234567890": {
+			"id": "j1234567890",
+			"event": "nightly_backup"
+		}
+	},
+	"internalJobs": {},
+	"activeAlerts": {},
+	"state": {
+		"scheduler": {
+			"enabled": true
+		}
+	},
+	"stats": {
+		"mem": 148897792,
+		"cpu": 1.25,
+		"currentMinute": {},
+		"lastMinute": {},
+		"currentDay": {}
+	},
+	"servers": {
+		"s1234567890": {
+			"id": "s1234567890",
+			"hostname": "worker01.example.com"
+		}
+	}
+}
+```

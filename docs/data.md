@@ -70,6 +70,14 @@ The number of consecutive times the expression must evaluate to `true` before th
 
 If set to `true` the alert will not inherit group or universal actions.
 
+### Alert.limit_jobs
+
+If set to `true`, new jobs will not start on a server while this alert is active.
+
+### Alert.abort_jobs
+
+If set to `true`, all running jobs on the server will be aborted when this alert fires.
+
 ### Alert.notes
 
 Optional notes or comments about the alert.
@@ -267,7 +275,7 @@ An optional icon ID for the category, displayed in the UI.  Icons are sourced fr
 
 ### Category.color
 
-A visual color for the category, displayed in the UI for all events assigned to the category.  The available color values are: `plain`,  `red`, `green`, `blue`, `skyblue`, `yellow`, `purple`, and `orange`.
+A visual color for the category, displayed in the UI for all events assigned to the category.  The available color values are: `plain`, `red`, `fire`, `orange`, `tangerine`, `amber`, `gold`, `yellow`, `lemon`, `lime`, `grass`, `green`, `mint`, `emerald`, `aqua`, `teal`, `turquoise`, `cyan`, `ice`, `skyblue`, `azure`, `blue`, `sapphire`, `indigo`, `lavender`, `violet`, `orchid`, `purple`, `magenta`, `fuchsia`, `hotpink`, `pink`, `blush`, and `rose`.
 
 ### Category.notes
 
@@ -371,6 +379,18 @@ An optional maximum number of times the channel can be triggered per day.
 
 Optional notes or comments about the channel.
 
+### Channel.username
+
+The user or API Key who created the channel.
+
+### Channel.modified
+
+The Unix timestamp when the channel was last modified.
+
+### Channel.created
+
+The Unix timestamp when the channel was created.
+
 ### Channel.revision
 
 An internal revision number for the channel, incremented with each change.
@@ -451,6 +471,10 @@ A boolean flag indicating if the event is enabled (can run jobs) or disabled.
 
 An optional icon ID for the event, displayed in the UI.  Icons are sourced from [Material Design Icons](https://materialdesignicons.com/).
 
+### Event.type
+
+An optional string identifying a special event subtype.  Standard events typically omit this property.  Workflow events set this to `workflow`, use the special plugin ID `_workflow`, and include an [Event.workflow](#event-workflow) object.
+
 ### Event.category
 
 The [Category.id](#category-id) of the category to which the event belongs.
@@ -496,7 +520,7 @@ When multiple servers are in the [Event.targets](#event-targets) array, xyOps us
 | `prefer_last_natural` | Prefer the last server when naturally sorted by the [Event.targets](#event-targets). |
 | `prefer_first` | Prefer the first server when alphabetically sorted by label or hostname. |
 | `prefer_last` | Prefer the last server when alphabetically sorted by label or hostname. |
-| `monitor:_ID_` | Pick the server with the lowest custom monitor value, specified by [Monitor.id](monitor-id) with a `monitor:` prefix. |
+| `monitor:_ID_` | Pick the server with the lowest custom monitor value, specified by [Monitor.id](#monitor-id) with a `monitor:` prefix. |
 
 ### Event.notes
 
@@ -521,6 +545,18 @@ An array of [Trigger](#trigger) items to schedule future job runs and set rules,
 ### Event.workflow
 
 If the event is a workflow, this contains detailed information about the nodes and connections.  See the [Workflow](#workflow) section for details.
+
+### Event.username
+
+The user or API Key who created the event.
+
+### Event.modified
+
+The Unix timestamp when the event was last modified.
+
+### Event.created
+
+The Unix timestamp when the event was created.
 
 ### Event.revision
 
@@ -567,6 +603,18 @@ A set of [Actions](#action) to perform when **any** alert fires and/or clears on
 
 Optional notes for the group, which are included in email notifications for group actions.
 
+### Group.username
+
+The user or API Key who created the group.
+
+### Group.modified
+
+The Unix timestamp when the group was last modified.
+
+### Group.created
+
+The Unix timestamp when the group was created.
+
 ### Group.revision
 
 An internal revision number for the group, incremented with each change.
@@ -586,11 +634,12 @@ A job is a running (or previously ran) instance of an event.  The job structure 
 | Property Name | Note |
 |---------------|--------|
 | `id` | Replaced with [Job.id](#job-id). |
-| `event` | The [Event.id](#event-id]) of the event which spawned the job. |
+| `event` | The [Event.id](#event-id) of the event which spawned the job. |
 | `title` | Removed from job structure when event is copied. |
 | `enabled` | Removed from job structure when event is copied. |
 | `created` | Removed from job structure when event is copied. |
 | `modified` | Removed from job structure when event is copied. |
+| `revision` | Removed from job structure when event is copied. |
 | `triggers` | Removed from job structure when event is copied. |
 
 And these additions:
@@ -631,6 +680,18 @@ The script which, if present, is written and cached on disk, and then appended o
 ### Job.uid
 
 Which UID (User ID) to run the job process as.  This cannot be set -- it is copied from the [Plugin](#plugin).
+
+### Job.gid
+
+Which GID (Group ID) to run the job process as.  This cannot be set.  For standard jobs, it is copied from [Plugin.gid](#plugin-gid) when the job is launched.  It is not part of workflow jobs.
+
+### Job.kill
+
+The process termination strategy to use when the job is aborted.  This cannot be set.  For standard jobs, it is copied from [Plugin.kill](#plugin-kill) when the job is launched.  It is not part of workflow jobs.  See [Plugin.kill](#plugin-kill) for the supported values.
+
+### Job.runner
+
+If set to `true`, process monitoring and file management are delegated to a remote runner.  This cannot be set.  For standard jobs, it is copied from [Plugin.runner](#plugin-runner) when the job is launched.  It is not part of workflow jobs.  See [Plugin.runner](#plugin-runner) for details.
 
 ### Job.cwd
 
@@ -1012,6 +1073,18 @@ This should be set to `false` for disabled, or a any valid number to enable it, 
 
 Optional notes or comments about the monitor's purpose or configuration.
 
+### Monitor.username
+
+The user or API Key who created the monitor.
+
+### Monitor.modified
+
+The Unix timestamp when the monitor was last modified.
+
+### Monitor.created
+
+The Unix timestamp when the monitor was created.
+
 ### Monitor.revision
 
 An internal revision number for the monitor, incremented with each change.
@@ -1028,7 +1101,7 @@ Plugins are used to extend xyOps in a variety of ways, including custom event ac
 {
 	"id": "shellplug",
 	"title": "Shell Script",
-	"enabled": 1,
+	"enabled": true,
 	"command": "[shell-plugin]",
 	"username": "admin",
 	"type": "event",
@@ -1097,6 +1170,7 @@ A set of custom parameters to pass to the plugin when it is executed (for non-mo
 | `title` | String | A visual title for the parameter, displayed in the UI. |
 | `type` | String | The parameter type ID, which should be one of: `text`, `textarea`, `code`, `json`, `checkbox`, `select`, `bucket`, `system`, `hidden`, `toolset`, or `group`. |
 | `variant` | String | For `text` type controls, you can optionally set a UI input variant: `color`, `date`, `datetime-local`, `email`, `number`, `text`, `time`, `tel`, or `url`. |
+| `regex` | String | For `text` and `textarea` types, this optional regex string will validate the user value. |
 | `value` | Mixed | The default value for the parameter. |
 | `data` | Object | Specifically for the `toolset` type, this contains all the tool details. |
 | `caption` | String | Optionally display a caption under the UI control. |
@@ -1133,9 +1207,29 @@ This boolean, when `true`, indicates that the job will be running remotely (i.e.
 
 The idea is that when a job is running remotely, we cannot monitor system resources for it.  Also, input and output files simply do not work in these cases (because xySat expects them to be on the local filesystem where it is running).  The `runner` property tells xyOps (and ultimately xySat) that the job is running remotely out if its reach, and it should not perform the usual process and network monitoring, and file management.  Those duties get delegated to a tool such as [xyRun](https://github.com/pixlcore/xyrun).
 
+### Plugin.quick
+
+For monitor Plugins only, this boolean causes the Plugin to run every second as part of the [QuickMon](monitors.md#quickmon) system, in addition to its normal monitoring interval.
+
+### Plugin.stock
+
+A boolean flag identifying a built-in Plugin installed with xyOps itself.
+
 ### Plugin.notes
 
 Optional notes or comments about the plugin's purpose or configuration.
+
+### Plugin.username
+
+The user or API Key who created the plugin.
+
+### Plugin.modified
+
+The Unix timestamp when the plugin was last modified.
+
+### Plugin.created
+
+The Unix timestamp when the plugin was created.
 
 ### Plugin.revision
 
@@ -1195,7 +1289,7 @@ An optional icon ID for the role, displayed in the UI.  Icons are sourced from [
 
 ### Role.privileges
 
-A list of privileges assigned to the role.  Each privilege is represented as a key-value pair, where the key is the privilege name and the value is unused.  See [Privileges](privileges.md) for more information.
+A list of privileges assigned to the role.  Each granted privilege is represented as a key-value pair, where the key is the privilege name and the value must be `true`.  Do not include privileges with falsey values such as `false`, `0`, `null`, or an empty string, as this can cause incorrect permission behavior.  A privilege must either be set to `true` or omitted entirely.  See [Privileges](privileges.md) for more information.
 
 ### Role.categories
 
@@ -1270,7 +1364,7 @@ A boolean flag indicating if the secret is enabled or not.
 
 ### Secret.icon
 
-An optional icon ID for the role, displayed in the UI.  Icons are sourced from [Material Design Icons](https://materialdesignicons.com/).
+An optional icon ID for the Secret Vault item, displayed in the UI.  Icons are sourced from [Material Design Icons](https://materialdesignicons.com/).
 
 ### Secret.fields
 
@@ -1467,7 +1561,7 @@ An optional limit to place on the server for maximum concurrent running jobs.  N
 
 ### Server.keywords
 
-A list of keywords associated with the server, used for search and filtering.
+A generated comma-separated string of keywords associated with the server, used for search and filtering.
 
 ### Server.socket_id
 
@@ -1488,7 +1582,8 @@ A tag is a user-defined label that can be assigned to jobs for the purpose of or
 	"icon": "alert-rhombus", 
 	"username": "admin", 
 	"modified": 1611173740, 
-	"created": 1611173740 
+	"created": 1611173740,
+	"revision": 1
 }
 ```
 
@@ -1519,6 +1614,10 @@ The Unix timestamp (in seconds) when the tag was created.
 ### Tag.modified
 
 The Unix timestamp (in seconds) when the tag was last modified.
+
+### Tag.revision
+
+An internal revision number for the tag, incremented with each change.  Legacy built-in Tags may not include this property until they are updated.
 
 ## Ticket
 
@@ -1586,7 +1685,7 @@ The full body content of the ticket, in Markdown source format.
 
 ### Ticket.type
 
-The ticket type identifier, which should be one of: `issue`, `feature`, `change`, `maintenance`, `question` or `other`.
+The ticket type identifier, which should be one of: `issue`, `feature`, `release`, `change`, `maintenance`, `question` or `other`.
 
 ### Ticket.status
 
@@ -1642,7 +1741,7 @@ This array contains a list of all the changes made to the ticket, including thin
 
 | Property Name | Type | Description |
 |---------------|------|-------------|
-| `id` | String | A unique lowercase alphanumeric ID for the change. |
+| `id` | String | An optional unique lowercase alphanumeric ID for the change.  The initial system-generated `created` entry and the audit entry created when a comment is deleted do not include an ID. |
 | `type` | String | The change type, which should be one of: `change` or `comment`. |
 | `username` | String | The username of the user who made the change. |
 | `date` | Number | The Unix timestamp of the change. |
@@ -1928,6 +2027,18 @@ The maximum number of times the web hook can be triggered in a single day (i.e. 
 ### WebHook.notes
 
 An optional field for adding notes or comments about the web hook.
+
+### WebHook.username
+
+The user or API Key who created the web hook.
+
+### WebHook.modified
+
+The Unix timestamp when the web hook was last modified.
+
+### WebHook.created
+
+The Unix timestamp when the web hook was created.
 
 ### WebHook.revision
 
@@ -2738,7 +2849,7 @@ An array of [Server](#server) objects for the group.
 
 ### GroupSnapshot.snapshots
 
-An array of [ServerMonitorData](#servermonitordata)s for the group, with indices matching up with [GroupSnapshot.servers](#groupsnapshot-servers).
+An array of stored host records for the group, with indices matching up with [GroupSnapshot.servers](#groupsnapshot-servers).  Each host record contains the [ServerMonitorData](#servermonitordata) under its `data` property, and may also include top-level properties such as `date`, `ip`, `hostname`, `groups`, and `alerts`.
 
 ### GroupSnapshot.alerts
 
@@ -2877,7 +2988,7 @@ Additional properties may be present based on the type.
 
 #### Action.condition
 
-Each action has a `condition` property which specifies when it should fire.  The value may be one of:
+Each action has a `condition` property which specifies when it should fire.  For saved event, category, group and alert actions, the value may be one of:
 
 | Condition ID | Description |
 |------------|-------------|
@@ -2885,13 +2996,15 @@ Each action has a `condition` property which specifies when it should fire.  The
 | `complete` | Fires on job completion, regardless of the outcome. |
 | `success` | Fires on job success, i.e. when the `code` property is `0` or `false`. |
 | `error` | Fires on job errors, i.e. when the `code` property is any true value or string. |
+| `user` | Fires on custom user errors, i.e. when the `code` property is a custom value other than `warning`, `critical` or `abort`. |
 | `warning` | Fires on job warnings, i.e. when the `code` property is set to `"warning"`. |
 | `critical` | Fires on critical errors, i.e. when the `code` property is set to `"critical"`. |
 | `abort` | Fires when the job is aborted, either by user or special event (e.g. lost server). |
 | `tag:TAGID` | Fires on job completion only when a specific tag is present on the job. |
 | `alert_new` | Fires when a new alert is triggered on a server. |
 | `alert_cleared` | Fires when an active alert has cleared. |
-| `instant` | Special condition used for firing dynamic actions on-demand during a job. |
+
+Dynamic actions pushed from a running job via [Job.push](#job-push) may also use `instant`, which fires the action immediately instead of waiting for job completion.
 
 #### Action.type
 
@@ -2908,6 +3021,7 @@ Each action has a `type` property which dictates what will happen when the condi
 | `snapshot` | Take a server snapshot for the action (no extra properties defined). |
 | `suspend` | Suspend (pause) a workflow until a user resumes in the UI.  No extra properties defined. |
 | `tag` | Add one or more [Tags](tags.md) to the running job or workflow. |
+| `label` | Add a custom label to the running job or workflow. |
 | `store` | Store data in a storage bucket. Requires `bucket_id` (the [Bucket.id](#bucket-id)), `bucket_sync` (species if files and/or data should be stored), and `bucket_glob` (glob pattern to match on files). |
 | `fetch` | Fetch data from a storage bucket. Requires `bucket_id` (the [Bucket.id](#bucket-id)), `bucket_sync` (species if files and/or data should be fetched), and `bucket_glob` (glob pattern to match on files). |
 | `ticket` | Create a ticket.  Requires `ticket_type` (see [Ticket.type](#ticket-type)), `ticket_assignees` (an array of [User.username](#user-username)s), and `ticket_tags` (an array of [Tag.id](#tag-id)s).  Can also include `ticket_due`, as an absolute Unix epoch time or a relative date delta such as `3 days`. |
@@ -2952,6 +3066,8 @@ Each limit has a `type` property which specifies what it governs.  The different
 | `retry` | **Max Retry Limit** | Set a maximum number of retries allowed for failed jobs.  The number of retries should be in a property named `amount`, and optionally the delay between retries should be in a property named `duration`, specified as seconds. |
 | `queue` | **Max Queue Limit** | Set a maximum number of jobs that may be queued up, if other limits prevent them from running concurrently.  The number should be in a property named `amount`. |
 | `file` | **Max File Limit** | Set a limit on the number and types of files allowed by the job.  This is a soft limit, and does not abort the job (the files are pruned if limits exceeded). |
+| `day` | **Max Daily Limit** | Quietly prevent additional job launches if a specific daily condition count has been reached for the event. |
+| `tag` | **Max Tag Limit** | Set a limit on the number of tags allowed on the job.  This is a soft limit, and does not abort the job (the tags are pruned if limits exceeded). |
 
 The **Max Run Time** (`time`), **Max Memory Limit** (`mem`), **Max CPU % Limit** (`cpu`) and **Max Output Size** (`log`) limit types all accept a set of additional parameters that enable special actions to take place when the limit is exceeded:
 
@@ -2998,14 +3114,30 @@ Each trigger has a `type` property which describes its behavior.  The different 
 | `manual` | **Manual Run** | Allow the event to be executed manually (in the UI or API). |
 | `schedule` | **Schedule** | Set a repeating schedule to run the event (hourly, daily, etc.).  See [Schedule Rules](#schedule-rules) below. |
 | `interval` | **Interval** | Run the event on a repeating interval, given a starting date/time.  See [Intervals](#intervals) below. |
-| `single` | **Single Shot** | Set a single future exact date/time to run.  Requires an additional `epoch` property, set to the [Unix timestamp](https://en.wikipedia.org/wiki/Unix_time) at which to run. |
+| `single` | **Single Shot** | Set a single future minute in which to run.  Requires an additional `epoch` property, set to a [Unix timestamp](https://en.wikipedia.org/wiki/Unix_time) which is normalized down to the beginning of its minute. |
+| `magic` | **Magic Link** | Generate a secure URL which can launch the event without a login session.  See [Magic Link](triggers.md#magic-link) for details. |
+| `keyboard` | **Keyboard** | Bind one or more keyboard shortcuts to the event, so users can launch it from the UI.  Requires an additional `keys` property. |
+| `startup` | **Startup** | Automatically run the event when xyOps starts and becomes the primary conductor. |
 | `catchup` | **Catch-Up** | Ensure that *every* scheduled job runs, even if it has to run late. |
 | `nth` | **Every Nth** | Run only every Nth scheduled job.  See [Every Nth](triggers.md#every-nth) for details. |
-| `range` | **Range** | Set a starting and/or ending date for a repeating event.  Requires additional `start` and/or `end` properties, set to [Unix timestamps](https://en.wikipedia.org/wiki/Unix_time). |
-| `blackout` | **Blackout** | Set a blackout date/time range when the event *cannot* run.  Requires additional `start` and `end` properties, set to [Unix timestamps](https://en.wikipedia.org/wiki/Unix_time). |
+| `range` | **Range** | Set a starting and/or ending date for a repeating event.  Requires additional `start` and/or `end` properties, set to [Unix timestamps](https://en.wikipedia.org/wiki/Unix_time) which are normalized down to whole minutes. |
+| `blackout` | **Blackout** | Set a blackout date/time range when the event *cannot* run.  Requires additional `start` and `end` properties, set to [Unix timestamps](https://en.wikipedia.org/wiki/Unix_time) which are normalized down to whole minutes. |
 | `delay` | **Delay** | Set an optional starting delay for all scheduled jobs.  Requires an additional `duration` property, set to the number of seconds to delay each job by. |
 | `precision` | **Precision** | Set an optional array of exact `seconds` to fire jobs within the current scheduled minute. |
+| `quiet` | **Quiet** | Run scheduled jobs silently by making them invisible in the UI, and/or ephemeral so they self-delete upon completion. |
 | `plugin` | **Plugin** | Custom scheduler Plugin (user-defined).  Requires an additional `plugin_id` property, as well as a `params` object, for Plugin-defined configuration. |
+
+The UI trigger type menu also contains several scheduling presets.  These are convenience modes in the UI, and are converted into `schedule` trigger objects before being saved:
+
+| UI Type ID | Title | Saved As | Description |
+|------------|-------|----------|-------------|
+| `custom` | **Custom** | `schedule` | Custom schedule with any combination of years, months, days, weekdays, hours and minutes. |
+| `yearly` | **Yearly** | `schedule` | Schedule preset with month, day, hour and minute fields. |
+| `monthly` | **Monthly** | `schedule` | Schedule preset with day, hour and minute fields. |
+| `weekly` | **Weekly** | `schedule` | Schedule preset with weekday, hour and minute fields. |
+| `daily` | **Daily** | `schedule` | Schedule preset with hour and minute fields. |
+| `hourly` | **Hourly** | `schedule` | Schedule preset with minute fields. |
+| `crontab` | **Crontab** | `schedule` | Parses a crontab expression into schedule fields. |
 
 ##### Schedule Rules
 
@@ -3055,7 +3187,7 @@ Here is a list of all the `schedule` type trigger object properties and their de
 |-----------------|-------|-------------|
 | `years` | ∞ | One or more years in YYYY format. |
 | `months` | 1 - 12 | One or more months, where January is 1 and December is 12. |
-| `days` | 1 - 31 | One or more month days, from 1 to 31. |
+| `days` | -7 - -1, 1 - 31 | One or more month days.  Positive values count forward from the start of the month.  Negative values count backward from the end, where `-1` is the last day of the month and `-7` is the seventh-to-last day.  Zero is not allowed. |
 | `weekdays` | 0 - 6 | One or more weekdays, where Sunday is 0, and Saturday is 6. |
 | `hours` | 0 - 23 | One or more hours in 24-hour time, from 0 to 23. |
 | `minutes` | 0 - 59 | One or more minutes, from 0 to 59. |
@@ -3179,7 +3311,7 @@ An array of [WorkflowConnection](#workflowconnection)s in the workflow.
 
 ### WorkflowNode
 
-A workflow node is an object which represents an event, an ad-hoc job, a trigger, a limit, an action, or a controller.  Here is an example node in JSON format:
+A workflow node is an object which represents an event, an ad-hoc job, a trigger, a limit, an action, a controller, or a note.  Here is an example node in JSON format:
 
 ```json
 {
@@ -3203,7 +3335,7 @@ A unique lowercase alphanumeric ID for the node, which is automatically assigned
 
 #### WorkflowNode.type
 
-A string constant representing the node type, which will be one of: `event`, `job`, `trigger`, `limit`, `action`, or `controller`.
+A string constant representing the node type, which will be one of: `event`, `job`, `trigger`, `limit`, `action`, `controller`, or `note`.
 
 #### WorkflowNode.data
 
@@ -3217,6 +3349,7 @@ Nodes may have a `data` property which contains information specific to the node
 | `limit` | Will contain properties from the [Limit](#limit) object. |
 | `action` | Will contain properties from the [Action](#action) object. |
 | `controller` | Will contain properties specific to the controller type.  See below. |
+| `note` | Will contain note display properties such as `body`, `wide` and `show`. |
 
 For `event` and `job` nodes, the optional `replay` property may contain a previous [Job.id](#job-id).  When this is set, the workflow node replays that previous job instead of launching a new sub-job.  The replayed job contributes its original output data, output files, `workflowData`, tags and completion result to the workflow, and downstream wire conditions are evaluated from that replayed result.
 
@@ -3563,10 +3696,12 @@ A file object is used to represent a file in storage.  It is used for [Job.files
 
 | Property Path | Type | Description |
 |---------------|------|-------------|
+| `id` | String | A unique lowercase alphanumeric ID for the file. |
 | `path` | String | A normalized path to the file in storage, which can also be used as a URI path for viewing / downloading. |
 | `filename` | String | The filename of the file. |
 | `size` | Number | The size of the file in bytes. |
 | `date` | Number | The file's creation date as Unix seconds. |
+| `username` | String | The user or API Key associated with the upload. |
 | `job` | String | If the file was created from a job, this will contain the [Job.id](#job-id). |
 | `server` | String | If the file was created on a server, this will contain the [Server.id](#server-id). |
 | `ticket` | String | If the file was created for a ticket, this will contain the [Ticket.id](#ticket-id). |

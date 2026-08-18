@@ -271,7 +271,7 @@ Example:
 
 ### Max File Limit
 
-Soft limit that prunes incoming files (from job input) before launch. It can cap the number of files, the total combined size, and restrict file types by extension. This limit never aborts the job; it prunes and logs what was removed.
+This is a soft limit that prunes incoming files (from job input) before launch. It can cap the number of files, the total combined size, and restrict file types by extension. This limit never aborts the job; it prunes and logs what was removed.
 
 Parameters:
 
@@ -293,6 +293,8 @@ Example:
 	"accept": ".json,.csv,.tsv"
 }
 ```
+
+If this limit is present and the amount is `0`, then the file upload selector is hidden in the "Run Event" dialog and magic link form.
 
 ### Max Daily Limit
 
@@ -320,6 +322,29 @@ Example:
 The daily metrics can be reset on the "System" tab in the UI.
 
 Note that manual job runs (i.e. by user or API key) skip over this check.
+
+### Max Tag Limit
+
+This is a soft limit that prunes tags before job launch, and on job completion (in case tags were added dynamically). This limit never aborts the job; it prunes and logs what was removed.
+
+Parameters:
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `type` | String | Yes | Set to `tag` for max tag limit. |
+| `amount` | Number | Yes | Maximum number of tags allowed on the job. `0` means **no** tags permitted. |
+
+Example:
+
+```json
+{
+	"enabled": true,
+	"type": "tag",
+	"amount": 0
+}
+```
+
+If this limit is present and the amount set to `0`, then the tag selector is hidden in the "Run Event" dialog and magic link form.
 
 ## Universal Limits
 

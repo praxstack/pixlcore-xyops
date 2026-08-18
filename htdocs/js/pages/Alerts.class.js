@@ -16,6 +16,7 @@ Page.Alerts = class Alerts extends Page.PageUtils {
 		if (!this.requireLogin(args)) return true;
 		
 		if (!args) args = {};
+		if (!args.sub && args.id) args.sub = 'view';
 		if (!args.sub) args.sub = this.default_sub;
 		this.args = args;
 		
@@ -35,8 +36,8 @@ Page.Alerts = class Alerts extends Page.PageUtils {
 		if (!args.offset) args.offset = 0;
 		if (!args.limit) args.limit = config.items_per_page;
 		
-		app.setWindowTitle('Alert History');
-		app.setHeaderTitle( '<i class="mdi mdi-restore-alert">&nbsp;</i>Alert History' ); // or: cloud-alert-outline
+		app.setWindowTitle('Alert Invocations');
+		app.setHeaderTitle( '<i class="mdi mdi-restore-alert">&nbsp;</i>Alert Invocations' ); // or: cloud-alert-outline
 		
 		var html = '';
 		html += '<div class="box" style="border:none;">';
@@ -295,10 +296,10 @@ Page.Alerts = class Alerts extends Page.PageUtils {
 			];
 		} );
 		
-		if (this.alerts.length) {
+		if (this.alerts.length && (app.hasPrivilege('admin') || !app.isUserLimited())) {
 			html += '<div style="margin-top: 30px;">';
 			if (app.hasPrivilege('admin')) html += '<div class="button right danger" style="margin-left:15px;" onClick="$P().do_bulk_delete()"><i class="mdi mdi-trash-can-outline">&nbsp;</i>Delete All...</div>';
-			html += '<div class="button right secondary" onClick="$P().do_bulk_export()"><i class="mdi mdi-cloud-download-outline">&nbsp;</i>Export All...</div>';
+			if (!app.isUserLimited()) html += '<div class="button right secondary" onClick="$P().do_bulk_export()"><i class="mdi mdi-cloud-download-outline">&nbsp;</i>Export All...</div>';
 			html += '<div class="clear"></div>';
 			html += '</div>';
 		}
@@ -375,7 +376,7 @@ Page.Alerts = class Alerts extends Page.PageUtils {
 		this.def = null;
 		
 		this.loading();
-		app.api.get( 'app/search_alerts', { query: '#id:' + args.id }, this.receive_alert.bind(this), this.fullPageError.bind(this) );
+		app.api.get( 'app/get_alert_invocations', { ids: args.id }, this.receive_alert.bind(this), this.fullPageError.bind(this) );
 		return true;
 	}
 	
@@ -386,7 +387,7 @@ Page.Alerts = class Alerts extends Page.PageUtils {
 		// make sure page is still active (API may be slow)
 		if (!this.active) return;
 		
-		var alert = this.alert = resp.rows.shift();
+		var alert = this.alert = resp.alerts.shift();
 		if (!alert) return this.doFullPageError("Alert ID not found: " + this.args.id);
 		
 		var def = this.def = find_object( app.alerts, { id: alert.alert } );
@@ -395,7 +396,7 @@ Page.Alerts = class Alerts extends Page.PageUtils {
 		// var icon = '<i class="mdi mdi-' + (alert.active ? 'progress-alert' : 'alert-circle-outline') + '">&nbsp;</i>';
 		
 		app.setHeaderNav([
-			{ icon: 'restore-alert', loc: '#Alerts?sub=list', title: 'Alert History' },
+			{ icon: 'restore-alert', loc: '#Alerts?sub=list', title: 'Alert Invocations' },
 			{ icon: (alert.active ? 'progress-alert' : 'alert-circle-outline'), title: "Alert Details" }
 		]);
 		
@@ -806,7 +807,7 @@ Page.Alerts = class Alerts extends Page.PageUtils {
 			return;
 		}
 		
-		app.api.post( 'app/get_tickets', { ids: alert.tickets }, function(resp) {
+		app.api.get( 'app/get_tickets', { ids: alert.tickets }, function(resp) {
 			self.tickets = resp.tickets || [];
 			self.renderAlertTickets();
 		});
@@ -897,7 +898,7 @@ Page.Alerts = class Alerts extends Page.PageUtils {
 			return this.renderAlertJobs();
 		}
 		
-		app.api.post( 'app/get_jobs', { ids: alert.jobs }, function(resp) {
+		app.api.get( 'app/get_jobs', { ids: alert.jobs }, function(resp) {
 			self.jobs = resp.jobs || [];
 			self.renderAlertJobs();
 		});
@@ -1110,7 +1111,7 @@ Page.Alerts = class Alerts extends Page.PageUtils {
 				this.doSearch();
 			}
 			else if (this.args.sub == 'view') {
-				app.api.get( 'app/search_alerts', { query: '#id:' + this.args.id }, this.receive_alert.bind(this) );
+				app.api.get( 'app/get_alert_invocations', { ids: this.args.id }, this.receive_alert.bind(this) );
 			}
 		}
 	}

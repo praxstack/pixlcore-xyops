@@ -27,10 +27,10 @@
 		{ "id": "delete_groups", "title": "Delete Groups", "icon": "server-network" },
 		
 		{ "id": "run_jobs", "title": "Run Jobs", "icon": "timer-outline" },
+		{ "id": "update_jobs", "title": "Update Jobs", "icon": "timer-outline" },
 		{ "id": "abort_jobs", "title": "Abort Jobs", "icon": "timer-outline" },
 		{ "id": "delete_jobs", "title": "Delete Jobs", "icon": "timer-outline" },
 		{ "id": "tag_jobs", "title": "Job Tags", "icon": "timer-outline" },
-		{ "id": "comment_jobs", "title": "Job Comments", "icon": "timer-outline" },
 		
 		{ "id": "create_monitors", "title": "Create Monitors", "icon": "chart-areaspline" },
 		{ "id": "edit_monitors", "title": "Edit Monitors", "icon": "chart-areaspline" },
@@ -89,7 +89,7 @@
 		{ "id": "jobs", "title": "Jobs", "icon": "timer-outline" },
 		{ "id": "servers", "title": "Servers", "icon": "router-network" },
 		{ "id": "snapshots", "title": "Snapshots", "icon": "monitor-screenshot" },
-		{ "id": "activity", "title": "Activity", "icon": "script-text-outline" },
+		{ "id": "activity", "title": "Activity", "icon": "history" },
 		{ "id": "tickets", "title": "Tickets", "icon": "text-box-outline" }
 	],
 	
@@ -401,20 +401,22 @@
 		"d_ex_server": {
 			"label": "Select Server:",
 			"caption": "Select a server to load its data."
+		},
+		
+		"d_re_tags": {
+			"label": "Tags:",
+			"caption": "Optionally override the tags for running the event."
+		},
+		"fe_re_tags": {
+			"title": "Select tags for event",
+			"placeholder": "(Use event defaults)"
 		}
 	},
 	
 	"pages": {
 		
 		"Events": {
-			"d_re_tags": {
-				"label": "Tags:",
-				"caption": "Optionally override the tags for running the event."
-			},
-			"fe_re_tags": {
-				"title": "Select tags for event",
-				"placeholder": "(Use event defaults)"
-			}
+			
 		},
 		
 		"Workflows": {
@@ -458,7 +460,7 @@
 				"placeholder": "Select tags for workflow..."
 			},
 			"d_wf_user_fields": {
-				"label": "User Fields:",
+				"label": "User Parameters:",
 				"caption": "Optionally define custom parameters to be collected when a user runs your workflow manually."
 			},
 			"d_wf_res_limits": {
@@ -474,6 +476,10 @@
 				"caption": "Optionally enter notes for the event, which will be included in all email notifications."
 			},
 			
+			"d_wfde_title": {
+				"label": "Title:",
+				"caption": "Optionally customize the title for the node (defaults to the Event name)."
+			},
 			"d_wfde_event": {
 				"label": "Event:",
 				"caption": "Select the event to use for the workflow node."
@@ -1010,7 +1016,8 @@
 		},
 		"Events": {
 			"do_edit_from_view": { "sub": "view", "keys": ["KeyE"], "title": "Edit Event or Workflow" },
-			"do_run_current_event": { "sub": "view", "keys": ["KeyR"], "title": "Run Current Event" }
+			"do_run_current_event": { "sub": "view", "keys": ["KeyR"], "title": "Run Current Event" },
+			"do_test_event": { "sub": "view", "keys": ["KeyT"], "title": "Test Current Event" }
 		},
 		"Workflows": {
 			"cancelSolder": { "keys": ["Escape"], "title": "Cancel Solder" },
@@ -1121,6 +1128,7 @@
 		{ "id": "datetime-local", "title": "Date / Time", "icon": "calendar-clock" },
 		{ "id": "email", "title": "Email Address", "icon": "email-edit-outline" },
 		{ "id": "number", "title": "Number", "icon": "counter" },
+		{ "id": "password", "title": "Password", "icon": "form-textbox-lock" },
 		{ "id": "text", "title": "Plain Text", "icon": "form-textbox" },
 		{ "id": "time", "title": "Time", "icon": "clock-edit-outline" },
 		{ "id": "tel", "title": "Phone Number", "icon": "phone-dial" },
@@ -1243,6 +1251,7 @@
 	],
 	
 	"action_type_menu": [
+		{ "id": "label", "title": "Apply Label", "icon": "label-outline" },
 		{ "id": "tag", "title": "Apply Tags", "icon": "tag-plus-outline" },
 		{ "id": "ticket", "title": "Create Ticket", "icon": "text-box-plus-outline" },
 		{ "id": "delete", "title": "Delete Event", "icon": "trash-can-outline" },
@@ -1267,7 +1276,8 @@
 		{ "id": "log", "title": "Max Output Size", "icon": "file-remove-outline" },
 		{ "id": "queue", "title": "Max Queue Limit", "icon": "tray-full" },
 		{ "id": "retry", "title": "Max Retry Limit", "icon": "redo-variant" },
-		{ "id": "time", "title": "Max Run Time", "icon": "timer-remove-outline" }
+		{ "id": "time", "title": "Max Run Time", "icon": "timer-remove-outline" },
+		{ "id": "tag", "title": "Max Tag Limit", "icon": "tag-multiple-outline" }
 	],
 	
 	"workflow_node_types": [

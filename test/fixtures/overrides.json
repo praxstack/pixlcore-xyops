@@ -16,6 +16,7 @@
 	"ping_timeout_sec": 20,
 	
 	"max_jobs_per_min": 1000,
+	"scheduler_stagger_ms": 1,
 	
 	"tickets.email_enabled": false,
 	"airgap.enabled": false,

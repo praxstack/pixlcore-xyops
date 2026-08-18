@@ -1,6 +1,6 @@
 {
 	"name": "xyops",
-	"version": "1.0.78",
+	"version": "1.0.91",
 	"private": true,
 	"description": "A complete workflow automation and server monitoring system.",
 	"author": "Joseph Huckaby <jhuckaby@pixlcore.com>",
@@ -31,12 +31,14 @@
 		"webapp"
 	],
 	"overrides": {
-		"lodash": "4.18.1"
+		"lodash": "4.18.1",
+		"nanoid": "3.3.18"
 	},
 	"dependencies": {
 		"@mdi/font": "7.4.47",
 		"@mdi/svg": "7.4.47",
 		"@highlightjs/cdn-assets": "11.10.0",
+		"@pixlcore/xyops-sdk": "^1.0.4",
 		"@xterm/xterm": "5.5.0",
 		"@xterm/addon-fit": "0.10.0",
 		"async": "2.6.4",
@@ -49,7 +51,7 @@
 		"juice": "11.0.1",
 		"marked": "4.3.0",
 		"mime": "2.5.2",
-		"sanitize-html": "2.17.5",
+		"sanitize-html": "2.17.7",
 		"ioredis": "5.10.1",
 		"pg": "8.20.0",
 		"pixl-acl": "^1.0.4",
@@ -62,7 +64,7 @@
 		"pixl-logger": "^2.0.0",
 		"pixl-mail": "^1.1.9",
 		"pixl-perf": "^1.0.6",
-		"pixl-request": "^2.6.7",
+		"pixl-request": "^2.6.10",
 		"pixl-resize": "^1.0.0",
 		"pixl-server": "^1.0.50",
 		"pixl-server-api": "^1.0.8",
@@ -72,7 +74,7 @@
 		"pixl-server-web": "^3.0.4",
 		"pixl-server-debug": "^1.0.0",
 		"pixl-tools": "^2.0.3",
-		"pixl-xyapp": "^2.1.38",
+		"pixl-xyapp": "^2.1.43",
 		"better-sqlite3": "12.6.2",
 		"uglify-js": "3.19.3",
 		"useragent-ng": "2.4.5",

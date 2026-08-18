@@ -37,6 +37,7 @@
 	
 	"max_jobs_per_min": 100,
 	"max_jobs_per_workflow": 1000,
+	"scheduler_stagger_ms": 50,
 	"dead_job_timeout": 120,
 	"stale_alert_timeout": 90,
 	
@@ -105,6 +106,9 @@
 		"list_url": "https://api.github.com/repos/pixlcore/xyops/releases",
 		"cache_ttl": 3600,
 		"enable_version_checks": true,
+		"preferred_conductors": [],
+		"relinquish_min_age": 60,
+		"relinquish_wait_jobs": false,
 		"protocol": "ws:",
 		"connect_timeout_sec": 3,
 		"master_timeout_sec": 10,
@@ -136,7 +140,9 @@
 			"monitoring_enabled": true,
 			"quickmon_enabled": true,
 			"graphics_enabled": false,
-			"docker_enabled": true
+			"docker_enabled": true,
+			"upgrade_timeout_sec": 60,
+			"graceful": false
 		}
 	},
 	
@@ -226,22 +232,26 @@
 			{
 				"name": "Open Tickets",
 				"uri": "Tickets?status=open",
-				"icon": "label-variant-outline"
+				"icon": "label-variant-outline",
+				"count": true
 			},
 			{
 				"name": "Overdue Tickets",
 				"uri": "Tickets?status=open&query=due%3A%3Ctoday",
-				"icon": "calendar-alert"
+				"icon": "calendar-alert",
+				"count": true
 			},
 			{
 				"name": "My InBox",
 				"uri": "Tickets?status=open&assignee=self",
-				"icon": "email-variant"
+				"icon": "email-variant",
+				"count": true
 			},
 			{
 				"name": "My Drafts",
 				"uri": "Tickets?status=draft&username=self",
-				"icon": "dots-horizontal"
+				"icon": "dots-horizontal",
+				"count": true
 			}
 		]
 	},
@@ -374,6 +384,13 @@
 			"accepted_file_types": "",
 			"user_file_expiration": "30 days",
 			"plugin_file_expiration": "30 days"
+		},
+		
+		"run_event_dialog": {
+			"hide_files": false,
+			"hide_tags": false,
+			"hide_priority": false,
+			"hide_params": false
 		}
 	},
 	
@@ -386,7 +403,7 @@
 		"network_transactions": false,
 		"trans_auto_recover": true,
 		"trans_dir": "data/_transactions",
-		"log_event_types": { "get": 1, "put": 1, "head": 1, "delete": 1, "expire_set": 1, "perf_min": 1, "commit":1, "index":1, "unindex":1, "search":1, "sort":1, "maint": 1 },
+		"log_event_types": { "get": 0, "put": 0, "head": 0, "delete": 0, "expire_set": 0, "perf_min": 1, "commit":1, "index":1, "unindex":1, "search":1, "sort":1, "maint": 1 },
 		
 		"Hybrid": {
 			"docEngine": "SQLite",

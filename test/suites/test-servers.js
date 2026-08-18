@@ -30,6 +30,43 @@ exports.tests = [
 		assert.ok( data.code === 0, 'successful api response' );
 		assert.ok( data.server && data.server.id === 'satunit1', 'unexpected server id' );
 	},
+	
+	async function test_satellite_install_preserves_external_port(test) {
+		// Generate a normal temporary installer token through the same API used by
+		// the Add Server dialog.
+		let { data: token_data } = await this.request.json( this.api_url + '/app/get_satellite_token/v1', {} );
+		assert.ok( token_data.code === 0, 'successful satellite token response' );
+		assert.ok( !!token_data.token, 'expected satellite installer token' );
+		
+		// Simulate Docker forwarding external port 7552 to the test server's
+		// internal port.  The generated script must retain the external port.
+		let install_url = this.api_url + '/app/satellite/install?t=' + token_data.token;
+		let { resp, data: script } = await this.request.get( install_url, {
+			headers: { Host: 'workers.example.test:7552' }
+		} );
+		
+		assert.ok( resp.statusCode === 200, 'successful satellite installer response' );
+		assert.match( script.toString(), /^BASE_URL="http:\/\/workers\.example\.test:7552"$/m );
+	},
+	
+	async function test_satellite_upgrade_preserves_external_https_port(test) {
+		// xySat authenticates upgrade requests using its server ID and auth token.
+		var server_id = 'satunit1';
+		var auth_token = Tools.digestHex( server_id + this.server.config.get('secret_key'), 'sha256' );
+		var upgrade_url = this.api_url + '/app/satellite/upgrade?s=' + server_id + '&t=' + auth_token;
+		
+		// Simulate a TLS-terminating proxy on a nonstandard public port.  The web
+		// server detects HTTPS from this forwarded header.
+		let { resp, data: script } = await this.request.get( upgrade_url, {
+			headers: {
+				Host: 'workers.example.test:8443',
+				'X-Forwarded-Proto': 'https'
+			}
+		} );
+		
+		assert.ok( resp.statusCode === 200, 'successful satellite upgrade response' );
+		assert.match( script.toString(), /^BASE_URL="https:\/\/workers\.example\.test:8443"$/m );
+	},
 
 	async function test_api_get_server_missing_param(test) {
 		// fetch server with missing id
@@ -81,6 +118,49 @@ exports.tests = [
 		if (this.group_final_id) {
 			assert.ok( Array.isArray(data.server.groups), 'expected groups array' );
 			assert.ok( data.server.groups.includes(this.group_final_id), 'expected server to include final group' );
+		}
+	},
+	
+	async function test_api_update_server_destination_groups(test) {
+		// A group-limited user may update a server only while both its current
+		// and proposed group lists remain visible under the any-match policy.
+		let created = await this.request.json( this.api_url + '/app/create_api_key/v1', {
+			title: 'Unit Test Restricted Server API Key',
+			description: 'Created by server unit tests',
+			active: 1,
+			privileges: { update_servers: 1 },
+			groups: [this.group_final_id]
+		});
+		assert.ok( created.data.code === 0, 'successful restricted api key creation' );
+		
+		var key_id = created.data.api_key.id;
+		var key_opts = {
+			headers: { 'X-Session-ID': '', 'X-API-Key': created.data.plain_key }
+		};
+		
+		try {
+			let replaced = await this.request.json( this.api_url + '/app/update_server/v1', {
+				id: 'satunit1', autoGroup: false, groups: ['forbidden_group']
+			}, key_opts );
+			assert.ok( replaced.data.code === 'access', 'replacing with a forbidden group is rejected' );
+			
+			let cleared = await this.request.json( this.api_url + '/app/update_server/v1', {
+				id: 'satunit1', autoGroup: false, groups: []
+			}, key_opts );
+			assert.ok( cleared.data.code === 'access', 'clearing all server groups is rejected' );
+			
+			let mixed = await this.request.json( this.api_url + '/app/update_server/v1', {
+				id: 'satunit1', autoGroup: false, groups: [this.group_final_id, 'forbidden_group']
+			}, key_opts );
+			assert.ok( mixed.data.code === 0, 'one matching destination group grants access' );
+			
+			let restored = await this.request.json( this.api_url + '/app/update_server/v1', {
+				id: 'satunit1', groups: [this.group_final_id]
+			}, key_opts );
+			assert.ok( restored.data.code === 0, 'server groups restored after destination test' );
+		}
+		finally {
+			await this.request.json( this.api_url + '/app/delete_api_key/v1', { id: key_id } );
 		}
 	},
 
@@ -199,4 +279,3 @@ exports.tests = [
 	},
 
 ];
-

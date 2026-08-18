@@ -310,8 +310,8 @@ Page.Events = class Events extends Page.PageUtils {
 			sort_by: 'cat_sort',
 			sort_dir: 1,
 			filter: this.isRowVisible.bind(this),
-			column_ids: ['title', 'cat_sort', 'tag_sort', 'plug_sort', 'target_sort', 'timing_sort', 'status_sort', '' ],
-			column_labels: ['Event Title', 'Category', 'Tags', 'Plugin', 'Targets', 'Triggers', 'Status', 'Actions']
+			column_ids: ['title', 'cat_sort', 'tag_sort', 'plug_sort', 'target_sort', 'timing_sort', 'modified', 'status_sort', '' ],
+			column_labels: ['Event Title', 'Category', 'Tags', 'Plugin', 'Targets', 'Triggers', 'Modified', 'Status', 'Actions']
 		};
 		
 		var last_item = null;
@@ -327,12 +327,13 @@ Page.Events = class Events extends Page.PageUtils {
 			actions.push( `<button class="link" data-event="${item.id}" onClick="$P().go_hist_from_list(this)"><b>History</b></button>` );
 			
 			var tds = [
-				'<span style="font-weight:bold">' + self.getNiceEvent(item, true) + '</span>',
+				'<span class="s_event_wrapper">' + self.getFormCheckbox({ checked: item.enabled, 'data-id':item.id, onChange: '$P().toggle_event_enabled(this)' }) + self.getNiceEvent(item, true) + '</span>',
 				self.getNiceCategory(item.category, true),
 				self.getNiceTagList(item.tags || [], true, ', '),
 				(item.plugin == '_workflow') ? '(Workflow)' : self.getNicePlugin(item.plugin, true),
 				self.getNiceTargetList(item.targets, true),
 				item.timing_sort,
+				self.getRelativeDateTime(item.modified),
 				
 				'<div id="d_el_jt_status_' + item.id + '">' + self.getNiceEventStatus(item) + '</div>',
 				
@@ -400,6 +401,29 @@ Page.Events = class Events extends Page.PageUtils {
 		// MultiSelect.init( this.div.find('#fe_ee_filter') );
 	}
 	
+	toggle_event_enabled(elem) {
+		// toggle event checkbox, actually do the enable/disable here, update row
+		var self = this;
+		var item = find_object( this.events, { id: $(elem).data('id') } );
+		if (!item) return; // sanity
+		
+		if (config.alt_to_toggle && !app.lastClick.altKey) {
+			$(elem).prop('checked', !$(elem).is(':checked'));
+			return app.showMessage('warning', "Accidental Click Protection: Please hold the Alt/Opt key to toggle this checkbox.", 8);
+		}
+		
+		item.enabled = !!$(elem).is(':checked');
+		
+		app.api.post( 'app/update_event', { id: item.id, enabled: item.enabled }, function(resp) {
+			if (!self.active) return; // sanity
+			
+			if (item.enabled) $(elem).closest('ul').removeClass('disabled');
+			else $(elem).closest('ul').addClass('disabled');
+			
+			app.showMessage('success', '&ldquo;' + item.title + "&rdquo; was " + (item.enabled ? 'enabled' : 'disabled') + ".");
+		} );
+	}
+	
 	do_new_from_list() {
 		// jump to new event or workflow, depending on context
 		if (this.args.plugin && (this.args.plugin == '_workflow')) this.go_new_workflow();
@@ -416,7 +440,7 @@ Page.Events = class Events extends Page.PageUtils {
 		var self = this;
 		
 		// only redraw status fields if jobs changed
-		if (!data.jobsChanged) return;
+		if (!data.jobsChanged && !data.navChanged) return;
 		
 		this.events.forEach( function(item, idx) {
 			self.div.find('#d_el_jt_status_' + item.id).html( self.getNiceEventStatus(item) );
@@ -525,7 +549,7 @@ Page.Events = class Events extends Page.PageUtils {
 		
 		// target
 		if ('target' in args) {
-			if (!item.targets.includes(args.target)) return false; // hide
+			if (!item.targets || !item.targets.includes(args.target)) return false; // hide
 		}
 		
 		// plugin
@@ -774,7 +798,7 @@ Page.Events = class Events extends Page.PageUtils {
 				if (event.notes) {
 					html += '<div class="summary_grid" style="grid-template-columns: 1fr; margin-top:30px;"><div>';
 					html += `<div class="info_label">${thing} Notes</div>`;
-					html += '<div class="info_value overflow" style="font-weight:normal; line-height:16px;">' + event.notes.replace(/\n/g, '<br>') + '</div>';
+					html += '<div class="info_value overflow" style="font-weight:normal; line-height:16px;">' + strip_html(event.notes).replace(/\n/g, '<br>') + '</div>';
 					html += '</div></div>';
 				}
 			html += '</div>'; // box content
@@ -1535,6 +1559,9 @@ Page.Events = class Events extends Page.PageUtils {
 			return;
 		}
 		
+		// job data may not be perfectly sorted, due to parallel completes
+		sort_by( this.jobs, 'completed', { type: 'number', dir: -1 } );
+		
 		var perf_keys = {};
 		var perf_data = [];
 		var perf_times = [];
@@ -1838,6 +1865,8 @@ Page.Events = class Events extends Page.PageUtils {
 		CodeEditor.hide();
 		Dialog.hide();
 		
+		delete item.event.revision;
+		
 		if (item.event.workflow) {
 			$P('Workflows').rollbackData = item.event;
 			Nav.go('Workflows?sub=edit&id=' + this.event.id + '&rollback=1');
@@ -1869,10 +1898,12 @@ Page.Events = class Events extends Page.PageUtils {
 		]);
 		app.setWindowTitle( "Event Revision History" );
 		
+		var event = find_object( app.events, { id: this.args.id } ) || {};
+		
 		this.goRevisionHistory({
 			activityType: 'events',
 			itemKey: 'event',
-			editPageID: 'Events',
+			editPageID: event.workflow ? 'Workflows' : 'Events',
 			itemMenu: {
 				label: '<i class="icon mdi mdi-calendar-clock">&nbsp;</i>Event:',
 				title: 'Select Event',
@@ -2036,6 +2067,8 @@ Page.Events = class Events extends Page.PageUtils {
 		
 		html += '<div class="box">';
 		html += '<div class="box_title">';
+			html += '<div class="button icon right secondary" title="Revision History..." onClick="$P().go_edit_history()"><i class="mdi mdi-history"></i></div>';
+			html += '<div class="button icon right secondary sm_hide" title="Job History..." onClick="$P().go_job_history()"><i class="mdi mdi-cloud-search-outline"></i></div>';
 			html += 'Edit Event Details';
 			html += '<div class="box_subtitle"><a href="#Events?sub=view&id=' + this.event.id + '">&laquo; Back to Event</a></div>';
 		html += '</div>';
@@ -2052,7 +2085,7 @@ Page.Events = class Events extends Page.PageUtils {
 			html += '<div class="button secondary mobile_collapse" onClick="$P().do_clone()"><i class="mdi mdi-content-copy">&nbsp;</i><span>Clone...</span></div>';
 			html += '<div class="button secondary mobile_collapse" onClick="$P().do_test_event()"><i class="mdi mdi-test-tube">&nbsp;</i><span>Test...</span></div>';
 			html += '<div class="button secondary mobile_collapse mobile_hide" onClick="$P().do_export_current()"><i class="mdi mdi-cloud-download-outline">&nbsp;</i><span>Export...</span></div>';
-			html += '<div class="button secondary mobile_collapse mobile_hide" onClick="$P().go_edit_history()"><i class="mdi mdi-history">&nbsp;</i><span>History...</span></div>';
+			// html += '<div class="button secondary mobile_collapse mobile_hide" onClick="$P().go_edit_history()"><i class="mdi mdi-history">&nbsp;</i><span>History...</span></div>';
 			html += '<div class="button save phone_collapse" id="btn_save" onClick="$P().do_save_event()"><i class="mdi mdi-floppy">&nbsp;</i><span>Save Changes</span></div>';
 		html += '</div>'; // box_buttons
 		
@@ -2067,6 +2100,12 @@ Page.Events = class Events extends Page.PageUtils {
 		// this.updateAddRemoveMe('#fe_ee_email');
 		this.setupBoxButtonFloater();
 		this.setupEditTriggers();
+		this.checkUserEditWarning('event');
+	}
+	
+	go_job_history() {
+		// jump over to job history for event
+		Nav.go( 'Search?event=' + this.event.id );
 	}
 	
 	cancel_event_edit() {
@@ -2331,10 +2370,17 @@ Page.Events = class Events extends Page.PageUtils {
 		var self = this;
 		var title = this.workflow ? "Test Workflow" : "Test Event";
 		var btn = ['open-in-new', 'Run Now'];
+		var event = null;
 		
-		app.clearError();
-		var event = this.get_event_form_json();
-		if (!event) return; // error
+		if (this.args.sub == 'edit') {
+			app.clearError();
+			event = this.get_event_form_json();
+			if (!event) return; // error
+		}
+		else {
+			event = this.event;
+			if (!event) return; // sanity
+		}
 		
 		var html = '';
 		html += `<div class="dialog_intro">Use this form to test the event in its current state.  This runs an ad-hoc test job with your edits, and any custom settings below.  The test will launch in a new browser tab in order to preserve your current context.</div>`;
@@ -2342,13 +2388,23 @@ Page.Events = class Events extends Page.PageUtils {
 		
 		// actions
 		html += this.getFormRow({
-			label: 'Actions:',
-			content: this.getFormCheckbox({
-				id: 'fe_ete_actions',
-				label: 'Enable All Actions',
-				checked: true
+			label: 'Action Conditions:',
+			content: this.getFormMenuMulti({
+				id: 'fe_ete_conditions',
+				title: 'Select Conditions',
+				placeholder: '(None)',
+				options: [ 
+					...config.ui.action_condition_menu.filter( function(item) { return item.id != 'continue'; } )
+				].concat(
+					this.buildOptGroup( app.tags, "On Custom Tag:", 'tag-outline', 'tag:' )
+				),
+				values: app.getPref('test_conds') ?? ['start', 'complete', 'success'],
+				'data-hold': 1,
+				'data-shrinkwrap': 1,
+				'data-select-all': 1
+				// 'data-compact': 1
 			}),
-			caption: 'Enable all event actions for the test run.'
+			caption: "Select which action conditions to enable for the test job."
 		});
 		
 		// limits
@@ -2357,7 +2413,7 @@ Page.Events = class Events extends Page.PageUtils {
 			content: this.getFormCheckbox({
 				id: 'fe_ete_limits',
 				label: 'Enable All Limits',
-				checked: true
+				checked: app.getPref('test_limits') ?? true
 			}),
 			caption: 'Enable all resource limits for the test run.'
 		});
@@ -2402,11 +2458,8 @@ Page.Events = class Events extends Page.PageUtils {
 			job.test_limits = true;
 			job.label = "Test";
 			job.icon = "test-tube";
+			job.test_conditions = $('#fe_ete_conditions').val();
 			
-			if (!$('#fe_ete_actions').is(':checked')) {
-				job.actions = [];
-				job.test_actions = false;
-			}
 			if (!$('#fe_ete_limits').is(':checked')) {
 				job.limits = [];
 				job.test_limits = false;
@@ -2464,8 +2517,13 @@ Page.Events = class Events extends Page.PageUtils {
 			// cleanup
 			// FUTURE: If self.dialogFiles still exists here, delete in background (user canceled job)
 			delete self.dialogFiles;
+			
+			// save settings in user prefs
+			app.setPref('test_conds', $('#fe_ete_conditions').val());
+			app.setPref('test_limits', $('#fe_ete_limits').is(':checked'));
 		};
 		
+		MultiSelect.init( $('#fe_ete_conditions') );
 		Dialog.autoResize();
 	}
 	
@@ -2822,7 +2880,7 @@ Page.Events = class Events extends Page.PageUtils {
 		
 		// user fields
 		html += this.getFormRow({
-			label: 'User Fields:',
+			label: 'User Parameters:',
 			content: '<div id="d_params_table"></div>',
 			caption: 'Optionally define a custom set of extra parameters to be collected when a user runs your event manually.'
 		});

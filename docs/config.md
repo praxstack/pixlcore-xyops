@@ -87,6 +87,11 @@ This is designed as a runaway e-brake mechanism, to prevent an erroneous workflo
 
 This number sets a global limit on the number of sub-jobs allowed per workflow run (default: `1000`).  Additional jobs are prevented from launching, and the workflow is aborted.
 
+## scheduler_stagger_ms
+<!-- Title: Scheduler Launch Stagger (milliseconds) -->
+
+This number sets the delay between parallel scheduled job launches, in milliseconds (default: `50`).  It insures a large amount of job launches at the same instant won't stall the system.
+
 ## dead_job_timeout
 <!-- Title: Dead Job TImeout (seconds) -->
 
@@ -443,7 +448,20 @@ Default:
 { "rejectUnauthorized": false }
 ```
 
+### multi.preferred_conductors
+<!-- Title: Preferred Conductors -->
 
+This optional array lists your preferred conductor servers (by their exact hostnames), in order from highest to lowest priority.  If a preferred conductor is online and outranks the current primary (or the current primary is not preferred), and it satisfies the minimum age requirement, the current primary will relinquish command.
+
+### multi.relinquish_min_age
+<!-- Title: Relinquish Minimum Age (seconds) -->
+
+The minimum "age" of a peer conductor (time since last connect in seconds) that must be met before the current primary conductor will consider relinquishing command to it.  This field is only applicable if you specify a list of preferred conductors.
+
+### multi.relinquish_wait_jobs
+<!-- Title: Relinquish Wait For Jobs -->
+
+When checked, the peer relinquish operation will wait for all active jobs to complete, before the current primary conductor relinquishes command to a higher-ranked preferred one.  This field is only applicable if you specify a list of preferred conductors.
 
 ## satellite
 <!-- Title: xyOps Satellite Settings -->
@@ -484,7 +502,55 @@ This number (seconds) sets the cache TTL for satellite release metadata and tarb
 ### satellite.config
 <!-- Title: xySat Configuration -->
 
-This object contains web server and runtime settings for xySat; these options are passed along when managing or provisioning satellite nodes (defaults provided in the sample config).
+This object contains web server and runtime settings for xySat; these options are passed along when managing or provisioning satellite nodes.
+
+Here is the full default configuration:
+
+```json
+{ 
+	"port": 5522,
+	"secure": false,
+	"socket_opts": { "rejectUnauthorized": false },
+	"pid_file": "pid.txt",
+	"log_dir": "logs",
+	"log_filename": "[component].log",
+	"log_crashes": true,
+	"log_archive_path": "logs/archives/[filename]-[yyyy]-[mm]-[dd].log.gz",
+	"log_archive_keep": "7 days",
+	"temp_dir": "temp",
+	"debug_level": 5,
+	"child_kill_timeout": 10,
+	"monitoring_enabled": true,
+	"quickmon_enabled": true,
+	"graphics_enabled": false,
+	"docker_enabled": true,
+	"upgrade_timeout_sec": 60,
+	"graceful": false
+}
+```
+
+Here are descriptions of the configuration properties:
+
+| Property Name | Type | Description |
+|---------------|------|-------------|
+| `port` | Number | Specifies which port the xyOps conductor server will be listening on (default is `5522` for ws:// and `5523` for wss://). |
+| `secure` | Boolean | Set to `true` to use secure WebSocket (wss://) and HTTPS connections. |
+| `socket_opts` | Object | Options to pass to the WebSocket connection (see [WebSocket](https://github.com/websockets/ws/blob/master/doc/ws.md#class-websocket)). |
+| `pid_file` | String | Location of the PID file to ensure two satellites don't run simultaneously. |
+| `log_dir` | String | Location of the log directory, relative to the xySat base dir (`/opt/xyops/satellite`). |
+| `log_filename` | String | This string is the filename pattern used by the core logger (default: `[component].log`); supports log column placeholders like `[component]`. |
+| `log_crashes` | Boolean | This boolean enables capturing uncaught exceptions and crashes in the logger subsystem (default: `true`). |
+| `log_archive_path` | String | This string sets the nightly log archive path pattern (default: `logs/archives/[filename]-[yyyy]-[mm]-[dd].log.gz`). |
+| `log_archive_keep` | String | How many days to keep log archives before auto-deleting the oldest ones. |
+| `temp_dir` | String | Location of temp directory, relative to the base dir (`/opt/xyops/satellite`). |
+| `debug_level` | Number | This number sets the verbosity level for the logger (default: `5`; 1 = quiet, 10 = very verbose). |
+| `child_kill_timeout` | Number | Number of seconds to wait after sending a SIGTERM to follow-up with a SIGKILL. |
+| `monitoring_enabled` | Boolean | Enable or disable the monitoring subsystem (i.e. send monitoring metrics every minute). |
+| `quickmon_enabled` | Boolean | Enable or disable the "quick" monitors, which send lightweight metrics every second. |
+| `graphics_enabled` | Boolean | Enable or disable graphics card (GPU) monitoring features (default: `false`).  Currently experimental. |
+| `docker_enabled` | Boolean | Enable or disable Docker container monitoring features (default: `true`). |
+| `upgrade_timeout_sec` | Number | The number of seconds to allow for upgrades to complete, before reporting an error (default: `60`). |
+| `graceful` | Boolean | Set to `true` to have xySat gracefully stop on shutdown (i.e. wait for all jobs to complete).  The default is `false`. |
 
 
 
@@ -546,36 +612,34 @@ See [User](data.md#user) for details on what properties can be specified here.
 
 
 
+<!-- Group: Database -->
+
 ## db_maint
-<!-- Title: Database Maintenance -->
-<!-- Type: Group -->
+<!-- Title: DB Maintenance -->
 
-These settings are used during nightly database maintenance.
+This object controls the nightly database maintenance settings, which trims tables to a maximum row count by deleting the oldest rows.
 
-### db_maint.jobs.max_rows
-<!-- Title: Jobs Max Rows -->
+Example:
 
-This number sets the maximum rows retained for the jobs database table (default: `1000000`); oldest are pruned during maintenance.
-
-### db_maint.alerts.max_rows
-<!-- Title: Alerts Max Rows -->
-
-This number sets the maximum rows retained for the alerts database table (default: `100000`); oldest are pruned during maintenance.
-
-### db_maint.snapshots.max_rows
-<!-- Title: Snapshots Max Rows -->
-
-This number sets the maximum rows retained for the snapshots database table (default: `100000`); oldest are pruned during maintenance.
-
-### db_maint.activity.max_rows
-<!-- Title: Activity Max Rows -->
-
-This number sets the maximum rows retained for the activity database table (default: `100000`); oldest are pruned during maintenance.
-
-### db_maint.servers.max_rows
-<!-- Title: Servers Max Rows -->
-
-This number sets the maximum rows retained for the servers database table (default: `10000`); oldest are pruned during maintenance.
+```json
+"db_maint": {
+	"jobs": {
+		"max_rows": 100000
+	},
+	"alerts": {
+		"max_rows": 100000
+	},
+	"snapshots": {
+		"max_rows": 100000
+	},
+	"activity": {
+		"max_rows": 100000
+	},
+	"servers": {
+		"max_rows": 10000
+	}
+}
+```
 
 
 
@@ -714,7 +778,9 @@ See [pixl-chart](https://github.com/jhuckaby/pixl-chart) for more details.
 ### client.editor_defaults
 <!-- Title: Code Editor Defaults -->
 
-Default code editor preferences (tabs, indent, line wrapping) for [CodeMirror](https://codemirror.net/5/) fields in the UI.  The defaults are:
+Default code editor preferences (tabs, indent, line wrapping) for [CodeMirror](https://codemirror.net/5/) fields in the UI.
+
+The defaults are:
 
 ```json
 "editor_defaults": {
@@ -733,7 +799,9 @@ See [CodeMirror](https://codemirror.net/5/) for more details.
 ### client.bucket_upload_settings
 <!-- Title: Bucket Upload Settings -->
 
-Client-side limits for bucket uploads (max files/size/types). Enforced in the UI before upload, and enforced server-side.  The defaults are:
+Client-side limits for bucket uploads (max files/size/types). Enforced in the UI before upload, and enforced server-side.
+
+The defaults are:
 
 ```json
 "bucket_upload_settings": {
@@ -746,7 +814,9 @@ Client-side limits for bucket uploads (max files/size/types). Enforced in the UI
 ### client.ticket_upload_settings
 <!-- Title: Ticket Upload Settings -->
 
-Client-side limits for ticket attachments (max files/size/types). Enforced in the UI before upload, and enforced server-side.  The defaults are:
+Client-side limits for ticket attachments (max files/size/types). Enforced in the UI before upload, and enforced server-side.
+
+The defaults are:
 
 ```json
 "ticket_upload_settings": {
@@ -759,7 +829,9 @@ Client-side limits for ticket attachments (max files/size/types). Enforced in th
 ### client.job_upload_settings
 <!-- Title: Job Upload Settings -->
 
-Client-side limits for job file uploads (max files/size/types) and default expiration for user/plugin files.  The defaults are:
+Client-side limits for job file uploads (max files/size/types) and default expiration for user/plugin files.
+
+The defaults are:
 
 ```json
 "job_upload_settings": {
@@ -768,6 +840,22 @@ Client-side limits for job file uploads (max files/size/types) and default expir
 	"accepted_file_types": "",
 	"user_file_expiration": "30 days",
 	"plugin_file_expiration": "30 days"
+}
+```
+
+### client.run_event_dialog
+<!-- Title: Run Event Dialog Settings -->
+
+Client-side configuration for the "Run Event" dialog, offering the ability to globally hide specific sections.
+
+The defaults are:
+
+```json
+"run_event_dialog": {
+	"hide_files": false,
+	"hide_tags": false,
+	"hide_priority": false,
+	"hide_params": false
 }
 ```
 

@@ -1,6 +1,27 @@
 const assert = require('node:assert/strict');
 const Tools = require('pixl-tools');
 
+// helper: sleep while waiting for an asynchronously launched job
+async function sleep(ms) {
+	await new Promise(res => setTimeout(res, ms));
+}
+
+// helper: poll active jobs until the specified job has completed
+async function waitForJob(ctx, job_id, opts = {}) {
+	const timeout = opts.timeout || 20000;
+	const interval = opts.interval || 250;
+	const start = performance.now();
+	
+	while (performance.now() - start < timeout) {
+		let { data } = await ctx.request.json(ctx.api_url + '/app/get_active_jobs/v1', {});
+		if (data.code !== 0) throw new Error('get_active_jobs failed');
+		if (!data.rows.find(row => row.id === job_id)) return;
+		await sleep(interval);
+	}
+	
+	throw new Error('Timed out waiting for job to finish');
+}
+
 exports.tests = [
 
 	async function test_api_get_events(test) {
@@ -70,6 +91,11 @@ exports.tests = [
 	async function test_api_create_event(test) {
 		// create new event (non-workflow)
 		const category_id = this.category_final_id || 'general';
+		const single_epoch = 2000000037;
+		const range_start = 2000000098;
+		const range_end = 2000003729;
+		const blackout_start = 2000000159;
+		const blackout_end = 2000007359;
 		let { data } = await this.request.json( this.api_url + '/app/create_event/v1', {
 			"title": "Unit Test Event",
 			"enabled": true,
@@ -80,12 +106,113 @@ exports.tests = [
 			"params": { "script": "#!/bin/bash\necho hello\n", "annotate": false, "json": false },
 			"limits": [ { enabled: true, type: 'time', duration: 60 } ],
 			"actions": [ { enabled: true, condition: 'error', type: 'email', users: ['admin'] } ],
-			"triggers": [ { "type": "manual", "enabled": true } ],
+			"triggers": [
+				{ "type": "manual", "enabled": true },
+				{ "type": "single", "enabled": true, "epoch": single_epoch },
+				{ "type": "range", "enabled": true, "start": range_start, "end": range_end },
+				{ "type": "blackout", "enabled": true, "start": blackout_start, "end": blackout_end }
+			],
 			"notes": "Created by unit tests"
 		});
 		assert.ok( data.code === 0, "successful api response" );
 		assert.ok( data.event && data.event.id, "expected event in response" );
+		
+		// Calendar boundary epochs should be floored to whole minutes on create.
+		let single = Tools.findObject( data.event.triggers, { type: 'single' } );
+		let range = Tools.findObject( data.event.triggers, { type: 'range' } );
+		let blackout = Tools.findObject( data.event.triggers, { type: 'blackout' } );
+		assert.equal( single.epoch, Math.floor(single_epoch / 60) * 60, "single shot epoch should be minute-aligned" );
+		assert.equal( range.start, Math.floor(range_start / 60) * 60, "range start should be minute-aligned" );
+		assert.equal( range.end, Math.floor(range_end / 60) * 60, "range end should be minute-aligned" );
+		assert.equal( blackout.start, Math.floor(blackout_start / 60) * 60, "blackout start should be minute-aligned" );
+		assert.equal( blackout.end, Math.floor(blackout_end / 60) * 60, "blackout end should be minute-aligned" );
 		this.event_id = data.event.id;
+	},
+	
+	async function test_api_create_wait_event(test) {
+		// Create a dedicated Event with both Manual and Magic Link triggers so
+		// the two synchronous API variants can share the same fixture.
+		this.wait_event_id = 'wait_api_test';
+		this.wait_magic_key = 'unit-test-wait-magic-key';
+		
+		let { data } = await this.request.json( this.api_url + '/app/create_event/v1', {
+			id: this.wait_event_id,
+			title: 'Wait API Test Event',
+			enabled: true,
+			category: this.category_final_id || 'general',
+			targets: ['main'],
+			algo: 'random',
+			plugin: 'shellplug',
+			params: { script: "#!/bin/bash\necho hello\n", annotate: false, json: false },
+			limits: [],
+			actions: [],
+			triggers: [
+				{ type: 'manual', enabled: true },
+				{ type: 'magic', enabled: true, key: this.wait_magic_key }
+			],
+			notes: 'Created by wait API unit tests'
+		});
+		
+		assert.equal( data.code, 0, 'successful wait Event creation' );
+		assert.equal( data.event.id, this.wait_event_id, 'expected wait Event ID' );
+		assert.ok( Tools.findObject(data.event.triggers, { type: 'magic' }).token, 'Magic Link key was hashed' );
+	},
+	
+	async function test_api_run_event_wait(test) {
+		// The /wait suffix should hold the request open and return the completed
+		// Job instead of the usual background Job ID response.
+		let { data } = await this.request.json( this.api_url + '/app/run_event/v1/wait', {
+			id: this.wait_event_id,
+			params: {
+				duration: 1,
+				caller: 'run_event',
+				output_file: 'run-event-wait.txt'
+			}
+		});
+		
+		assert.equal( data.code, 0, 'successful run_event wait response' );
+		assert.ok( data.job && data.job.id, 'response contains the completed Job' );
+		assert.equal( data.job.event, this.wait_event_id, 'Job belongs to the requested Event' );
+		assert.equal( data.job.params.caller, 'run_event', 'Event parameter override was preserved' );
+		assert.equal( data.job.code, 0, 'Job completed successfully' );
+		assert.equal( data.job.final, true, 'Job record is fully finalized' );
+		assert.equal( data.job.data.num, 42, 'response includes Job output data' );
+		assert.equal( data.job.files.length, 1, 'response includes Job output files' );
+		assert.equal( data.job.files[0].filename, 'run-event-wait.txt', 'output filename is preserved' );
+		assert.equal( data.job.files[0].path, 'files/jobs/' + data.job.id + '/unit-test/run-event-wait.txt', 'output file path is URL-ready' );
+	},
+	
+	async function test_api_magic_wait(test) {
+		// Magic Link parameters remain ordinary Event overrides, while /wait is
+		// carried in the URL path and returns the same completed Job shape.
+		var url = this.api_url + '/app/magic/v1/' + encodeURIComponent(this.wait_magic_key) + '/wait';
+		url += '?duration=1&caller=magic&output_file=magic-wait.txt';
+		
+		let { data: raw_data } = await this.request.get(url);
+		let data = JSON.parse( raw_data.toString('utf8') );
+		
+		assert.equal( data.code, 0, 'successful Magic Link wait response' );
+		assert.ok( data.job && data.job.id, 'response contains the completed Magic Link Job' );
+		assert.equal( data.job.event, this.wait_event_id, 'Magic Link launched the expected Event' );
+		assert.equal( data.job.source, 'magic', 'Job records the Magic Link source' );
+		assert.equal( data.job.params.caller, 'magic', 'Magic Link query parameter was preserved' );
+		assert.equal( data.job.code, 0, 'Magic Link Job completed successfully' );
+		assert.equal( data.job.final, true, 'Magic Link Job record is fully finalized' );
+		assert.equal( data.job.data.num, 42, 'response includes Magic Link Job output data' );
+		assert.equal( data.job.files.length, 1, 'response includes Magic Link Job output files' );
+		assert.equal( data.job.files[0].filename, 'magic-wait.txt', 'Magic Link output filename is preserved' );
+		assert.equal( data.job.files[0].path, 'files/jobs/' + data.job.id + '/unit-test/magic-wait.txt', 'Magic Link output file path is URL-ready' );
+	},
+	
+	async function test_api_delete_wait_event(test) {
+		// Clean up the dedicated wait fixture after both endpoint variants run.
+		let { data } = await this.request.json( this.api_url + '/app/delete_event/v1', {
+			id: this.wait_event_id
+		});
+		
+		assert.equal( data.code, 0, 'successful wait Event deletion' );
+		delete this.wait_event_id;
+		delete this.wait_magic_key;
 	},
 
 	async function test_api_get_new_event(test) {
@@ -98,6 +225,16 @@ exports.tests = [
 		assert.ok( data.event.limits[0].type === 'time' && data.event.limits[0].duration === 60, "unexpected limit content" );
 		assert.ok( Array.isArray(data.event.actions) && data.event.actions.length === 1, "expected one action" );
 		assert.ok( data.event.actions[0].type === 'email' && data.event.actions[0].enabled === true, "unexpected action content" );
+		
+		// Verify the normalized trigger epochs were actually persisted.
+		let single = Tools.findObject( data.event.triggers, { type: 'single' } );
+		let range = Tools.findObject( data.event.triggers, { type: 'range' } );
+		let blackout = Tools.findObject( data.event.triggers, { type: 'blackout' } );
+		assert.equal( single.epoch % 60, 0, "persisted single shot epoch should be minute-aligned" );
+		assert.equal( range.start % 60, 0, "persisted range start should be minute-aligned" );
+		assert.equal( range.end % 60, 0, "persisted range end should be minute-aligned" );
+		assert.equal( blackout.start % 60, 0, "persisted blackout start should be minute-aligned" );
+		assert.equal( blackout.end % 60, 0, "persisted blackout end should be minute-aligned" );
 	},
 
 	async function test_api_event_rejects_reserved_job_override(test) {
@@ -122,12 +259,33 @@ exports.tests = [
 
 	async function test_api_update_event(test) {
 		// update our event
+		const single_epoch = 2000100037;
+		const range_start = 2000100098;
+		const range_end = 2000103729;
+		const blackout_start = 2000100159;
+		const blackout_end = 2000107359;
 		let { data } = await this.request.json( this.api_url + '/app/update_event/v1', {
 			id: this.event_id,
 			title: 'UTE v2',
-			notes: 'updated by tests'
+			notes: 'updated by tests',
+			triggers: [
+				{ type: 'manual', enabled: true },
+				{ type: 'single', enabled: true, epoch: single_epoch },
+				{ type: 'range', enabled: true, start: range_start, end: range_end },
+				{ type: 'blackout', enabled: true, start: blackout_start, end: blackout_end }
+			]
 		});
 		assert.ok( data.code === 0, "successful api response" );
+		
+		// The same minute normalization must apply when replacing triggers on update.
+		let single = Tools.findObject( data.event.triggers, { type: 'single' } );
+		let range = Tools.findObject( data.event.triggers, { type: 'range' } );
+		let blackout = Tools.findObject( data.event.triggers, { type: 'blackout' } );
+		assert.equal( single.epoch, Math.floor(single_epoch / 60) * 60, "updated single shot epoch should be minute-aligned" );
+		assert.equal( range.start, Math.floor(range_start / 60) * 60, "updated range start should be minute-aligned" );
+		assert.equal( range.end, Math.floor(range_end / 60) * 60, "updated range end should be minute-aligned" );
+		assert.equal( blackout.start, Math.floor(blackout_start / 60) * 60, "updated blackout start should be minute-aligned" );
+		assert.equal( blackout.end, Math.floor(blackout_end / 60) * 60, "updated blackout end should be minute-aligned" );
 	},
 
 	async function test_api_update_event_invalid_limit(test) {
@@ -217,9 +375,104 @@ exports.tests = [
 		assert.ok( data.list && (data.list.length >= 1), "expected at least one history record" );
 	},
 
-	async function test_api_run_event_stub(test) {
-		// per request: do not exercise run_event here
-		assert.ok(true, 'run_event test intentionally skipped (stub/no-op)');
+	async function test_api_run_workflow_preserves_locked_event_script(test) {
+		// Reproduce issue #397: A workflow Event Node inherits its locked Shell
+		// script from the linked Event, rather than storing it as a node override.
+		const category_id = this.category_final_id || 'general';
+		const trigger_node_id = 'nlockedtrigger';
+		const event_node_id = 'nlockedevent';
+		const original_script = "#!/bin/bash\necho hello\n";
+		const hostile_script = "#!/bin/bash\necho pwned\n";
+		const plugin_default_script = "#!/bin/sh\n\n# Enter your shell script code here";
+		
+		let created_workflow = await this.request.json( this.api_url + '/app/create_event/v1', {
+			title: 'Locked Script Workflow Test',
+			enabled: true,
+			category: category_id,
+			type: 'workflow',
+			params: {},
+			fields: [],
+			limits: [],
+			actions: [],
+			triggers: [ { id: trigger_node_id, type: 'manual', enabled: true } ],
+			workflow: {
+				nodes: [
+					{ id: trigger_node_id, type: 'trigger', x: 100, y: 100 },
+					{
+						id: event_node_id,
+						type: 'event',
+						data: {
+							event: this.event_id,
+							params: {},
+							targets: [],
+							algo: '',
+							tags: []
+						},
+						x: 300,
+						y: 100
+					}
+				],
+				connections: [
+					{ id: 'clockedscript', source: trigger_node_id, dest: event_node_id }
+				]
+			}
+		});
+		assert.ok( created_workflow.data.code === 0, "successful workflow creation" );
+		assert.ok( created_workflow.data.event && created_workflow.data.event.id, "expected workflow in response" );
+		
+		let workflow = created_workflow.data.event;
+		let workflow_id = workflow.id;
+		let created_key = await this.request.json( this.api_url + '/app/create_api_key/v1', {
+			title: 'Unit Test Workflow Run API Key',
+			description: 'Created by event unit tests',
+			active: 1,
+			privileges: { run_jobs: 1 }
+		});
+		assert.ok( created_key.data.code === 0, "successful api key creation" );
+		assert.ok( created_key.data.api_key && created_key.data.api_key.id, "expected api key in response" );
+		assert.ok( created_key.data.plain_key, "expected plain api key" );
+		
+		let api_key_id = created_key.data.api_key.id;
+		let plain_key = created_key.data.plain_key;
+		
+		try {
+			// Match the browser's manual-run behavior by posting a full copy of the
+			// workflow.  Also inject a hostile locked override to verify that the
+			// server restores the original node state, which here means inheritance.
+			let run_payload = Tools.copyHash(workflow, true);
+			let event_node = Tools.findObject(run_payload.workflow.nodes, { id: event_node_id });
+			event_node.data.params.script = hostile_script;
+			
+			let { data } = await this.request.json( this.api_url + '/app/run_event/v1', run_payload, {
+				headers: {
+					'X-Session-ID': '',
+					'X-API-Key': plain_key
+				}
+			});
+			assert.ok( data.code === 0, "successful non-admin workflow run" );
+			assert.ok( data.id, "expected workflow job id in response" );
+			
+			// Wait for both the parent workflow and its child Event job to finish,
+			// then inspect the exact params delivered to the child job.
+			await waitForJob(this, data.id);
+			let { data:parent_data } = await this.request.json( this.api_url + '/app/get_job', { id: data.id } );
+			assert.ok( parent_data.code === 0 && parent_data.job, "expected completed workflow job" );
+			assert.ok( parent_data.job.code === 0, "workflow completed successfully" );
+			assert.ok( parent_data.job.workflow.jobs[event_node_id], "expected child job for Event Node" );
+			assert.ok( parent_data.job.workflow.jobs[event_node_id].length === 1, "expected exactly one child job" );
+			
+			let child_job_id = parent_data.job.workflow.jobs[event_node_id][0].id;
+			let { data:child_data } = await this.request.json( this.api_url + '/app/get_job', { id: child_job_id } );
+			assert.ok( child_data.code === 0 && child_data.job, "expected completed child job" );
+			assert.ok( child_data.job.params.script === original_script, "child job inherited the linked Event script" );
+			assert.ok( child_data.job.params.script !== hostile_script, "locked runtime script override was rejected" );
+			assert.ok( child_data.job.params.script !== plugin_default_script, "linked Event script was not replaced by Plugin default" );
+		}
+		finally {
+			// Clean up temporary definitions even if one of the regression assertions fails.
+			await this.request.json( this.api_url + '/app/delete_api_key/v1', { id: api_key_id } );
+			await this.request.json( this.api_url + '/app/delete_event/v1', { id: workflow_id } );
+		}
 	},
 
 	async function test_api_delete_event_missing_id(test) {
