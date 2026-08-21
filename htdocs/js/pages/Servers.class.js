@@ -1700,8 +1700,8 @@ Page.Servers = class Servers extends Page.ServerUtils {
 				var key = RegExp.$1;
 				var opts = this.donutDashUnits[id];
 				
-				var new_value = mem[key] || 0;
-				var old_value = opts.value || 0;
+				var new_value = Math.max( 0, mem[key] || 0 );
+				var old_value = Math.max( 0, opts.value || 0 );
 				
 				var new_pct = short_float( (new_value / (opts.max || 1)) * 100, 3 );
 				var old_pct = short_float( (old_value / (opts.max || 1)) * 100, 3 );
@@ -1736,8 +1736,8 @@ Page.Servers = class Servers extends Page.ServerUtils {
 				var key = RegExp.$1;
 				var opts = this.donutDashUnits[id];
 				
-				var new_value = cpu_totals[key] || 0;
-				var old_value = opts.value || 0;
+				var new_value = Math.max( 0, cpu_totals[key] || 0 );
+				var old_value = Math.max( 0, opts.value || 0 );
 				
 				var new_pct = short_float( (new_value / (opts.max || 1)) * 100, 3 );
 				var old_pct = short_float( (old_value / (opts.max || 1)) * 100, 3 );
@@ -2015,7 +2015,7 @@ Page.Servers = class Servers extends Page.ServerUtils {
 			this.onDeactivate();
 			this.receive_snapshot({ server: app.servers[server.id], data: snapshot, online: true });
 		}
-		else {
+		else if (app.servers[server.id]) {
 			// neither happened, but groups may have changed
 			server = this.server = app.servers[server.id];
 			this.div.find('#d_vs_stat_groups').html( this.getNiceGroupList(server.groups) );
