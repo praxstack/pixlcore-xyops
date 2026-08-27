@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const async = require('async');
+const fs = require('node:fs');
 const { Writable } = require('node:stream');
 const Admin = require('../../lib/api/admin.js');
 
@@ -16,6 +17,8 @@ function runMockAdminExport(opts) {
 		var finished = 0;
 		var updated = 0;
 		var job = null;
+		var searched = [];
+		var indexed = [];
 		
 		response.setHeader = function() {};
 		response.writeHead = function() {};
@@ -44,8 +47,12 @@ function runMockAdminExport(opts) {
 		};
 		
 		admin.unbase = {
-			indexes: { jobs: {} },
+			indexes: {
+				jobs: { id: 'jobs' },
+				servers: { id: 'servers' }
+			},
 			get(index, id, callback) {
+				indexed.push(index + '/' + id);
 				callback(null, {
 					id: id,
 					log_file_size: 100,
@@ -56,7 +63,8 @@ function runMockAdminExport(opts) {
 		
 		admin.storage = {
 			searchRecords(query, index, callback) {
-				callback(null, { job1: 1 });
+				searched.push(index.id);
+				callback(null, (index.id === 'servers') ? {} : { job1: 1 });
 			},
 			get(key, callback) {
 				fetched.push(key);
@@ -68,14 +76,14 @@ function runMockAdminExport(opts) {
 		
 		try {
 			admin.api_admin_export_data({
-				params: { items: opts.items },
-				query: {},
+				params: opts.params || { items: opts.items },
+				query: opts.query || {},
 				request: { headers: {} },
 				response: response
 			}, function() {
 				callback_count++;
 				setImmediate( function() {
-					resolve({ fetched, callback_count, finished, updated });
+					resolve({ fetched, searched, indexed, callback_count, finished, updated });
 				});
 			});
 		}
@@ -224,6 +232,70 @@ exports.tests = [
     await waitForJobGone(this, data.id, { timeoutMs: 30000 });
   },
 
+	async function test_admin_import_reloads_secret_cache(test) {
+		// Create a normal secret so we can capture a valid encrypted storage record.
+		let { data: created } = await this.request.json( this.api_url + '/app/create_secret/v1', {
+			title: 'Imported Cache Test',
+			enabled: true,
+			icon: '',
+			notes: 'Imported by the admin regression test',
+			plugins: ['shellplug'],
+			categories: [],
+			events: [],
+			web_hooks: [],
+			fields: [ { name: 'IMPORTED_CACHE_VALUE', value: 'cache-is-current' } ]
+		});
+		assert.equal( created.code, 0, 'created secret for import regression test' );
+		
+		var secret = created.secret;
+		var encrypted = await new Promise( (resolve, reject) => {
+			this.storage.get( 'secrets/' + secret.id, function(err, record) {
+				if (err) return reject(err);
+				resolve(record);
+			});
+		});
+		
+		// Delete the source record so the in-memory cache matches an empty destination.
+		let { data: deleted } = await this.request.json( this.api_url + '/app/delete_secret/v1', { id: secret.id } );
+		assert.equal( deleted.code, 0, 'deleted source secret before import' );
+		assert.ok( !this.xy.secretCache[secret.id], 'secret cache is empty before import' );
+		
+		var import_file = 'test/temp/data-import-secret-cache.txt';
+		var rows = [
+			{ cmd: 'listDelete', args: ['global/secrets', false] },
+			{ key: 'global/secrets', value: { page_size: 100, first_page: 0, last_page: 0, length: 1, type: 'list' } },
+			{ key: 'global/secrets/0', value: { type: 'list_page', items: [secret] } },
+			{ key: 'secrets/' + secret.id, value: encrypted }
+		];
+		fs.writeFileSync( import_file, rows.map( row => JSON.stringify(row) ).join("\n") + "\n" );
+		
+		try {
+			// Import should make the secret immediately usable without a save or restart.
+			let { data: raw } = await this.request.post(this.api_url + '/app/admin_import_data/v1', {
+				files: { file: import_file }
+			});
+			var body = (typeof raw === 'string') ? raw : raw.toString();
+			var imported = JSON.parse(body);
+			assert.ok( imported.code === 0 && imported.id, 'started secret import job' );
+			await waitForJobGone(this, imported.id, { timeoutMs: 30000 });
+			
+			assert.ok( this.xy.secretCache[secret.id], 'import populated the encrypted secret cache' );
+			var env = this.xy.getSecretsForType('plugins', 'shellplug');
+			assert.equal( env.IMPORTED_CACHE_VALUE, 'cache-is-current', 'runtime resolved imported secret value' );
+			
+			// The direct storage-backed UI path should agree with the runtime cache path.
+			let { data: decrypted } = await this.request.json( this.api_url + '/app/decrypt_secret/v1', { id: secret.id } );
+			assert.equal( decrypted.code, 0, 'UI API decrypted imported secret' );
+			assert.equal( decrypted.fields[0].value, 'cache-is-current', 'UI and runtime secret values agree' );
+		}
+		finally {
+			try { fs.unlinkSync(import_file); } catch (err) {;}
+			if (this.xy.secrets.find( item => item.id == secret.id )) {
+				await this.request.json( this.api_url + '/app/delete_secret/v1', { id: secret.id } );
+			}
+		}
+	},
+
   async function test_admin_export_data_tags(test) {
     // request a transfer token for tags-only export
     let { data: tok } = await this.request.json(this.api_url + '/app/get_transfer_token/v1', {
@@ -240,6 +312,25 @@ exports.tests = [
     // gzip magic bytes 0x1f 0x8b
     assert.ok(gz[0] === 0x1f && gz[1] === 0x8b, 'buffer looks like gzip');
   },
+
+	async function test_admin_export_data_accepts_scalar_selectors(test) {
+		// HTTP query parsers produce strings for single values and arrays for
+		// repeated values.  All three convenience selectors should accept both.
+		var list_result = await runMockAdminExport({
+			query: { lists: 'roles' }
+		});
+		var index_result = await runMockAdminExport({
+			query: { indexes: 'jobs' }
+		});
+		var extra_result = await runMockAdminExport({
+			query: { extras: 'monitor_data' }
+		});
+		
+		assert.deepEqual(list_result.fetched, [ 'global/roles' ], 'exported scalar list selector');
+		assert.deepEqual(index_result.searched, [ 'jobs' ], 'exported scalar index selector');
+		assert.deepEqual(index_result.indexed, [ 'jobs/job1' ], 'loaded record from scalar index selector');
+		assert.deepEqual(extra_result.searched, [ 'servers' ], 'exported scalar extra selector');
+	},
 
 	async function test_admin_export_data_skips_unrequested_job_logs(test) {
 		// A small log must not bypass either the item.logs or job.output checks.
