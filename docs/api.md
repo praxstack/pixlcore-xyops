@@ -2142,6 +2142,61 @@ Example response:
 
 This API is used in the UI to summarize (count) queued jobs per workflow node.
 
+### get_queue_summary
+
+```
+GET /api/app/get_queue_summary/v1
+```
+
+Fetch a summary of all job queues visible to the current user.  Queued jobs are grouped by their effective queue ID, so events and workflow nodes that use the same Shared Capacity Key appear together in one queue.  Requires a valid user session or API Key.
+
+No input parameters are required.  Category and server-group restrictions are applied to the queued jobs before the summary is generated.
+
+Example response:
+
+```json
+{
+	"code": 0,
+	"queues": [
+		{
+			"id": "cap:salesforce",
+			"events": {
+				"generate_salesforce_report": 1,
+				"process_customer_data": 1
+			},
+			"categories": {
+				"general": 1
+			},
+			"sources": {
+				"user": 1,
+				"scheduler": 1
+			},
+			"targets": {
+				"main": 1
+			},
+			"plugins": {
+				"shellplug": 1
+			},
+			"count": 4
+		}
+	]
+}
+```
+
+In addition to the [Standard Response Format](#standard-response-format), this includes a `queues` array with the following properties:
+
+| Property Name | Type | Description |
+|---------------|------|-------------|
+| `id` | String | Effective queue ID.  A shared-capacity queue uses the format `cap:CAPACITY_KEY`. |
+| `events` | Object | Set of event IDs represented in the queue.  Each key has the value `1`. |
+| `categories` | Object | Set of category IDs represented in the queue.  Each key has the value `1`. |
+| `sources` | Object | Set of job sources represented in the queue.  Each key has the value `1`. |
+| `targets` | Object | Set of target server or group IDs represented in the queue.  Each key has the value `1`. |
+| `plugins` | Object | Set of plugin IDs represented by non-workflow jobs in the queue.  Each key has the value `1`. |
+| `count` | Number | Total number of visible jobs waiting in the queue. |
+
+Queue IDs should be treated as opaque identifiers.  Pass the returned `id` unchanged to [flush_job_queue](#flush_job_queue) when you need to empty a specific queue.
+
 ### get_job
 
 ```
@@ -2225,7 +2280,7 @@ Notes:
 GET /api/app/get_job_log/v1
 ```
 
-Stream a job's log as plain text. Requires a valid user session (session auth).
+Stream a completed job's log as plain text. Requires a valid user session or API Key.
 
 Parameters:
 
@@ -2440,24 +2495,46 @@ Parameters:
 | Property Name | Type | Description |
 |---------------|------|-------------|
 | `id` | String | **(Required)** The [Job.id](data.md#job-id). |
-| `params` | Object | Optional. User parameters to merge into the job's `params` when resuming. |
+| `params` | Object | Optional. User parameters to shallow-merge into the job's `params` when resuming from a start-time suspension. |
+| `input` | Object | Optional. An object containing a `data` object to shallow-merge into the job's [input data](data.md#job-input) when resuming from a start-time suspension. |
+| `data` | Object | Optional. Output data to shallow-merge into the job's existing [output data](data.md#job-data) when resuming from a completion-time suspension. |
 | `redirect` | String | Optional. For a suspended workflow sub-job, set this to a workflow Event or Job [Node ID](data.md#workflownode-id) to jump to after resume processing continues. |
 
 Behavior:
 
 - Fails if the job is not active or not suspended.
 - Records suspension metadata (duration, resumed at/by, IPs, user agent) in the job's suspend action details for audit.
-- If provided, merges `params` into current job parameters upon resume.  This is used to collect user parameters in the UI at resume time.
+- When resuming from a start-time suspension, `params` is shallow-merged into the current job parameters and `input.data` is shallow-merged into the current job input data.  This allows callers to supply parameters and input data before the job launches.
+- When resuming from a completion-time suspension, `data` is shallow-merged into the current job output data.  The injected output is included in the final job record and is available to subsequent workflow processing.
+- Parameters and input data cannot be injected at completion time, and output data cannot be injected at start time.  Malformed or incorrectly timed injection properties cause the request to fail without resuming the job.
+- Applied parameter and data injections are recorded in the suspend action details when their formatted JSON payload is no larger than 8 KB.  Larger payloads are noted but not displayed.
 - If provided, `redirect` customizes the parent workflow's next step after the sub-job resumes.  Instead of following the normal matching output wires from the suspended node, the workflow will launch the selected Event or Job node directly.
 - The UI only presents the resume redirect selector when resuming a workflow sub-job that was suspended at the end of the job, such as from an `On Complete`, `On Success`, `On Any Error`, or tag actions.  It is not shown for jobs suspended at the start of the job, such as from an `On Start` action.
 
-Example request:
+**Note:** Actions matching the same condition execute in parallel.  Other start or completion actions may therefore run before resume-time data is injected.  For example, a Fetch Bucket action running alongside a start-time Suspend Job action may merge input data concurrently, so colliding keys can depend on completion order.  A Run Event action running alongside a Suspend Job action may launch its child job before the injected data is available.  If another action must consume the injected data, place that work after the suspended job in a workflow rather than alongside the Suspend Job action.
+
+Example start-time request:
 
 ```json
 {
-    "id": "jabc123def",
-    "params": { "example": 12345 },
-    "redirect": "node123"
+	"id": "jabc123def",
+	"params": { "example": 12345 },
+	"input": {
+		"data": { "approved_by": "jsmith" }
+	},
+	"redirect": "node123"
+}
+```
+
+Example completion-time output injection:
+
+```json
+{
+	"id": "jabc123def",
+	"data": {
+		"approved": true,
+		"approval_ticket": "CHG-12345"
+	}
 }
 ```
 
@@ -2661,6 +2738,41 @@ Example response:
 ```
 
 In addition to the [Standard Response Format](#standard-response-format), this will include a `count` property indicating how many queued jobs were removed.
+
+### flush_job_queue
+
+```
+POST /api/app/flush_job_queue/v1
+```
+
+Flush a job queue by its effective queue ID without triggering job completion actions.  This supports normal event queues, workflow queues, and queues shared through a Shared Capacity Key.  Requires the [abort_jobs](privileges.md#abort_jobs) privilege and a valid user session or API Key.
+
+Parameters:
+
+| Property Name | Type | Description |
+|---------------|------|-------------|
+| `id` | String | **(Required)** Effective queue ID returned by [get_queue_summary](#get_queue_summary). |
+
+Example request:
+
+```json
+{
+	"id": "cap:salesforce"
+}
+```
+
+Example response:
+
+```json
+{
+	"code": 0,
+	"count": 4
+}
+```
+
+In addition to the [Standard Response Format](#standard-response-format), this includes a `count` property indicating how many queued jobs were removed.  Category and server-group restrictions are honored, so a restricted user may remove only the jobs they are permitted to access, even when the queue is shared with other events.
+
+Queued jobs are removed silently and permanently.  Completion actions are not triggered, and the operation cannot be undone.  A valid queue ID with no accessible waiting jobs succeeds with a `count` of `0`.
 
 
 
@@ -5790,6 +5902,44 @@ Example response:
 ```json
 { "code": 0 }
 ```
+
+### admin_reset_job_rate_limits
+
+```
+POST /api/app/admin_reset_job_rate_limits/v1
+```
+
+Reset one active job rate-limit pool, or reset all active pools at once.  Admin only.  Resetting removes the current fixed-window counter and expiration; the next applicable job recreates the pool with a full allowance and a new expiration aligned to the configured window boundary.
+
+Parameters:
+
+| Property Name | Type | Description |
+|---------------|------|-------------|
+| `id` | String | Optional rate-limit pool ID.  Omit this property to reset every active rate-limit pool. |
+
+Example request to reset one pool:
+
+```json
+{
+	"id": "cap:salesforce"
+}
+```
+
+Example request to reset all pools:
+
+```json
+{}
+```
+
+Example response:
+
+```json
+{
+	"code": 0
+}
+```
+
+Use caution when calling this API.  Resetting restores the full rate allowance for the selected pool, or for every pool when `id` is omitted.  Queued jobs may begin launching on the next scheduler tick, subject to their concurrency limits and target-server availability.  This API does not remove queued jobs, change event or workflow configuration, or reset concurrency usage.
 
 ### admin_broadcast_message
 

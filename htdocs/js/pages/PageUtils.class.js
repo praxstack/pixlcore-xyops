@@ -1306,6 +1306,21 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		var short_desc = '';
 		var icon = 'gauge';
 		
+		var window_names = {
+			long: {
+				"1": "second",
+				"60": "minute",
+				"3600": "hour",
+				"86400": "day"
+			},
+			short: {
+				"1": "sec",
+				"60": "min",
+				"3600": "hr",
+				"86400": "day"
+			}
+		};
+		
 		switch (item.type) {
 			case 'mem':
 				nice_title = "Max Memory";
@@ -1322,13 +1337,13 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			break;
 			
 			case 'log':
-				nice_title = "Max Log Size";
+				nice_title = "Max Output";
 				nice_desc = short_desc = get_text_from_bytes(item.amount);
 				icon = 'file-remove-outline';
 			break;
 			
 			case 'time':
-				nice_title = "Max Run Time";
+				nice_title = "Max Time";
 				nice_desc = get_text_from_seconds(item.duration, false, false);
 				short_desc = get_text_from_seconds(item.duration, true, false);
 				icon = 'timer-remove-outline';
@@ -1338,8 +1353,14 @@ Page.PageUtils = class PageUtils extends Page.Base {
 				nice_title = "Max Jobs";
 				if (!item.amount) nice_desc = short_desc = "Unlimited";
 				else {
-					nice_desc = "Up to " + commify(item.amount) + " concurrent " + pluralize("job", item.amount);
+					nice_desc = "Up to " + commify(item.amount) + " concurrent";
 					short_desc = commify(item.amount) + ' ' + pluralize("job", item.amount);
+					
+					if (item.rate) {
+						nice_desc += ", or " + this.getNiceDashNumber(item.rate) + " per " + window_names.long[item.window];
+						short_desc += " or " + this.getNiceDashNumber(item.rate) + "/" + window_names.short[item.window];
+					}
+					else nice_desc += " " + pluralize("job", item.amount);
 				}
 				icon = 'traffic-light-outline';
 			break;
@@ -1575,6 +1596,23 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			caption: 'Check this box to *always* retry the job, even it was manually aborted.'
 		});
 		
+		// rate limit
+		var window_units = [
+			{ id: '1', title: 'Per Second' },
+			{ id: '60', title: 'Per Minute' },
+			{ id: '3600', title: 'Per Hour' },
+			{ id: '86400', title: 'Per Day' }
+		];
+		html += this.getFormRow({
+			id: 'd_erl_rate_limit',
+			label: 'Rate Limit:',
+			content: '<div class="form_row_duo">' + 
+				'<div>' + this.getFormText({ id: 'fe_erl_rate_limit', type: 'number', min: 0, step: 1, value: limit.rate || 0 }) + '</div>' + 
+				'<div>' + this.getFormMenu({ id: 'fe_erl_rate_window', options: window_units, value: limit.window || 1 }) + '</div>' + 
+			'</div>',
+			caption: 'Optionally set a rate limit to control the job throughput.  Set to `0` for unlimited.'
+		});
+		
 		// cap key
 		html += this.getFormRow({
 			id: 'd_erl_cap_key',
@@ -1587,7 +1625,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 				min: 1,
 				value: limit.cap_key || ''
 			}),
-			caption: 'Optionally set a shared capacity key, which allows multiple events and/or workflow nodes to share a common job concurrency pool.  [Learn More](#Docs/limits/shared-capacity-key)'
+			caption: 'Optionally set a shared capacity key, which allows multiple events and/or workflow nodes to share a common job concurrency and rate pool.  [Learn More](#Docs/limits/shared-capacity-key)'
 		});
 		
 		// job weight
@@ -1792,6 +1830,8 @@ Page.PageUtils = class PageUtils extends Page.Base {
 					limit.weight = parseInt( $('#fe_erl_job_weight').val() );
 					limit.cap_key = $('#fe_erl_cap_key').val().toLowerCase().trim().replace(/\s+/g, '-').replace(/[^\w\-]+/g, '').substring(0, 32);
 					if (!limit.cap_key) delete limit.cap_key;
+					limit.rate = parseInt( $('#fe_erl_rate_limit').val() ) || 0;
+					limit.window = parseInt( $('#fe_erl_rate_window').val() ) || 1;
 				break;
 				
 				case 'retry':
@@ -1825,7 +1865,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		} ); // Dialog.confirm
 		
 		var change_limit_type = function(new_type) {
-			$('#d_erl_byte_amount, #d_erl_raw_amount, #d_erl_duration, #d_erl_retry_force, #d_erl_job_weight, #d_erl_cap_key, #d_erl_file_size, #d_erl_file_types, #d_erl_tags, #d_erl_users, #d_erl_email, #d_erl_web_hook, #d_erl_web_hook_text, #d_erl_day_condition, #d_erl_day_amount, #d_erl_actions').hide();
+			$('#d_erl_byte_amount, #d_erl_raw_amount, #d_erl_duration, #d_erl_retry_force, #d_erl_job_weight, #d_erl_rate_limit, #d_erl_cap_key, #d_erl_file_size, #d_erl_file_types, #d_erl_tags, #d_erl_users, #d_erl_email, #d_erl_web_hook, #d_erl_web_hook_text, #d_erl_day_condition, #d_erl_day_amount, #d_erl_actions').hide();
 			
 			if (new_type.match(/^(time|mem|cpu|log)$/)) {
 				$('#d_erl_tags, #d_erl_users, #d_erl_email, #d_erl_web_hook, #d_erl_web_hook_text, #d_erl_actions').show();
@@ -1857,7 +1897,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 				case 'job':
 					$('#d_erl_raw_amount').show();
 					$('#s_erl_raw_amount_cap').html('Enter the maximum number of concurrent jobs to allow.');
-					$('#d_erl_job_weight, #d_erl_cap_key').show();
+					$('#d_erl_job_weight, #d_erl_rate_limit, #d_erl_cap_key').show();
 				break;
 				
 				case 'retry':
@@ -2271,7 +2311,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 			content: this.getFormMenuSingle({
 				id: 'fe_eja_web_hook',
 				title: 'Select Web Hook',
-				options: app.web_hooks,
+				options: [ ['', '(None)'] ].concat( app.web_hooks ),
 				value: action.web_hook,
 				default_icon: 'webhook'
 			}),
@@ -2346,6 +2386,19 @@ Page.PageUtils = class PageUtils extends Page.Base {
 					checked: action.clear_alert
 				}),
 				caption: 'Optionally clear the alert when the job completes.'
+			});
+		}
+		else {
+			// include job output
+			html += this.getFormRow({
+				id: 'd_eja_job_output',
+				label: 'Extras:',
+				content: this.getFormCheckbox({
+					id: 'fe_eja_job_output',
+					label: 'Include Job Output',
+					checked: !!action.include_output
+				}),
+				caption: 'Optionally include the current job\'s raw output as a text input to the new job. [Learn More](#Docs/actions/including-job-output)'
 			});
 		}
 		
@@ -2542,6 +2595,9 @@ Page.PageUtils = class PageUtils extends Page.Base {
 						action.target_server = $('#fe_eja_target_server').is(':checked');
 						action.clear_alert = $('#fe_eja_clear_alert').is(':checked');
 					}
+					else {
+						action.include_output = $('#fe_eja_job_output').is(':checked');
+					}
 					var event = find_object( app.events, { id: action.event_id } );
 					if (!event) return app.badField('#fe_eja_event', "Event not found.");
 					action.start_delay = parseInt( $('#fe_eja_start_delay').val() );
@@ -2601,7 +2657,7 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		} ); // Dialog.confirm
 		
 		var change_action_type = function(new_type) {
-			$('#d_eja_email, #d_eja_users, #d_eja_body, #d_eja_web_hook, #d_eja_web_hook_text, #d_eja_run_job, #d_eja_target_server, #d_eja_clear_alert, #d_eja_event_params, #d_eja_start_delay, #d_eja_channel, #d_eja_bucket, #d_eja_bucket_sync, #d_eja_bucket_glob, #d_nt_type, #d_nt_assignees, #d_nt_tags, #d_nt_due_preset, #d_eja_tags, #d_eja_label, #d_eja_suspend_sources, #d_eja_plugin, #d_eja_plugin_params').hide();
+			$('#d_eja_email, #d_eja_users, #d_eja_body, #d_eja_web_hook, #d_eja_web_hook_text, #d_eja_run_job, #d_eja_target_server, #d_eja_clear_alert, #d_eja_event_params, #d_eja_start_delay, #d_eja_job_output, #d_eja_channel, #d_eja_bucket, #d_eja_bucket_sync, #d_eja_bucket_glob, #d_nt_type, #d_nt_assignees, #d_nt_tags, #d_nt_due_preset, #d_eja_tags, #d_eja_label, #d_eja_suspend_sources, #d_eja_plugin, #d_eja_plugin_params').hide();
 			
 			switch (new_type) {
 				case 'email':
@@ -2621,6 +2677,9 @@ Page.PageUtils = class PageUtils extends Page.Base {
 					if (opts.alert) {
 						$('#d_eja_target_server').show();
 						$('#d_eja_clear_alert').show();
+					}
+					else {
+						$('#d_eja_job_output').show();
 					}
 					$('#d_eja_event_params').show();
 					var event = find_object( app.events, { id: $('#fe_eja_event').val() } ) || {};

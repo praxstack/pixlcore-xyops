@@ -2284,14 +2284,14 @@ Page.Job = class Job extends Page.PageUtils {
 				nice_server,
 				'<span class="monospace">' + nice_node_id + '</span>',
 				nice_node_type,
-				'<span class="wrap">' + nice_msg + '</span>'
+				'<span class="wrap meta_log_msg">' + nice_msg + '</span>'
 			];
 		} // workflow
 		else {
 			tds = [
 				nice_timestamp,
 				nice_server,
-				'<span class="wrap">' + nice_msg + '</span>'
+				'<span class="wrap meta_log_msg">' + nice_msg + '</span>'
 			];
 		}
 		
@@ -3520,6 +3520,7 @@ Page.Job = class Job extends Page.PageUtils {
 		
 		var old_state = this.job.state;
 		var old_redraw = this.job.redraw || '';
+		var old_actions = this.job.actions || [];
 		
 		var updates = app.activeJobs[ this.job.id ];
 		if (updates) {
@@ -3546,6 +3547,9 @@ Page.Job = class Job extends Page.PageUtils {
 			if (!this.isWorkflow && this.emptyLogMessage && !this.job.log_file_size) {
 				this.div.find('#d_live_job_log > div.inline_page_message').html( this.getEmptyLogMessageHTML() );
 			}
+			
+			// if actions changed length, redraw
+			if (this.job.actions && (this.job.actions.length != old_actions.length)) this.renderJobActions();
 		}
 		else if ((this.job.state == 'complete') && !this.job.final) {
 			Debug.trace('job', "Job has (presumably) completed, refreshing page");

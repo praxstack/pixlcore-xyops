@@ -445,7 +445,7 @@
 			},
 			"d_wf_cat": {
 				"label": "Category:",
-				"caption": "Select a category for the workflow (this may limit the max concurrent jobs, etc.)"
+				"caption": "Select a category for the workflow (this may apply a Max Jobs Limit, etc.)"
 			},
 			"fe_wf_cat": {
 				"title": "Select category for workflow",
@@ -1268,15 +1268,15 @@
 	],
 	
 	"limit_type_menu": [
-		{ "id": "job", "title": "Max Concurrent Jobs", "icon": "traffic-light-outline" },
+		{ "id": "job", "title": "Max Jobs Limit", "icon": "traffic-light-outline" },
 		{ "id": "cpu", "title": "Max CPU % Limit", "icon": "chip" },
 		{ "id": "day", "title": "Max Daily Limit", "icon": "calendar-cursor-outline" },
 		{ "id": "file", "title": "Max File Limit", "icon": "file-multiple-outline" },
 		{ "id": "mem", "title": "Max Memory Limit", "icon": "memory" },
-		{ "id": "log", "title": "Max Output Size", "icon": "file-remove-outline" },
+		{ "id": "log", "title": "Max Output Limit", "icon": "file-remove-outline" },
 		{ "id": "queue", "title": "Max Queue Limit", "icon": "tray-full" },
 		{ "id": "retry", "title": "Max Retry Limit", "icon": "redo-variant" },
-		{ "id": "time", "title": "Max Run Time", "icon": "timer-remove-outline" },
+		{ "id": "time", "title": "Max Time Limit", "icon": "timer-remove-outline" },
 		{ "id": "tag", "title": "Max Tag Limit", "icon": "tag-multiple-outline" }
 	],
 	
