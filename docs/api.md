@@ -598,7 +598,7 @@ This API is designed to be called from within jobs (i.e. Event Plugin scripts), 
 POST /api/app/upload_bucket_files/v1
 ```
 
-This API allows you to upload files into a storage bucket.  Unlike most of the other APIs, this one handles files, so it requires a `multipart/form-data` style request.  The parameters should be actual HTTP POST parameters, rather than JSON keys.  The [edit_buckets](privileges.md#edit_buckets) privilege is required, as well as a valid user session or API Key.  The input parameters are as follows:
+This API allows you to upload files into a storage bucket.  Unlike most of the other APIs, this one handles files, so it requires a `multipart/form-data` style request.  The `id` should be an actual HTTP POST parameter, or it can be supplied inside a `json` wrapper parameter.  The [edit_buckets](privileges.md#edit_buckets) privilege is required, as well as a valid user session or API Key.  The input parameters are as follows:
 
 | Property Name | Type | Description |
 |---------------|------|-------------|
@@ -2374,6 +2374,7 @@ Parameters:
 | `id` | String | **(Required)** The [Job.id](data.md#job-id). |
 | `token` | String | Optional | A special auth token used by the [magic](#magic) API to stream jobs for the magic landing pages. |
 | `output` | Boolean | Optional | If set to any truthy value, the stream will include live updates from the job's raw text output. |
+| `meta` | Boolean | Optional | If set to any truthy value, the stream will include live updates from the job's meta log. |
 
 The response will be streamed using [Server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events).  The first update will include a JSON document containing the [Job.id](data.md#job.id), followed by multiple updates as the job runs, with a final update when the job completes.  Here is an example raw streaming response (many intermediate updates omitted for brevity):
 
@@ -2416,6 +2417,13 @@ If the `output` parameter is set to a truthy value, the stream will also include
 ```
 event: output
 data: {"xy":1,"type":"output","text":"This was printed to STDOUT from inside the job!"}
+```
+
+If the `meta` parameter is set to a truthy value, the stream will also include special events containing live updates from the job's meta log.  Example:
+
+```
+event: meta
+data: {"xy":1,"type":"meta","row":{"server":"joemax.lan","msg":"Moving job state from {starting} to {active}"}}
 ```
 
 ### update_active_job
@@ -4391,20 +4399,62 @@ Example response:
 
 ```json
 {
-    "code": 0,
-    "summaries": {
-        "os_platform": { /* value → count map */ },
-        "os_distro": { /* value → count map */ },
-        "os_release": { /* value → count map */ },
-        "os_arch": { /* value → count map */ },
-        "cpu_virt": { /* value → count map */ },
-        "cpu_brand": { /* value → count map */ },
-        "cpu_cores": { /* value → count map */ }
-    }
+	"code": 0,
+	"summaries": {
+		"os_platform": {
+			"id": "os_platform",
+			"values": { "linux": 1 },
+			"modified": 1754872218,
+			"labels": { "linux": "Linux" }
+		},
+		"os_distro": {
+			"id": "os_distro",
+			"values": { "centos_stream": 1 },
+			"modified": 1754872218,
+			"labels": { "centos_stream": "CentOS Stream" }
+		},
+		"os_release": {
+			"id": "os_release",
+			"values": { "9": 1 },
+			"modified": 1754872218,
+			"labels": { "9": "9" }
+		},
+		"os_arch": {
+			"id": "os_arch",
+			"values": { "arm64": 1 },
+			"modified": 1754872218,
+			"labels": { "arm64": "arm64" }
+		},
+		"cpu_virt": {
+			"id": "cpu_virt",
+			"values": { "orbstack": 1 },
+			"modified": 1754872218,
+			"labels": { "orbstack": "OrbStack" }
+		},
+		"cpu_brand": {
+			"id": "cpu_brand",
+			"values": { "apple": 1 },
+			"modified": 1754872218,
+			"labels": { "apple": "Apple" }
+		},
+		"cpu_cores": {
+			"id": "cpu_cores",
+			"values": { "10": 1 },
+			"modified": 1754872218,
+			"labels": { "10": "10" }
+		}
+	}
 }
 ```
 
-In addition to the [Standard Response Format](#standard-response-format), this will include a `summaries` object keyed by field ID, each containing a value-to-count map for that field.
+In addition to the [Standard Response Format](#standard-response-format), this will include a `summaries` object keyed by field ID. Each field contains a metadata wrapper with the following properties:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `id` | String | The indexed field ID. |
+| `values` | Object | Normalized field values mapped to the number of matching servers. |
+| `modified` | Number | The Unix timestamp when the summary was last updated. |
+| `labels` | Object | Optional display labels keyed by the normalized values in `values`. |
 
 ### get_active_servers
 

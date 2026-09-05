@@ -169,6 +169,7 @@ Page.Workflows = class Workflows extends Page.Events {
 	
 	cancel_workflow_edit() {
 		// cancel editing wf and return to list
+		if (this.fullscreen) return this.exitFullscreen();
 		$('.button.save').removeClass('primary');
 		if (this.event.id) Nav.go( '#Events?sub=view&id=' + this.event.id );
 		else Nav.go( '#Events?plugin=_workflow' );
@@ -501,7 +502,7 @@ Page.Workflows = class Workflows extends Page.Events {
 			var native = event.originalEvent;
 			if ('button' in native) {
 				// pointer event
-				if (native.button !== 0) return; // only capture left-clicks
+				// if (native.button !== 0) return; // only capture left-clicks
 			}
 			else {
 				// keypress event
@@ -541,13 +542,22 @@ Page.Workflows = class Workflows extends Page.Events {
 			}
 			
 			// prepare for dragging entire selection
-			if ('button' in native) self.prepareForDrag(this, event);
+			if ('button' in native) {
+				if (native.button == 0) self.prepareForDrag(this, event);
+				else if (native.button == 2) self.popupNodeContextMenu(this, event);
+			}
 		} ); // pointerdown (nodes)
 		
 		$cont.find('div.wf_node').on( 'dblclick', function(event) {
 			// check for double-click
 			self.doEditSelection();
 		}); // dblclick (nodes)
+		
+		$cont.find('div.wf_node').on( 'contextmenu', function(event) {
+			// check for right-click
+			event.stopPropagation();
+			event.preventDefault();
+		}); // contextmenu (nodes)
 		
 		// add mouse handler for condition entities
 		$cont.find('div.wf_condition').attr({ role: 'button', tabindex: '0' }).on( 'pointerdown keydown', function(event) {
@@ -618,6 +628,73 @@ Page.Workflows = class Workflows extends Page.Events {
 				self.addState();
 			} // callback
 		}); // popupQuickMenu
+	}
+	
+	popupNodeContextMenu(elem, event) {
+		// popup right-click menu for nodes (or multi-node)
+		var self = this;
+		var native = event.originalEvent;
+		var workflow = this.workflow;
+		var $cont = this.wfGetContainer();
+		var $fade = $cont.find('.wf_fade');
+		var selection = this.wfSelection;
+		var num_sel = num_keys(selection);
+		
+		if (!num_sel) return; // sanity
+		if ($('#d_wf_mouse_tracker').length) return; // sanity
+		
+		// add mouse tracker div
+		var $tracker = $('<div id="d_wf_mouse_tracker"></div>');
+		$fade.append($tracker);
+		
+		// position tracker at exact mouse x/y
+		// get the visible position of the tracker's containing element
+		var rect = $fade[0].getBoundingClientRect();
+		
+		// convert viewport mouse coordinates into local workflow coordinates.
+		// this works independently of which nested element was clicked.
+		var x = (event.clientX - rect.left) / this.wfZoom;
+		var y = (event.clientY - rect.top) / this.wfZoom;
+		
+		$tracker.css({ left: x, top: y });
+		
+		// generate menu items based on selection
+		var items = [];
+		
+		if (num_sel == 1) {
+			items.push({ id: 'edit', title: config.ui.buttons.wf_edit_sel_node, icon: 'note-edit-outline' });
+			
+			var id = first_key(selection);
+			var node = find_object( workflow.nodes, { id } );
+			
+			if (!!this.event.id && (node.type != 'note')) {
+				items.push({ id: 'test', title: config.ui.buttons.wf_test_sel_node, icon: 'test-tube' });
+			}
+		}
+		
+		items.push({ id: 'duplicate', title: config.ui.buttons.wf_dupe_sel, icon: 'content-duplicate' });
+		items.push({ id: 'detach', title: config.ui.buttons.wf_detach_sel, icon: 'soldering-iron' });
+		items.push({ id: 'delete', title: config.ui.buttons.wf_delete_sel, icon: 'selection-remove' });
+		
+		SingleSelect.popupQuickMenu({
+			elem: '#d_wf_mouse_tracker',
+			title: commify(num_sel) + ' ' + pluralize('item', num_sel) + ' selected',
+			items: items,
+			value: '',
+			nocheck: true,
+			
+			callback: function(value) {
+				switch (value) {
+					case 'edit': self.doEditSelection(); break;
+					case 'test': self.doTestSelection(); break;
+					case 'duplicate': self.doDuplicateSelection(); break;
+					case 'detach': self.doDetachSelection(); break;
+					case 'delete': self.doDeleteSelection(); break;
+				}
+			} // callback
+		}); // popupQuickMenu
+		
+		$tracker.remove();
 	}
 	
 	prepareForDrag(elem, event) {
@@ -1006,7 +1083,11 @@ Page.Workflows = class Workflows extends Page.Events {
 		var workflow = this.workflow;
 		var $cont = this.wfGetContainer();
 		
-		if (!workflow || !$cont.length || !this.wfSoldering) return;
+		if (!workflow || !$cont.length || !this.wfSoldering) {
+			// not soldering = exit fullscreen
+			this.exitFullscreen();
+			return;
+		}
 		
 		$cont.find('#d_wf_mouse_tracker').remove();
 		$cont.off('.solder');
@@ -2955,17 +3036,56 @@ Page.Workflows = class Workflows extends Page.Events {
 		return html;
 	}
 	
+	toggleFullscreen() {
+		// toggle faux fullscreen for wf editor
+		if (Dialog.active || CodeEditor.active) return;
+		
+		var $cont = $('#d_wf_box_inner');
+		if (!$cont.length) return;
+		
+		$cont.find('.wf_node').removeClass('wf_flash');
+		
+		if (!this.fullscreen) {
+			// enter fullscreen
+			$cont.detach();
+			$cont.addClass('full');
+			$cont.appendTo('body');
+			$('#d_wf_container > .wf_grid_header > .wf_title > span').html( config.ui.titles.wf_fullscreen );
+			$('#d_btn_wf_fs').addClass('toggle_selected');
+			this.fullscreen = true;
+			unscroll();
+		}
+		else {
+			// exit fullscreen
+			$cont.detach();
+			$cont.removeClass('full');
+			$cont.appendTo('#d_wf_box_outer');
+			$('#d_wf_container > .wf_grid_header > .wf_title > span').html( config.ui.titles.workflow_editor );
+			$('#d_btn_wf_fs').removeClass('toggle_selected');
+			this.fullscreen = false;
+			unscroll.reset();
+			app.scrollToBottom();
+		}
+		
+		this.wfZoomAuto();
+	}
+	
+	exitFullscreen() {
+		// exit fullscreen mode
+		if (this.fullscreen) this.toggleFullscreen();
+	}
+	
 	get_wf_editor_html(btns) {
 		// get html for workflow editor
 		var html = '';
 		
 		// workflow editor
-		html += '<div class="box">';
-		html += '<div class="box_content">';
+		html += '<div class="box" id="d_wf_box_outer">';
+		html += '<div class="box_content" id="d_wf_box_inner">';
 		html += '<div class="wf_container" id="d_wf_container" style="height:calc(100vh - 188px);">';
 		
 		html += `<div class="wf_grid_header">
-			<div class="wf_title left" style="display:none"><i class="mdi mdi-clipboard-edit-outline">&nbsp;</i>${config.ui.titles.workflow_editor}</div>
+			<div class="wf_title left" style="display:none"><i class="mdi mdi-clipboard-edit-outline">&nbsp;</i><span>${config.ui.titles.workflow_editor}</span></div>
 			<div class="button secondary left mobile_collapse" id="d_btn_wf_edit" onClick="$P().doEditSelection()" style="display:none" title="${config.ui.tooltips.wf_edit_sel_node}"><i class="mdi mdi-note-edit-outline">&nbsp;</i><span>${config.ui.buttons.wf_edit_sel_node}</span></div>
 			<div class="button secondary left mobile_collapse" id="d_btn_wf_test" onClick="$P().doTestSelection()" style="display:none" title="${config.ui.tooltips.wf_test_sel_node}"><i class="mdi mdi-test-tube">&nbsp;</i><span>${config.ui.buttons.wf_test_sel_node}</span></div>
 			<div class="button icon left mobile_collapse" id="d_btn_wf_dup" onClick="$P().doDuplicateSelection()" style="display:none" title="${config.ui.tooltips.wf_dupe_sel}"><i class="mdi mdi-content-duplicate">&nbsp;</i><span>${config.ui.buttons.wf_dupe_sel}</span></div>
@@ -2984,6 +3104,7 @@ Page.Workflows = class Workflows extends Page.Events {
 			<div class="button icon left mobile_hide" id="d_btn_wf_tool_draw" onClick="$P().selectTool('draw')" title="${config.ui.tooltips.wf_tool_draw}"><i class="mdi mdi-cursor-default-outline"></i></div>
 			<div class="button icon left mobile_hide" id="d_btn_wf_tool_move" onClick="$P().selectTool('move')" title="${config.ui.tooltips.wf_tool_move}"><i class="mdi mdi-cursor-move"></i></div>
 			<div class="wf_button_separator left mobile_hide"></div>
+			<div class="button icon left mobile_hide" id="d_btn_wf_fs" onClick="$P().toggleFullscreen()" title="${config.ui.tooltips.wf_fullscreen}"><i class="mdi mdi-fullscreen"></i></div>
 			<div class="button icon left" onClick="$P().wfZoomAuto()" title="${config.ui.tooltips.wf_zoom_auto}"><i class="mdi mdi-home"></i></div>
 			<div class="button icon left" id="d_btn_wf_zoom_out" onClick="$P().wfZoomOut()" title="${config.ui.tooltips.wf_zoom_out}"><i class="mdi mdi-magnify-minus"></i></div>
 			<div class="button icon left" id="d_btn_wf_zoom_in" onClick="$P().wfZoomIn()" title="${config.ui.tooltips.wf_zoom_in}"><i class="mdi mdi-magnify-plus"></i></div>
@@ -3122,6 +3243,7 @@ Page.Workflows = class Workflows extends Page.Events {
 		this.cleanupBoxButtonFloater();
 		
 		if (this.wfSoldering) this.cancelSolder();
+		if (this.fullscreen) this.exitFullscreen();
 		
 		delete this.event;
 		delete this.workflow;
@@ -3137,12 +3259,11 @@ Page.Workflows = class Workflows extends Page.Events {
 		delete this.wfTool;
 		delete this.wfDrawSelection;
 		delete this.saving;
-		
 		delete this.params;
 		delete this.limits;
 		delete this.actions;
-		
 		delete this.firstBox;
+		delete this.fullscreen;
 		
 		this.div.html('');
 		return true;
