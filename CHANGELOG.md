@@ -1,5 +1,24 @@
 # xyOps Changelog
 
+## Version v1.0.97
+
+> September 11, 2026
+
+- [`77e405cf`](https://github.com/pixlcore/xyops/commit/77e405cf9fc1c5d0de5c4055227be82076b28f64): Version 1.0.97
+- [`765a9516`](https://github.com/pixlcore/xyops/commit/765a9516bcbd3b1c025961edc7f534f243ad4a27): Feature: Add ability to wire multiple outputs to splits, including other controllers.
+- [`1eff5668`](https://github.com/pixlcore/xyops/commit/1eff56681b96e4f3b950036812d8a73aa3a4962d): Feature: Allow user to skip over workflow wait controllers during a job run.
+- [`67c0e2f7`](https://github.com/pixlcore/xyops/commit/67c0e2f7867126feeb1d0d8c8e0f810d53e1eebf): Bug Fix: User revision history was incorrectly handling usernames with dots and dashes.
+- [`ee97f123`](https://github.com/pixlcore/xyops/commit/ee97f123499b1d6286e2fefa18c5a58fb0e47541): Bug Fix: Prevent malformed monitoring data from crashing the conductor.  Fixes #445.
+- [`bb81a34c`](https://github.com/pixlcore/xyops/commit/bb81a34c2e41f9322010a186144b5096fd437551): Feature: Improve web hook test system, to actually run an ad-hoc test job with web hook attached.  Fixes #444.
+- [`cc79b918`](https://github.com/pixlcore/xyops/commit/cc79b9185b6bf4cc6baff863fe06d5548d4ca0b2): Dep: Bump pixl-mail to v1.1.10 for upstream vuln fixes in nodemailer
+- [`01997d6b`](https://github.com/pixlcore/xyops/commit/01997d6bd80ea90dc4475e703439bf520756b32f): Dep: Bump pixl-request to v2.6.11 for Node.js v24 warning fix.
+- [`ae1a5212`](https://github.com/pixlcore/xyops/commit/ae1a52124197cae3f258f4f7d15e069f0f41e4ba): Doc: API: get_server: Output data format was outdated.
+- [`fd014589`](https://github.com/pixlcore/xyops/commit/fd014589b616d4ee1e6236cacb02e4ee7e9ee819): Feature: Internal DB CLI: Add "idx" command to dump out raw DB indexing information for a record.
+- [`65468947`](https://github.com/pixlcore/xyops/commit/654689476f0611f5850cacdf613dcf0c446ec572): Bug Fix: Add sorter arrays to all DB tables to prevent search API crash.
+- [`3b022222`](https://github.com/pixlcore/xyops/commit/3b022222cd366f6ca2e3305abb6af2c8c1629b40): Bug Fix: API Keys: Allow API keys to be re-imported after export.
+- [`17c1f3f8`](https://github.com/pixlcore/xyops/commit/17c1f3f8342c083678b354612147df3ca77340b9): Bug Fix: Crasher if suspend action is added via API without a users array.  Fixes #443.
+- [`f3280a94`](https://github.com/pixlcore/xyops/commit/f3280a94bf3ae2c026e3ced07ad3dd80f310a202): Bug Fix: Windows: Right-clicking nodes in the workflow editor still shows the native OS right-click menu.  Ref #435
+
 ## Version v1.0.96
 
 > September 4, 2026

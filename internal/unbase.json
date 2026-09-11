@@ -104,7 +104,8 @@
 					"id": "tickets",
 					"source": "/tickets"
 				}
-			]
+			],
+			"sorters": []
 		},
 		
 		"snapshots": {
@@ -140,7 +141,8 @@
 					"id": "jobs",
 					"source": "/jobs"
 				}
-			]
+			],
+			"sorters": []
 		},
 		
 		"servers": {
@@ -265,7 +267,8 @@
 					"type": "number",
 					"divide": 3600
 				}
-			]
+			],
+			"sorters": []
 		},
 		
 		"tickets": {

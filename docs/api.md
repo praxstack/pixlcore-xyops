@@ -4574,24 +4574,24 @@ Example response:
 {
 	"code": 0,
 	"server": { "id": "sorbstack01", "hostname": "centos-9-arm", "groups": ["main"], "enabled": true },
-	"data": {
+	"server": {
 		"date": 1754872218,
 		"ip": "::ffff:10.1.10.241",
 		"hostname": "centos-9-arm",
 		"groups": ["main"],
-		"alerts": {},
-		"data": {
-			"cpu": { "currentLoad": 0.14, "cores": 10 },
-			"memory": { "total": 16810385408, "used": 572403712 },
-			"load": [0.00, 0.04, 0.08],
-			"jobs": 0
-		}
+		"alerts": {}
+	},
+	"data": {
+		"cpu": { "currentLoad": 0.14, "cores": 10 },
+		"memory": { "total": 16810385408, "used": 572403712 },
+		"load": [0.00, 0.04, 0.08],
+		"jobs": 0
 	},
 	"online": true
 }
 ```
 
-In addition to the [Standard Response Format](#standard-response-format), this will include a [Server](data.md#server) object, the complete stored host record in `data`, and an `online` boolean indicating current connection status.  The current [ServerMonitorData](data.md#servermonitordata) is nested under `data.data`.  The host record may also include top-level properties such as `date`, `ip`, `hostname`, `groups`, and `alerts`.
+In addition to the [Standard Response Format](#standard-response-format), this will include a [Server](data.md#server) object, the complete stored host record in `server`, and an `online` boolean indicating current connection status.  The current [ServerMonitorData](data.md#servermonitordata) is included in `data`.  The host record may also include top-level properties such as `date`, `ip`, `hostname`, `groups`, and `alerts`.
 
 ### update_server
 

@@ -337,7 +337,6 @@ Page.WebHooks = class WebHooks extends Page.PageUtils {
 		// buttons at bottom
 		html += '<div class="box_buttons">';
 			html += '<div class="button mobile_collapse" onClick="$P().cancel_web_hook_edit()"><i class="mdi mdi-close-circle-outline">&nbsp;</i><span>Cancel</span></div>';
-			html += '<div class="button secondary mobile_collapse" onClick="$P().do_test_web_hook()"><i class="mdi mdi-test-tube">&nbsp;</i><span>Test...</span></div>';
 			html += '<div class="button secondary mobile_collapse" onClick="$P().do_export()"><i class="mdi mdi-cloud-download-outline">&nbsp;</i><span>Export...</span></div>';
 			html += '<div class="button save phone_collapse" id="btn_save" onClick="$P().do_new_web_hook()"><i class="mdi mdi-floppy">&nbsp;</i><span>Create Web Hook</span></div>';
 		html += '</div>'; // box_buttons
@@ -493,30 +492,137 @@ Page.WebHooks = class WebHooks extends Page.PageUtils {
 	do_test_web_hook() {
 		// test web hook and display markdown result
 		var self = this;
+		if (this.div.find('.button.save').hasClass('primary')) return app.doError("Please save or revert your changes before testing.");
 		
 		app.clearError();
 		var web_hook = this.get_web_hook_form_json();
-		if (!web_hook) return; // error
+		if (!web_hook || !web_hook.id) return; // error
 		
 		this.web_hook = web_hook;
 		
-		Dialog.showProgress( 1.0, "Testing Web Hook..." );
+		var title = "Test Web Hook";
+		var btn = ['open-in-new', 'Test Hook'];
 		
-		app.api.post( 'app/test_web_hook', web_hook, function(resp) {
-			Dialog.hideProgress();
-			if (!self.active) return; // sanity
+		// privilege check
+		if (!app.requirePrivilege('create_events')) return;
+		if (!app.requirePrivilege('run_jobs')) return;
+		
+		if (!app.categories.length) return app.doError("No categories found.  Please add a category before testing web hooks.");
+		var cat_def = find_object( app.categories, { id: 'general' } ) || app.categories[0];
+		
+		if (!app.groups.length) return app.doError("No server groups found.  Please add a server group before testing web hooks.");
+		var grp_def = find_object( app.groups, { id: 'main' } ) || app.groups[0];
+		
+		if (!find_object( app.plugins, { id: 'testplug' } )) return app.doError("Cannot test web hooks without the 'Test Plugin' event plugin.");
+		
+		var html = '';
+		html += `<div class="dialog_intro">Use this form to test the current web hook in a job context.  This is done by creating a temporary self-deleting event, which immediately runs an ad-hoc test job with your web hook configured to fire at completion.  The test will launch in a new browser tab in order to preserve the current context.</div>`;
+		html += '<div class="dialog_box_content scroll maximize">';
+		
+		// result
+		html += this.getFormRow({
+			label: 'Simulate Result:',
+			content: this.getFormMenuSingle({
+				id: 'fe_epd_result',
+				options: [
+					{ id: 'success', title: 'Success', icon: 'check-circle-outline' },
+					{ id: 'error', title: 'Error', icon: 'alert-decagram-outline' },
+					{ id: 'warning', title: 'Warning', icon: 'alert-outline' },
+					{ id: 'critical', title: 'Critical', icon: 'fire-alert' },
+					{ id: 'abort', title: 'Abort', icon: 'cancel' }
+				],
+				value: app.getPref('tap_result') || ''
+			}),
+			caption: "Select which job result to simulate for the web hook."
+		});
+		
+		// custom text
+		html += this.getFormRow({
+			label: 'Custom Text:',
+			content: this.getFormTextarea({
+				id: 'fe_epd_text',
+				rows: 3,
+				class: 'monospace',
+				autocomplete: 'off',
+				maxlength: 8192,
+				value: ''
+			}),
+			caption: 'Optionally enter custom text to be appended to the end of the web hook system message.'
+		});
+		
+		html += '</div>';
+		Dialog.confirm( title, html, btn, function(result) {
+			if (!result) return;
+			app.clearError();
 			
-			var { code, description, details } = resp.result;
+			var result = $('#fe_epd_result').val();
+			if (!result) return app.badField('#fe_epd_result', "Please select a job result to simulate.");
+			app.setPref('tap_result', result);
 			
-			if (description) {
-				details = "**Result:** " + description + "\n\n" + details;
-			}
+			var text = $('#fe_epd_text').val();
 			
-			var title = "Web Hook Test Results";
-			if (code) title = '<span style="color:var(--red);">' + title + '</span>';
+			var event = {
+				enabled: true,
+				title: "Test Event",
+				icon: 'test-tube',
+				category: cat_def.id,
+				targets: [ grp_def.id ],
+				algo: 'random',
+				plugin: 'testplug',
+				params: { 
+					duration: 1,
+					action: ucfirst(result)
+				},
+				triggers: [
+					{ type: "manual", enabled: true }
+				],
+				actions: [
+					{ type: 'web_hook', enabled: true, condition: "complete", web_hook: web_hook.id, text: text },
+					{ type: "delete", enabled: true, condition: "complete" }
+				],
+				limits: [],
+				fields: [],
+				tags: [],
+				notes: "For testing only."
+			};
 			
-			self.viewMarkdownAuto( title, details.trim() );
-		} ); // api.post
+			var job = deep_copy_object(event);
+			job.test = true;
+			job.test_actions = false;
+			job.test_limits = false;
+			job.label = "Test";
+			
+			// pre-open new window/tab for job details
+			var win = window.open('', '_blank');
+			
+			app.api.post( 'app/create_event', event, function(resp) {
+				// now run the job
+				if (!self.active) return; // sanity
+				job.id = resp.event.id;
+				
+				app.api.post( 'app/run_event', job, function(resp) {
+					// Dialog.hideProgress();
+					if (!self.active) return; // sanity
+					
+					// jump immediately to live details page in new window
+					win.location.href = '#Job?id=' + resp.id + '&action=1';
+				}, 
+				function(err) {
+					// capture error so we can close the window we just opened
+					win.close();
+					app.doError("API Error: " + err.description);
+				}); // run_event error
+			},
+			function(err) {
+				win.close();
+				app.doError("API Error: " + err.description);
+			} ); // create_event error
+			
+			Dialog.hide();
+		}); // Dialog.confirm
+		
+		SingleSelect.init( $('#fe_epd_result') );
+		Dialog.autoResize();
 	}
 	
 	do_save_web_hook() {

@@ -1239,7 +1239,13 @@ Page.Job = class Job extends Page.PageUtils {
 		var nice_progress = '';
 		if (state.active) nice_progress = '<div id="d_wf_jt_progress_' + node.id + '">' + this.getNiceProgressBar(this.getControllerProgress(stub), '', true) + '</div>';
 		else if (state.error) nice_progress = '<span class="color_label red nowrap"><i class="mdi mdi-alert-decagram"></i>Error</span>';
+		else if (state.skip) nice_progress = '<span class="color_label orange nowrap"><i class="mdi mdi-clock-fast"></i>Skipped</span>';
 		else nice_progress = '<span class="color_label blue nowrap"><i class="mdi mdi-check-circle"></i>Complete</span>';
+		
+		var nice_action = '-';
+		if (state.active && (node.data?.controller == 'wait')) {
+			nice_action = `<button class="link danger" onClick="$P().doSkipWaitController('${node.id}')"><b>Skip...</b></button>`;
+		}
 		
 		return [
 			`<span class="nowrap"><i class="mdi mdi-cube-outline"></i><b>${node.id}</b></span>`,
@@ -1249,8 +1255,35 @@ Page.Job = class Job extends Page.PageUtils {
 			state.active ? `<span class="nowrap"><i class="mdi mdi-motion-play-outline"></i>Active</span>` : `<span class="nowrap"><i class="mdi mdi-check-circle-outline"></i>Complete</span>`,
 			'<div id="d_wf_jt_elapsed_' + node.id + '">' + this.getNiceNodeElapsedTime(state, false) + '</div>',
 			nice_progress,
-			'-'
+			nice_action
 		];
+	}
+	
+	doSkipWaitController(node_id) {
+		// show dialog to skip wait controller delay
+		var self = this;
+		var job = this.job;
+		if (!job || job.final || !job.workflow || !job.workflow.nodes) return; // sanity
+		
+		var node = find_object( job.workflow.nodes, { id: node_id } );
+		if (!node) return; // sanity
+		if (node.type !== 'controller') return; // sanity
+		if (node.data?.controller !== 'wait') return; // sanity
+		
+		var title = "Skip Wait Controller";
+		var btn = ['clock-fast', 'Skip Delay'];
+		var html = `Are you sure you want to skip the delay for wait controller node #${node_id}?`;
+		
+		Dialog.confirmDanger( title, html, btn, function(result) {
+			if (!result) return;
+			app.clearError();
+			Dialog.showProgress( 1.0, "Skipping Wait..." );
+			
+			app.api.post( 'app/job_skip_delay', { id: job.id, node: node_id }, function(resp) {
+				Dialog.hideProgress();
+				app.showMessage('success', "The wait controller was successfully skipped.");
+			} ); // api.post
+		} ); // confirm
 	}
 	
 	doAbortJob(id) {

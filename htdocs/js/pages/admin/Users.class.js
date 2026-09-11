@@ -340,7 +340,7 @@ Page.Users = class Users extends Page.PageUtils {
 	}
 	
 	go_edit_history() {
-		Nav.go( '#ActivityLog?action=users&query=' + this.user.username );
+		Nav.go( '#ActivityLog?action=users&query=' + this.user.username.replace(/\W+/g, '_') );
 	}
 	
 	do_save_user() {

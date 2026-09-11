@@ -66,6 +66,22 @@ var DBCLI = {
 		} );
 	},
 	
+	idx(callback) {
+		// get internal unbase index metadata for a specific record, and emit to stdout
+		var self = this;
+		var record_id = args.id;
+		if (!record_id && args.other) record_id = args.other.shift();
+		if (!record_id) return callback( usage );
+		
+		var path = `unbase/index/${this.index}/_data/${record_id}`;
+		
+		this.storage.get( path, function(err, data) {
+			if (err) return callback(err);
+			self.emit(data);
+			callback();
+		} );
+	},
+	
 	search(callback) {
 		// search unbase records and emit to stdout
 		var self = this;
