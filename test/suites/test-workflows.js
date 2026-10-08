@@ -1,6 +1,7 @@
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const Tools = require('pixl-tools');
+const Workflows = require('../../lib/workflow');
 
 // helper: sleep
 async function sleep(ms) {
@@ -51,6 +52,97 @@ function getWorkflow(name) {
 }
 
 exports.tests = [
+	
+	async function test_workflow_split_empty_continue(test) {
+		// Empty lists may continue only when the Split does not require successful jobs.
+		const cases = [
+			{ name: 'continue zero', percentage: 0, continues: true },
+			{ name: 'default continue zero', continues: true },
+			{ name: 'positive threshold', percentage: 50 },
+			{ name: 'all success threshold', percentage: 100 },
+			{ name: 'previous successes', percentage: 100, previous: true },
+			{ name: 'filtered empty list', percentage: 0, filter: true, continues: true },
+			{ name: 'filtered positive threshold', percentage: 100, filter: true },
+			{ name: 'unmanaged positive threshold', percentage: 100, unmanaged: true }
+		];
+		
+		cases.forEach( function(item) {
+			const engine = new Workflows();
+			const node = { id: 'split', type: 'controller', data: {
+				controller: 'split', split: 'data.items', continue: item.percentage,
+				filter: item.filter ? 'item.keep' : ''
+			} };
+			const worker = { id: 'worker', type: item.unmanaged ? 'controller' : 'job' };
+			const state = {};
+			const job = { id: 'parent', workflow: {
+				nodes: [node, worker, { id: 'final', type: 'job' }],
+				state: { split: state }, jobs: {},
+				connections: [
+					{ id: 'splitWorker', source: 'split', dest: 'worker' },
+					{ id: 'workerContinue', source: 'worker', dest: 'final', condition: 'continue' }
+				]
+			} };
+			
+			// A previous activation's successful jobs must not satisfy an empty activation.
+			if (item.previous) job.workflow.jobs.worker = [{ id: 'previous', code: 0 }];
+			engine.jobDetails = { parent: { workflowData: {} } };
+			engine.logWorkflow = function() {};
+			const launched = [];
+			engine.runWorkflowNode = function(opts) { launched.push(opts.node.id); };
+			
+			engine.runWFController_split({ job, node, overrides: { input: {
+				data: { items: item.filter ? [{ keep: false }] : [] }
+			} } });
+			
+			assert.deepEqual(launched, item.continues ? ['final'] : [], item.name + ': correct continuation');
+			assert.equal(!!state.error, !item.continues, item.name + ': preserves errors at positive thresholds');
+			if (item.continues) {
+				assert.equal(state.active, false, item.name + ': Split is inactive');
+				assert.equal(state.max, 0, item.name + ': no jobs expected');
+				assert.equal(state.count, 0, item.name + ': no jobs completed');
+				assert.ok(state.completed, item.name + ': Split is completed');
+			}
+		} );
+	},
+	
+	async function test_workflow_join_percentage(test) {
+		// Exercise Join's output directly, without launching downstream jobs.
+		const cases = [
+			{ name: 'all succeed', top: [0, 0], bottom: [0], percentage: 100 },
+			{ name: 'mixed unequal branches', top: [0, 1], bottom: [0], percentage: 66.66666666666666 },
+			{ name: 'none succeed', top: [1, 'warning'], bottom: ['abort'], percentage: 0 },
+			{ name: 'retry succeeds', top: [{ code: 1, retried: true }, 0], bottom: [0], percentage: 100 },
+			{ name: 'no output data', top: [0], bottom: [1], percentage: 50 },
+			{ name: 'below one percent', top: [0], bottom: Array(100).fill(1), percentage: 0.9900990099009901 },
+			{ name: 'no job results', top: [], bottom: [], percentage: null }
+		];
+		
+		cases.forEach( function(item) {
+			const engine = new Workflows();
+			const node = { id: 'join' };
+			const jobs = {};
+			['top', 'bottom'].forEach( function(source) {
+				jobs[source] = item[source].map( function(result, idx) {
+					return { id: source + idx, ...(typeof(result) == 'object' ? result : { code: result }) };
+				} );
+			} );
+			const job = { id: 'parent', workflow: {
+				jobs, state: { join: {} }, nodes: [{ id: 'final' }],
+				connections: [{ source: 'top', dest: 'join' }, { source: 'bottom', dest: 'join' }, { source: 'join', dest: 'final' }]
+			} };
+			engine.jobDetails = { parent: { wfJobData: {} } };
+			engine.logWorkflow = function() {};
+			let data;
+			engine.runWorkflowNode = function(opts) { data = opts.overrides.input.data; };
+			
+			// Both input wires must arrive before the final input is generated.
+			engine.runWFController_join({ job, node });
+			assert.equal(data, undefined, item.name + ': waits for both inputs');
+			engine.runWFController_join({ job, node });
+			assert.equal(data.percentage, item.percentage, item.name + ': correct success percentage');
+			assert.equal(data.items.length, jobs.top.concat(jobs.bottom).filter(stub => !stub.retried).length, item.name + ': includes terminal jobs without output');
+		} );
+	},
 	
 	async function test_workflow_reject_duplicate_node_id(test) {
 		// The API should reject duplicate workflow node IDs instead of silently repairing them.
@@ -270,6 +362,7 @@ exports.tests = [
 		assert.ok( !!final_job.input.data, "Found input data in final job" );
 		assert.ok( !!final_job.input.data.items, "Found items in input data in final job" );
 		assert.ok( final_job.input.data.items.length == 5, "Correct number of items in input data in final job" );
+		assert.equal( final_job.input.data.percentage, 100, "Joined success percentage reaches final job input" );
 		
 		assert.ok( !!final_job.input.data.combined, "Found combined object in input data in final job" );
 		assert.ok( final_job.input.data.combined.num == 42, "Correct data in combined object in input data in final job" );
