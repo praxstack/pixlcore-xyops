@@ -1,6 +1,8 @@
 const assert = require('node:assert/strict');
+const crypto = require('node:crypto');
 const Tools = require('pixl-tools');
 const API = require('../../lib/api.js');
+const Util = require('../../lib/util.js');
 
 // helper: sleep while waiting for an asynchronously launched job
 async function sleep(ms) {
@@ -21,6 +23,54 @@ async function waitForJob(ctx, job_id, opts = {}) {
 	}
 	
 	throw new Error('Timed out waiting for job to finish');
+}
+
+// helper: exercise the real Magic Link handler without launching satellite jobs.
+// Each fixture has its own saved defaults, parameter definitions and token.
+function createMagicAPIFixture(type = 'event') {
+	var api = new API();
+	var token = 'magic-param-test-key';
+	var jobs = [];
+	var event = {
+		id: 'magic_param_test', title: 'Magic Parameter Test', enabled: true, type: type,
+		plugin: (type == 'workflow') ? '_workflow' : 'magic_test_plugin',
+		params: { saved_only: 'saved default' },
+		fields: [
+			{ id: 'caller', type: 'text', value: 'default caller' },
+			{ id: 'count', type: 'text', value: '1', required: true, regex: '^\\d+$' }
+		],
+		triggers: [{ id: 'magic_test_trigger', type: 'magic', enabled: true, token: Tools.digestHex(token + 'magic_param_test', 'sha256') }]
+	};
+	var plugin = {
+		id: 'magic_test_plugin',
+		params: [{ id: 'script', locked: true, required: true }, { id: 'annotate' }]
+	};
+	if (type == 'workflow') event.workflow = { nodes: [] };
+	else Object.assign(event.params, { script: '#!/bin/bash\necho saved\n', annotate: false });
+	
+	api.events = [event];
+	api.plugins = (type == 'workflow') ? [] : [plugin];
+	api.config = { get: function() { return 'test-secret'; } };
+	api.api = { logError: function() {} };
+	api.requireMaster = function() { return true; };
+	api.logDebug = function() {};
+	api.stringValue = Util.prototype.stringValue;
+	api.launchJob = function(job, callback) {
+		jobs.push(job);
+		callback(null, 'magic_test_job');
+	};
+	
+	return {
+		event, jobs,
+		invoke(params = {}, query = {}, request = {}) {
+			var response = null;
+			api.api_magic({ params, query, request: { url: '/api/app/magic/v1/' + token, ...request } }, function(data) {
+				response = data;
+			});
+			assert.ok(response, 'Magic Link handler responded');
+			return response;
+		}
+	};
 }
 
 exports.tests = [
@@ -186,6 +236,11 @@ exports.tests = [
 			algo: 'random',
 			plugin: 'shellplug',
 			params: { script: "#!/bin/bash\necho hello\n", annotate: false, json: false },
+			fields: [
+				{ id: 'duration', type: 'text', value: '1' },
+				{ id: 'caller', type: 'text', value: '' },
+				{ id: 'output_file', type: 'text', value: '' }
+			],
 			limits: [],
 			actions: [],
 			triggers: [
@@ -198,6 +253,211 @@ exports.tests = [
 		assert.equal( data.code, 0, 'successful wait Event creation' );
 		assert.equal( data.event.id, this.wait_event_id, 'expected wait Event ID' );
 		assert.ok( Tools.findObject(data.event.triggers, { type: 'magic' }).token, 'Magic Link key was hashed' );
+	},
+	
+	async function test_api_magic_filters_undefined_params(test) {
+		// Unknown names stay available as request metadata, but never become
+		// job params or process environment variables, regardless of transport.
+		// Include normalized env names, prototype names and a saved-only default:
+		// saved values are trusted, but do not authorize caller-supplied overrides.
+		for (var type of ['event', 'workflow']) {
+			var keys = ['BASH_ENV', 'LD_PRELOAD', 'PATH', 'NODE_OPTIONS', 'BASH-ENV', 'unknown', 'constructor', 'saved_only'];
+			if (type == 'workflow') keys.push('annotate');
+			
+			for (var key of keys) {
+				var incoming = { [key]: 'untrusted' };
+				for (var transport of ['query', 'post', 'json']) {
+					var fixture = createMagicAPIFixture(type);
+					var params = (transport == 'post') ? incoming : (transport == 'json') ? { json: JSON.stringify(incoming) } : {};
+					var query = (transport == 'query') ? incoming : {};
+					var response = fixture.invoke(params, query);
+					
+					assert.equal(response.code, 0, type + ': accepts request with ' + key + ' via ' + transport);
+					assert.equal(fixture.jobs.length, 1, 'filtered request launches exactly one job');
+					var job = fixture.jobs[0];
+					if (key == 'saved_only') assert.equal(job.params[key], 'saved default', 'unknown caller name cannot replace a trusted saved value');
+					else assert.ok(!Object.hasOwn(job.params, key), 'unknown caller name is absent from job params');
+					assert.deepEqual(job.magic.params, params, 'original POST params remain available as metadata');
+					assert.deepEqual(job.magic.query, query, 'original query params remain available as metadata');
+				}
+			}
+		}
+	},
+	
+	async function test_api_magic_request_metadata(test) {
+		// The retained body must survive job JSON serialization exactly, including
+		// whitespace, escaped values and Unicode that would change if reserialized.
+		var body = Buffer.from('{\r\n\t"caller": "café 漢字 😀 e\u0301",\r\n\t"count": "2", "script": "untrusted", "BASH_ENV": "untrusted",\r\n\t"escaped": "\\u0061\\n", "input": { "data": { "value": 42 } }\r\n}\n');
+		var signature = crypto.createHmac('sha256', 'magic-test-secret').update(body).digest('hex');
+		var sensitive = ['x-api-key', 'x-session-id', 'x-csrf-token', 'authorization', 'proxy-authorization', 'cookie'];
+		var headers = { 'content-type': 'application/json; charset=utf-8', 'linear-signature': signature, 'x-custom': 'keep me' };
+		sensitive.forEach(function(key) { headers[key] = 'synthetic secret'; });
+		var original_headers = Tools.copyHash(headers, true);
+		
+		for (var type of ['event', 'workflow']) {
+			var fixture = createMagicAPIFixture(type);
+			var params = JSON.parse(body.toString('utf8'));
+			var query = { caller: 'query caller', unknown: 'query data' };
+			assert.equal(fixture.invoke(params, query, { headers, body }).code, 0, 'signed request launches a job');
+			var job = fixture.jobs[0];
+			var magic = JSON.parse(JSON.stringify(job)).magic;
+			
+			assert.equal(magic.body, body.toString('utf8'), 'body is the original UTF-8 string');
+			assert.deepEqual(Buffer.from(magic.body, 'utf8'), body, 'JSON transport preserves the original bytes');
+			assert.equal(crypto.createHmac('sha256', 'magic-test-secret').update(magic.body, 'utf8').digest('hex'), signature, 'original signature still verifies');
+			assert.equal(magic.headers['linear-signature'], signature, 'signature header is retained');
+			assert.equal(magic.headers['x-custom'], 'keep me', 'ordinary header is retained');
+			sensitive.forEach(function(key) { assert.ok(!Object.hasOwn(magic.headers, key), key + ' is scrubbed'); });
+			assert.deepEqual(headers, original_headers, 'live request headers are unchanged');
+			assert.deepEqual(magic.params, params, 'parsed POST data is retained before parameter filtering');
+			assert.deepEqual(magic.query, query, 'query data is kept separate from POST data');
+			assert.equal(job.params.caller, 'query caller', 'existing query precedence is preserved');
+			assert.ok(!Object.hasOwn(job.params, 'BASH_ENV') && !Object.hasOwn(job.params, 'unknown'), 'metadata does not become arbitrary job params');
+			assert.deepEqual(job.input, params.input, 'input handling is unchanged');
+			if (type == 'event') assert.equal(job.params.script, fixture.event.params.script, 'locked value is preserved separately from the request');
+		}
+	},
+	
+	async function test_api_magic_body_availability(test) {
+		// Raw-body requests should keep only the UTF-8 string, not a redundant
+		// Buffer in magic.params. A caller's ordinary JSON field named raw stays.
+		var cases = [
+			{ params: { caller: 'form caller' }, body: undefined, expected: null },
+			{ params: { raw: Buffer.alloc(0) }, body: Buffer.alloc(0), expected: '' },
+			{ params: { raw: Buffer.from('raw text: café\n') }, body: Buffer.from('raw text: café\n'), expected: 'raw text: café\n' },
+			{ params: { raw: 'JSON field' }, body: Buffer.from('{"raw":"JSON field"}'), expected: '{"raw":"JSON field"}' }
+		];
+		
+		for (var item of cases) {
+			var fixture = createMagicAPIFixture();
+			assert.equal(fixture.invoke(item.params, {}, { body: item.body }).code, 0, 'request is accepted');
+			var magic = fixture.jobs[0].magic;
+			assert.equal(magic.body, item.expected, 'body distinguishes absent, empty and populated payloads');
+			if (item.params.raw == 'JSON field') assert.equal(magic.params.raw, 'JSON field', 'ordinary JSON raw field is preserved');
+			else assert.ok(!Object.hasOwn(magic.params, 'raw'), 'raw Buffer is not duplicated in metadata');
+		}
+	},
+	
+	async function test_api_magic_preserves_declared_params_and_input(test) {
+		// Declared event fields and plugin params remain usable through all three
+		// transports. Locked values and saved defaults still come from the Event.
+		for (var type of ['event', 'workflow']) {
+			for (var transport of ['query', 'post', 'json']) {
+				var fixture = createMagicAPIFixture(type);
+				var input = { data: { BASH_ENV: 'input data', unknown: { nested: true } }, files: [] };
+				var incoming = { caller: 'magic caller', count: '2', input: input };
+				if (type == 'event') Object.assign(incoming, { script: 'untrusted replacement', annotate: true });
+				var params = (transport == 'post') ? incoming : (transport == 'json') ? { json: JSON.stringify(incoming) } : {};
+				var query = (transport == 'query') ? incoming : {};
+				var response = fixture.invoke(params, query);
+				
+				assert.equal(response.code, 0, type + ': accepts declared params via ' + transport);
+				assert.equal(fixture.jobs.length, 1, 'valid request launches exactly one job');
+				var job = fixture.jobs[0];
+				assert.equal(job.params.caller, 'magic caller', 'declared Event field is preserved');
+				assert.equal(job.params.count, '2', 'declared value passes regex validation');
+				assert.equal(job.params.saved_only, 'saved default', 'saved undeclared defaults remain intact');
+				assert.deepEqual(job.input, input, 'input data and files remain separate and intact');
+				assert.ok(!('input' in job.params) && !('BASH_ENV' in job.params), 'input is not merged into job params');
+				assert.equal(fixture.event.fields[0].value, 'default caller', 'saved field default is unchanged');
+				
+				if (type == 'event') {
+					assert.equal(job.params.script, fixture.event.params.script, 'locked plugin value cannot be overridden');
+					assert.equal(job.params.annotate, true, 'unlocked plugin parameter is preserved');
+					assert.equal(fixture.event.params.annotate, false, 'saved plugin value is unchanged');
+				}
+				else assert.equal(job.workflow.start, 'magic_test_trigger', 'workflow still starts at its Magic Link trigger');
+			}
+		}
+		
+		var fixture = createMagicAPIFixture();
+		assert.equal(fixture.invoke().code, 0, 'empty request accepts saved defaults');
+		assert.equal(fixture.jobs[0].params.caller, 'default caller', 'missing Event field uses its default');
+		assert.equal(fixture.jobs[0].params.count, '1', 'missing required field uses its default');
+		assert.equal(fixture.jobs[0].input, null, 'missing input remains null');
+	},
+	
+	async function test_api_magic_preserves_parameter_validation(test) {
+		// The name allowlist supplements existing validation, including reserved
+		// overrides that must fail even when a legacy Event declares that field.
+		var fixture = createMagicAPIFixture();
+		for (var invalid of [
+			{ params: { count: '' }, message: 'is required' },
+			{ params: { count: 'invalid' }, message: 'value is invalid' },
+			{ params: { input: 'invalid' }, message: 'must be object' }
+		]) {
+			var response = fixture.invoke(invalid.params);
+			assert.equal(response.code, 'api', 'invalid value is rejected');
+			assert.ok(response.description.includes(invalid.message), 'existing validation explains the rejection');
+			assert.equal(fixture.jobs.length, 0, 'validation failure never launches a job');
+		}
+		
+		fixture.event.fields.push({ id: '_xy_override_uid', value: '' });
+		var response = fixture.invoke({ _xy_override_uid: '0' });
+		assert.equal(response.code, 'api', 'declared reserved override is rejected');
+		assert.ok(response.description.includes('(reserved)'), 'reserved-key validation remains active');
+		assert.equal(fixture.jobs.length, 0, 'reserved override never launches a job');
+	},
+	
+	async function test_api_magic_filters_undefined_params_http(test) {
+		// Exercise query, JSON and the legacy JSON wrapper through the real HTTP
+		// API. Wait for completion so no background jobs outlive the shared Event.
+		var url = this.api_url + '/app/magic/v1/' + encodeURIComponent(this.wait_magic_key) + '/wait';
+		var options = { headers: { 'X-Session-ID': '', Cookie: '' } };
+		var responses = [
+			await this.request.get(url + '?BASH_ENV=untrusted', options),
+			await this.request.json(url, { LD_PRELOAD: 'untrusted' }, options),
+			await this.request.json(url, { json: JSON.stringify({ PATH: 'untrusted' }) }, options)
+		];
+		
+		for (var idx = 0; idx < responses.length; idx++) {
+			var result = responses[idx];
+			var data = Buffer.isBuffer(result.data) ? JSON.parse(result.data.toString('utf8')) : result.data;
+			assert.equal(result.resp.statusCode, 200, 'unknown names do not reject webhook requests');
+			assert.equal(data.code, 0, 'successful Magic Link response');
+			assert.ok(data.job.id && data.job.final, 'request returns a completed Job');
+			for (var key of ['BASH_ENV', 'LD_PRELOAD', 'PATH']) assert.ok(!Object.hasOwn(data.job.params, key), key + ' never reaches job params');
+			if (idx == 0) assert.equal(data.job.magic.query.BASH_ENV, 'untrusted', 'unknown query name remains metadata');
+			else if (idx == 1) assert.equal(data.job.magic.params.LD_PRELOAD, 'untrusted', 'unknown POST name remains metadata');
+			else assert.equal(JSON.parse(data.job.magic.params.json).PATH, 'untrusted', 'original JSON wrapper remains metadata');
+		}
+	},
+	
+	async function test_api_magic_utf8_body_http(test) {
+		// Send exact bytes through the real request parser, conductor storage and
+		// satellite socket transport, rather than letting the HTTP client encode JSON.
+		var body = Buffer.from('{\r\n\t"caller": "café 😀", "escaped": "\\u0061", "unknown": { "value": 42 }\r\n}\n');
+		var signature = crypto.createHmac('sha256', 'magic-http-secret').update(body).digest('hex');
+		var url = this.api_url + '/app/magic/v1/' + encodeURIComponent(this.wait_magic_key) + '/wait?caller=query&unknown=query';
+		var received_magic = null;
+		var original_launch = this.satellite.prepLaunchJob;
+		var event_id = this.wait_event_id;
+		this.satellite.prepLaunchJob = function(job, details, sec) {
+			if (job.event == event_id) received_magic = Tools.copyHash(details.magic, true);
+			return original_launch.call(this, job, details, sec);
+		};
+		
+		try {
+			let { resp, data } = await this.request.json(url, body, { headers: {
+				'Content-Type': 'application/json; charset=utf-8',
+				'Linear-Signature': signature, 'X-Session-ID': '', Cookie: ''
+			} });
+			assert.equal(resp.statusCode, 200, 'signed HTTP request succeeds');
+			assert.equal(data.code, 0, 'successful Magic Link response');
+			assert.ok(data.job.final, 'response contains the stored completed Job');
+			assert.equal(data.job.magic.body, body.toString('utf8'), 'HTTP body is preserved exactly as UTF-8');
+			assert.equal(crypto.createHmac('sha256', 'magic-http-secret').update(data.job.magic.body, 'utf8').digest('hex'), signature, 'signature survives the complete HTTP request');
+			assert.equal(data.job.magic.headers['linear-signature'], signature, 'HTTP signature header is normalized and retained');
+			assert.ok(!Object.hasOwn(data.job.magic.headers, 'x-session-id') && !Object.hasOwn(data.job.magic.headers, 'cookie'), 'credential headers are scrubbed');
+			assert.deepEqual(data.job.magic.params, JSON.parse(body.toString('utf8')), 'original parsed POST data survives storage');
+			assert.deepEqual(data.job.magic.query, { caller: 'query', unknown: 'query' }, 'query data survives independently');
+			assert.equal(data.job.params.caller, 'query', 'declared query parameter still overrides POST');
+			assert.ok(!Object.hasOwn(data.job.params, 'unknown'), 'unknown payload does not become a job parameter');
+			assert.deepEqual(received_magic, data.job.magic, 'mock satellite received the original metadata in job details');
+		}
+		finally {
+			this.satellite.prepLaunchJob = original_launch;
+		}
 	},
 	
 	async function test_api_run_event_wait(test) {
