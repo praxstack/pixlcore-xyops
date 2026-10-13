@@ -570,6 +570,7 @@ Here is the full default configuration:
 	"temp_dir": "temp",
 	"debug_level": 5,
 	"child_kill_timeout": 10,
+	"job_data_env": true,
 	"monitoring_enabled": true,
 	"quickmon_enabled": true,
 	"graphics_enabled": false,
@@ -595,13 +596,13 @@ Here are descriptions of the configuration properties:
 | `temp_dir` | String | Location of temp directory, relative to the base dir (`/opt/xyops/satellite`). |
 | `debug_level` | Number | This number sets the verbosity level for the logger (default: `5`; 1 = quiet, 10 = very verbose). |
 | `child_kill_timeout` | Number | Number of seconds to wait after sending a SIGTERM to follow-up with a SIGKILL. |
+| `job_data_env` | Boolean | Include environment variables for job params, workflow params, job input data, workflow input data, and server data.  The default is `true`. |
 | `monitoring_enabled` | Boolean | Enable or disable the monitoring subsystem (i.e. send monitoring metrics every minute). |
 | `quickmon_enabled` | Boolean | Enable or disable the "quick" monitors, which send lightweight metrics every second. |
 | `graphics_enabled` | Boolean | Enable or disable graphics card (GPU) monitoring features (default: `false`).  Currently experimental. |
 | `docker_enabled` | Boolean | Enable or disable Docker container monitoring features (default: `true`). |
 | `upgrade_timeout_sec` | Number | The number of seconds to allow for upgrades to complete, before reporting an error (default: `60`). |
 | `graceful` | Boolean | Set to `true` to have xySat gracefully stop on shutdown (i.e. wait for all jobs to complete).  The default is `false`. |
-
 
 
 ## marketplace

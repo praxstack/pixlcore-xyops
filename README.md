@@ -141,14 +141,25 @@ Watch a quick overview of xyOps:
 
 [![Watch the xyOps overview](https://img.youtube.com/vi/NxZKylkKfOg/hqdefault.jpg)](https://www.youtube.com/watch?v=NxZKylkKfOg)
 
+## Follow xyOps
+
+We're sharing short videos with xyOps tips, tricks, and ideas for your own automation. Longer tutorials and walkthroughs are coming to YouTube soon!
+
+Follow PixlCore on your favorite platforms, or join the xyOps community on Reddit. If you find a video helpful, a like, subscription, or share is a great way to support the project and help others discover xyOps.
+
+- [Mastodon](https://mastodon.social/@pixlcore)
+- [Bluesky](https://bsky.app/profile/pixlcore.bsky.social)
+- [X / Twitter](https://x.com/PixlCoreCom)
+- [YouTube](https://www.youtube.com/@PixlCore-Media)
+- [TikTok](https://www.tiktok.com/@pixlcoremedia)
+- [Instagram](https://www.instagram.com/pixlcoremedia/)
+- [Reddit](https://sh.reddit.com/r/xyOps)
+
 ## Community and support
 
 - [GitHub Discussions](https://github.com/pixlcore/xyops/discussions) for questions and community help
 - [GitHub Issues](https://github.com/pixlcore/xyops/issues) for reproducible bugs and feature requests
-- [Reddit](https://reddit.com/r/xyOps/)
 - [Discord](https://discord.gg/FTzqmbGbdd)
-- [Bluesky](https://pixlcore.bsky.social/)
-- [Mastodon](https://mastodon.social/@pixlcore)
 - [LinkedIn](https://linkedin.com/company/pixlcore)
 
 ## Contributing

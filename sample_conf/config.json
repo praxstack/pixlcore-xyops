@@ -141,6 +141,7 @@
 			"temp_dir": "temp",
 			"debug_level": 5,
 			"child_kill_timeout": 10,
+			"job_data_env": true,
 			"monitoring_enabled": true,
 			"quickmon_enabled": true,
 			"graphics_enabled": false,
