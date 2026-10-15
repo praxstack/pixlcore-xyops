@@ -4,6 +4,7 @@ const vm = require('vm');
 const Tools = require('pixl-tools');
 const API = require('../../lib/api.js');
 const Jobs = require('../../lib/job.js');
+const Workflows = require('../../lib/workflow.js');
 const Actions = require('../../lib/action.js');
 const Util = require('../../lib/util.js');
 
@@ -181,6 +182,50 @@ exports.tests = [
 		assert.deepEqual( jobs.getCompletedJobConditions(job), [], 'intermediate attempt has no completion counters' );
 	},
 	
+	async function test_job_retry_preserves_workflow_isolation(test) {
+		// Retry construction must retain both saved and inherited isolation options.
+		// Complete a child in each new attempt to verify behavior, not just the copy.
+		const opts = ['isolate_data', 'isolate_files', 'isolate_tags', 'isolate_content'];
+		let job = { id: 'original', type: 'workflow', opts, code: 1, actions: [], tags: [],
+			workflow: { nodes: [{ id: 'leaf', type: 'job' }], connections: [], state: {}, jobs: {} },
+			limits: [{ type: 'retry', enabled: true, amount: 2 }]
+		};
+		let retry;
+		const jobs = Object.assign(new Jobs(), {
+			jobDetails: {}, appendMetaLog() {}, logJob() {},
+			launchJob(next, callback) { retry = next; callback(null, 'retry' + next.retry_count); }
+		});
+		
+		for (let attempt = 1; attempt <= 2; attempt++) {
+			jobs.checkRetryJob(job);
+			assert.ok(job.retried, 'previous attempt is marked as retried');
+			assert.deepEqual(retry.opts, opts, 'retry retains all isolation options');
+			assert.notEqual(retry.opts, job.opts, 'retry receives an independent option array');
+			assert.equal(retry.retry_count, attempt, 'retry count advances');
+			retry.id = 'retry' + attempt;
+			retry.workflow.state = {};
+			retry.workflow.jobs = { leaf: [] };
+			const details = { workflowData: {}, wfJobData: {} };
+			const engine = Object.assign(new Workflows(), {
+				activeJobs: { [retry.id]: retry }, jobDetails: { [retry.id]: details },
+				mergeConcatInto: Util.prototype.mergeConcatInto,
+				getCompletedJobConditions: Jobs.prototype.getCompletedJobConditions,
+				logWorkflow() {}, finishJob() {}
+			});
+			engine.finishWorkflowJob({ id: 'leaf', code: 0, workflow: { job: retry.id, node: 'leaf' },
+				data: { child_only: true }, files: [{ filename: 'child.txt' }], tags: ['child_tag'],
+				table: { title: 'Child table' }, html: { content: 'Child HTML' }
+			});
+			await new Promise(resolve => setImmediate(resolve));
+			assert.deepEqual(details.data, {}, 'retried workflow isolates child data');
+			assert.deepEqual(details.files, [], 'retried workflow isolates child files');
+			assert.deepEqual(retry.tags, [], 'retried workflow isolates child tags');
+			assert.ok(!retry.table && !retry.html && !retry.redraw, 'retried workflow isolates child content');
+			job = retry;
+			job.code = 1;
+		}
+	},
+	
 	async function test_job_retry_preserves_magic_inputs(test) {
 		// Exercise both retry construction and the real launch method. Only the
 		// reusable inputs may survive: prior output and timelines must start fresh.
@@ -291,7 +336,7 @@ exports.tests = [
 	
 	async function test_job_run_again_keeps_test_conditions(test) {
 		// Exercise the real browser handler with a captured API request. A manual
-		// rerun keeps both test conditions and the original Magic Link metadata.
+		// rerun keeps test conditions, isolation and the original Magic Link metadata.
 		var payload = null;
 		var context = {
 			Page: { PageUtils: class {} },
@@ -309,9 +354,11 @@ exports.tests = [
 		
 		var page = new context.Page.Job();
 		var magic = { headers: { 'linear-signature': 'original' }, body: '{ "text": "café" }', params: {}, query: {} };
+		var opts = ['isolate_data', 'isolate_files', 'isolate_tags', 'isolate_content'];
 		page.job = {
-			id: 'jprevious', event: 'etest', type: 'default', test: true,
-			test_conditions: ['complete'], params: {}, tags: [], code: 1, magic
+			id: 'jprevious', event: 'etest', type: 'workflow', test: true,
+			test_conditions: ['complete'], params: {}, tags: [], code: 1, magic, opts,
+			workflow: { nodes: [], connections: [], start: 'manual', state: {}, jobs: {}, job: 'outer' }
 		};
 		page.do_run_again();
 		
@@ -320,6 +367,9 @@ exports.tests = [
 		assert.equal( payload.id, 'etest', 'run-again targets the original event' );
 		assert.deepEqual( payload.magic, magic, 'run-again retains the original request metadata');
 		assert.notEqual( payload.magic, magic, 'run-again sends an independent metadata snapshot');
+		assert.deepEqual( payload.opts, opts, 'run-again retains workflow isolation options');
+		assert.notEqual( payload.opts, opts, 'run-again sends an independent option array');
+		assert.deepEqual( Object.keys(payload.workflow).sort(), ['connections', 'nodes', 'start'], 'run-again removes prior workflow runtime context');
 	},
 	
 	async function test_job_plugin_param_defaults(test) {

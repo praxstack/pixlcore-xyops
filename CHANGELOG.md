@@ -1,5 +1,16 @@
 # xyOps Changelog
 
+## Version v1.1.7
+
+> October 13, 2026
+
+- [`18c21770`](https://github.com/pixlcore/xyops/commit/18c2177052d6c4f231e02b05db267cf286b0309c): Version 1.1.7
+- [`e4e1db9a`](https://github.com/pixlcore/xyops/commit/e4e1db9a8aa1a3bcb1f5844a182f86928cb6acba): Dep: Bump xterm.js to v6.0.0 (future use)
+- [`b91e285d`](https://github.com/pixlcore/xyops/commit/b91e285dc95268999d50570194640f1f645f6582): Meta: Fix default permissions on a couple of utility scripts
+- [`734bcdec`](https://github.com/pixlcore/xyops/commit/734bcdec400308c1c265179aa1476c17f807e00d): Feature: Workflow Isolation Options: Job data, file, tag and content isolation for workflow sub-jobs.
+- [`f17ed4ca`](https://github.com/pixlcore/xyops/commit/f17ed4ca42b6d0355f7db4044c32a164bb00beef): Doc: README: Add additional social media links
+- [`2b8d02e4`](https://github.com/pixlcore/xyops/commit/2b8d02e4ce4e24099883eda3e8cb46284e8d0921): Feature: Add default "job_data_env" satellite config param set to true.
+
 ## Version v1.1.6
 
 > October 10, 2026

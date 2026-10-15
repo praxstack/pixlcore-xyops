@@ -55,6 +55,177 @@ function getWorkflow(name) {
 
 exports.tests = [
 	
+	async function test_workflow_isolation_bubbling(test) {
+		// Exercise every combination, plus legacy workflows with no opts field.
+		// Isolation affects aggregation, while downstream input and Join stay intact.
+		const options = ['isolate_data', 'isolate_files', 'isolate_tags', 'isolate_content'];
+		const selections = [undefined].concat( Array.from({ length: 16 }, function(value) {
+			return options.filter((option, idx) => value & (1 << idx));
+		}) );
+		
+		for (const opts of selections) {
+			for (const lifecycle of ['success', 'abort', 'nested']) {
+				const isolated = new Set(opts || []);
+				const label = (opts === undefined ? 'legacy' : opts.join(',') || 'none') + ': ' + lifecycle;
+				const join = { id: 'join', type: 'controller', data: { controller: 'join' } };
+				const parent = {
+					id: 'parent', tags: ['parent_tag', 'shared_tag'], redraw: 'original',
+					table: { title: 'Parent table' }, html: { content: 'Parent HTML' },
+					workflow: { state: { join: {} }, jobs: { leaf: [] },
+						nodes: [{ id: 'leaf', type: 'job' }, join, { id: 'next', type: 'job' }],
+						connections: [
+							{ id: 'tagwire', source: 'leaf', dest: 'next', condition: 'tag:child_tag' },
+							{ id: 'joinwire', source: 'leaf', dest: 'join', condition: 'continue' },
+							{ id: 'outputwire', source: 'join', dest: 'next' }
+						]
+					}
+				};
+				if (opts !== undefined) parent.opts = opts;
+				if (lifecycle == 'nested') parent.workflow.job = 'outer';
+				const parent_file = { filename: 'parent.txt' };
+				const shared = { shared: true };
+				const details = { data: { parent_only: true, values: ['parent'] }, files: [parent_file],
+					workflowData: shared, wfJobData: {} };
+				const calls = [];
+				let finished = false;
+				const engine = Object.assign(new Workflows(), {
+					activeJobs: { parent }, jobDetails: { parent: details },
+					mergeConcatInto: Util.prototype.mergeConcatInto,
+					getCompletedJobConditions: Jobs.prototype.getCompletedJobConditions,
+					logWorkflow() {}, runWorkflowNode(call) { calls.push(call); },
+					finishJob() { finished = true; }
+				});
+				const child = { id: 'child', code: 0, workflow: { job: 'parent', node: 'leaf' },
+					data: { result: 'child', values: ['child'] }, files: [{ filename: 'child.txt' }],
+					tags: ['child_tag', 'shared_tag', '_success'],
+					table: { title: 'Child table' }, html: { content: 'Child HTML' },
+					workflowData: { updated: true }
+				};
+				
+				// A superseded attempt must contribute no ordinary output or content,
+				// even when all isolation options are disabled.
+				engine.finishWorkflowJob({ ...child, id: 'retry', code: 1, retried: true,
+					data: { retry_only: true }, files: [{ filename: 'retry.txt' }],
+					tags: ['retry_tag'], table: { title: 'Retry table' }, html: { content: 'Retry HTML' }
+				});
+				assert.equal(calls.length, 0, label + ': retry does not continue flow');
+				assert.deepEqual(parent.tags, ['parent_tag', 'shared_tag'], label + ': retry does not bubble tags');
+				assert.equal(parent.redraw, 'original', label + ': retry does not bubble content');
+				
+				engine.finishWorkflowJob(child);
+				assert.equal(calls.length, 1, label + ': child tag condition still fires');
+				assert.deepEqual(calls[0].overrides.input, { data: child.data, files: child.files }, label + ': downstream receives output');
+				assert.notEqual(calls[0].overrides.input.data, child.data, label + ': downstream data is copied');
+				assert.deepEqual(parent.tags, isolated.has('isolate_tags') ? ['parent_tag', 'shared_tag'] : ['parent_tag', 'shared_tag', 'child_tag'], label + ': user tags bubble selectively and deduplicate');
+				assert.deepEqual(parent.table, isolated.has('isolate_content') ? { title: 'Parent table' } : child.table, label + ': table isolation');
+				assert.deepEqual(parent.html, isolated.has('isolate_content') ? { content: 'Parent HTML' } : child.html, label + ': HTML isolation');
+				assert.equal(parent.redraw == 'original', isolated.has('isolate_content'), label + ': redraw only when content bubbles');
+				
+				// Join uses the retained per-job results, independently of what the
+				// workflow will export, and continues to exclude retry attempts.
+				engine.runWFController_join({ job: parent, node: join });
+				assert.deepEqual(calls[1].overrides.input, {
+					data: { items: [child.data], combined: child.data, percentage: 100 }, files: child.files
+				}, label + ': Join retains child data and files');
+				if (lifecycle == 'abort') parent.workflow.aborted = 'Test abort';
+				
+				// Allow the real completion callback scheduled by finishWorkflowJob.
+				await new Promise(resolve => setImmediate(resolve));
+				assert.ok(finished, label + ': workflow finishes');
+				const expected = isolated.has('isolate_data') ? { parent_only: true, values: ['parent'] } :
+					{ parent_only: true, result: 'child', values: ['parent', 'child'] };
+				if (lifecycle != 'nested') Object.assign(expected, shared);
+				assert.deepEqual(details.data, expected, label + ': output data isolation preserves parent data');
+				assert.deepEqual(details.files, [parent_file].concat(isolated.has('isolate_files') ? [] : child.files), label + ': file isolation preserves parent files');
+				assert.equal(shared.updated, true, label + ': workflowData updates remain shared');
+				assert.equal(details.workflowData, lifecycle == 'nested' ? shared : undefined, label + ': shared data promotion follows workflow scope');
+				assert.equal(parent.code, lifecycle == 'abort' ? 'abort' : 0, label + ': isolation does not change workflow status');
+			}
+		}
+	},
+	
+	async function test_workflow_isolation_inheritance(test) {
+		// Either source may omit opts. Present arrays must be merged without
+		// duplicates or mutation, including when the result launches another workflow.
+		const cases = [
+			{ name: 'both absent', expected: undefined },
+			{ name: 'parent absent', child: ['isolate_files'], expected: ['isolate_files'] },
+			{ name: 'child absent', parent: ['isolate_data'], expected: ['isolate_data'] },
+			{ name: 'both empty', parent: [], child: [], expected: [] },
+			{ name: 'parent empty', parent: [], child: ['isolate_files'], expected: ['isolate_files'] },
+			{ name: 'child empty', parent: ['isolate_data'], child: [], expected: ['isolate_data'] },
+			{ name: 'overlapping options', parent: ['isolate_data', 'isolate_tags', 'isolate_content'],
+				child: ['isolate_data', 'isolate_files'], expected: ['isolate_data', 'isolate_files', 'isolate_tags', 'isolate_content'] }
+		];
+		
+		for (const item of cases) {
+			const event = { id: 'nested', title: 'Nested', params: {}, actions: [], limits: [],
+				triggers: [{ id: 'manual', type: 'manual', enabled: true }], workflow: { nodes: [], connections: [] } };
+			const parent = { id: 'parent', workflow: { state: { nested: {} }, jobs: {}, connections: [] } };
+			if (item.child !== undefined) event.opts = Object.freeze(item.child.slice());
+			if (item.parent !== undefined) parent.opts = Object.freeze(item.parent.slice());
+			const children = [];
+			const engine = Object.assign(new Workflows(), {
+				events: [event], jobDetails: { parent: { workflowData: {} } },
+				config: { get() { return 1000; } }, countTotalWFJobs() { return 0; }, logWorkflow() {},
+				launchJob(job, callback) { children.push(job); callback(null, 'child' + children.length); }
+			});
+			engine.runWFNode_event({ job: parent, node: { id: 'nested', data: { event: 'nested' } } });
+			assert.deepEqual(children[0].opts, item.expected, item.name + ': correct inherited options');
+			assert.deepEqual(event.opts, item.child, item.name + ': saved options are unchanged');
+			assert.deepEqual(parent.opts, item.parent, item.name + ': parent options are unchanged');
+			if (item.expected) {
+				assert.notEqual(children[0].opts, event.opts, item.name + ': child has its own array');
+				assert.notEqual(children[0].opts, parent.opts, item.name + ': parent array is not shared');
+			}
+			
+			// A second generation retains the complete union, including when neither
+			// workflow defined options. The normal event path must not inherit them.
+			const nested = children[0];
+			Object.assign(nested, { id: 'child', workflow: { state: { nested: {}, ordinary: {} }, jobs: {}, connections: [] } });
+			engine.jobDetails.child = { workflowData: {} };
+			engine.runWFNode_event({ job: nested, node: { id: 'nested', data: { event: 'nested' } } });
+			assert.deepEqual(children[1].opts, item.expected, item.name + ': second generation retains options');
+			engine.events.push({ id: 'ordinary', title: 'Ordinary', params: {}, triggers: [], actions: [], limits: [] });
+			engine.runWFNode_event({ job: nested, node: { id: 'ordinary', data: { event: 'ordinary' } } });
+			assert.ok(!Object.hasOwn(children[2], 'opts'), item.name + ': ordinary events do not inherit workflow options');
+		}
+	},
+	
+	async function test_workflow_isolation_options_api(test) {
+		// Check the real create/update/run validation paths without launching jobs.
+		// Sparse updates must preserve stored options when omitted and clear them
+		// when an empty array is explicitly saved.
+		const workflow = getWorkflow('decision');
+		workflow.id = 'eisolationopts';
+		workflow.opts = ['isolate_data', 'isolate_files', 'isolate_tags', 'isolate_content'];
+		let { data: created } = await this.request.json(this.api_url + '/app/create_event/v1', workflow);
+		assert.equal(created.code, 0, 'workflow with isolation options is accepted');
+		assert.deepEqual(created.event.opts, workflow.opts, 'create preserves isolation options');
+		
+		try {
+			for (const opts of [{}, 'isolate_data', 1, true]) {
+				for (const operation of ['create', 'update', 'run']) {
+					const params = operation == 'create' ? { ...workflow, id: 'einvalidisolationopts', opts } : { id: workflow.id, opts };
+					let { data } = await this.request.json(this.api_url + '/app/' + operation + '_event/v1', params);
+					assert.notEqual(data.code, 0, operation + ': non-array opts are rejected');
+					assert.match(data.description, /invalid opts.*must be array/, operation + ': rejection identifies opts');
+				}
+			}
+			
+			let { data: updated } = await this.request.json(this.api_url + '/app/update_event/v1', { id: workflow.id, notes: 'Sparse update' });
+			assert.equal(updated.code, 0, 'sparse update is accepted');
+			assert.deepEqual(updated.event.opts, workflow.opts, 'sparse update preserves stored options');
+			let { data: cleared } = await this.request.json(this.api_url + '/app/update_event/v1', { id: workflow.id, opts: [] });
+			assert.equal(cleared.code, 0, 'empty option array is accepted');
+			assert.deepEqual(cleared.event.opts, [], 'empty array clears isolation');
+		}
+		finally {
+			let { data } = await this.request.json(this.api_url + '/app/delete_event/v1', { id: workflow.id });
+			assert.equal(data.code, 0, 'isolation test workflow is cleaned up');
+		}
+	},
+	
 	async function test_workflow_subworkflow_output_data(test) {
 		// Two inner workflows share the parent's data, but their ordinary output
 		// must contain only their own job results when the parent collects a Join.

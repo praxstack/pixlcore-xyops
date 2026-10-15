@@ -252,8 +252,8 @@ Inputs and outputs are automatically passed along:
 - When an Event/Job finishes, its output `data` and `files` are passed to downstream nodes as `input.data` and `input.files`.
 	- Note that your job script has to explicitly specify data and file paths for output.  See [Output Data](plugins.md#output-data) and [Output Files](plugins.md#output-files).
 - If the workflow itself has any user fields defined, these are passed to all sub-jobs via a `workflow.params` object inside the job data.
-- Tags: user tags from sub-jobs bubble up to the workflow job and can drive `tag:...` conditions.
-- HTML and table content: if a sub-job emits `html` or `table`, it bubbles up to the parent for display.  If multiple jobs emit content The latter prevails.
+- Tags: user tags from sub-jobs bubble up to the workflow job unless [Isolate Tags](#data-isolation) is enabled.  Each sub-job's own tags can drive `tag:...` conditions.
+- HTML and table content: if a sub-job emits `html` or `table`, it bubbles up to the parent for display unless [Isolate Content](#data-isolation) is enabled.  If multiple jobs emit the same type of content, the most recently completed job's content prevails.
 - Retries: if a sub-job was retried, its data/files are not bubbled and it doesn't count toward tag/condition firing.
 
 Join specifics:
@@ -296,6 +296,22 @@ Event nodes can reference events of type `workflow`. To run as a sub-workflow:
 - The sub-workflow must have an enabled manual trigger. The engine uses this to determine the start node.
 - Parent workflow input (data/files) is passed into the sub-workflow's trigger node.
 - Limits and actions on the parent workflow do not automatically apply to the sub-workflow unless explicitly attached to the node.
+
+
+## Data Isolation
+
+By default, sub-job output data, files, user tags and custom content bubble up to the parent workflow.  To keep selected output at the sub-job level, choose one or more **Isolation Options** in the workflow editor:
+
+- **Isolate Data:** Exclude sub-job output `data` from the workflow's combined output data.
+- **Isolate Files:** Exclude sub-job output files from the workflow's output files.
+- **Isolate Tags:** Prevent sub-job user tags from being added to the workflow's tags.
+- **Isolate Content:** Prevent sub-job tables and HTML from being displayed as the workflow's custom content.
+
+Within a workflow, data and files are still passed between its nodes, including through Join controllers.  Tag conditions on a sub-job still use that sub-job's own tags.  The original outputs remain available on the jobs that produced them.
+
+**Isolate Data** applies to ordinary output `data`.  The shared [workflowData](#sharing-data-between-all-nodes) object continues to work normally, including being included in the top-level workflow's final output data.
+
+Sub-workflows inherit the parent workflow's isolation options in addition to their own, with duplicates removed.  For example, if the parent selects **Isolate Data** and a sub-workflow selects **Isolate Files**, the sub-workflow applies both.  These options are retained when a workflow is retried.
 
 
 ## Tips
