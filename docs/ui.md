@@ -260,6 +260,8 @@ The default template includes:
 
 You can use this to set defaults that match your organization, such as a default category, plugin, target group, actions, tags, limits, or notes.  See [Events](events.md), [Limits](limits.md), and [Actions](actions.md) for the event fields themselves.
 
+For workflows, the editor defaults to **Bubble Leaf Nodes** when the template omits `bubble`.  Add `"bubble": ""` to your existing template to default new workflows to **Bubble All Nodes**, or `"bubble": "leaf"` to explicitly select leaf mode.  Existing workflows keep their own bubbling setting, including when edited or cloned.  Plain events ignore this workflow-only property.  See [Workflow Output](workflows.md#workflow-output) for details.
+
 Example:
 
 ```json

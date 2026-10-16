@@ -795,7 +795,7 @@ When set to `true`, will show a colored badge on sidebar sections for outdated s
 ### client.new_event_template
 <!-- Title: New Event Template -->
 
-Provides sensible defaults for new events (triggers, limits, actions). Used to prefill the New Event form.
+Provides sensible defaults for new events and workflows, such as triggers, limits, and actions.  These values prefill the creation form and do not change existing events or workflows.
 
 ### client.new_ticket_template
 <!-- Title: New Ticket Template -->

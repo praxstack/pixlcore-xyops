@@ -1946,6 +1946,9 @@ Page.Events = class Events extends Page.PageUtils {
 		else {
 			this.event = deep_copy_object( app.config.new_event_template );
 			
+			// delete bubble prop for plain events (may have been added to config for workflows)
+			delete this.event.bubble;
+			
 			if (!this.event.category) {
 				if (find_object(app.categories, { id: 'general' })) this.event.category = 'general';
 				else if (!app.categories.length) return this.doFullPageError("You must define at least one category to add events.");

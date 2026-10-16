@@ -227,6 +227,8 @@ The controller's "continue percentage" setting controls whether the "On Continue
 
 Each "On Continue" condition is scoped to the specific controller and Event/Job node pair it is attached to.  You can have multiple controller sections in the same workflow, and each one waits for its own controlled jobs before firing its own "On Continue" wires.
 
+When [leaf bubbling](#workflow-output) is enabled, an "On Continue" wire to an Event, Job, or Controller always excludes the controlled jobs from the workflow's output.  This applies even when the Continue Percentage is not met and the wire never fires.  You can collect the controlled jobs' data and files through a Join and use a final job to produce the workflow's output.
+
 
 ## Replay Previous Jobs
 
@@ -252,8 +254,8 @@ Inputs and outputs are automatically passed along:
 - When an Event/Job finishes, its output `data` and `files` are passed to downstream nodes as `input.data` and `input.files`.
 	- Note that your job script has to explicitly specify data and file paths for output.  See [Output Data](plugins.md#output-data) and [Output Files](plugins.md#output-files).
 - If the workflow itself has any user fields defined, these are passed to all sub-jobs via a `workflow.params` object inside the job data.
-- Tags: user tags from sub-jobs bubble up to the workflow job unless [Isolate Tags](#data-isolation) is enabled.  Each sub-job's own tags can drive `tag:...` conditions.
-- HTML and table content: if a sub-job emits `html` or `table`, it bubbles up to the parent for display unless [Isolate Content](#data-isolation) is enabled.  If multiple jobs emit the same type of content, the most recently completed job's content prevails.
+- Tags: user tags bubble up according to the [workflow output rules](#workflow-output), unless [Isolate Tags](#data-isolation) is enabled.  Each sub-job's own tags can drive `tag:...` conditions regardless of whether they bubble.
+- HTML and table content: a sub-job's `html` or `table` bubbles up for display according to the [workflow output rules](#workflow-output), unless [Isolate Content](#data-isolation) is enabled.  If multiple eligible jobs emit the same type of content, the most recently completed job's content prevails.
 - Retries: if a sub-job was retried, its data/files are not bubbled and it doesn't count toward tag/condition firing.
 
 Join specifics:
@@ -265,6 +267,37 @@ Split specifics:
 
 - The Split controller resolves its data path against the previous job context (or incoming input).
 - If the path is `files`, each incoming file is sent to a separate sub-job; otherwise, each array element becomes `input.data = { item: ... }` for the launched sub-job.
+
+## Workflow Output
+
+The **Workflow Bubbling** menu in the workflow editor controls which sub-job outputs bubble up to that workflow.  Each workflow has its own setting:
+
+- **Bubble Leaf Nodes** (`bubble: "leaf"`): Collect output data, files, user tags, and custom tables or HTML from leaf sub-jobs only.
+- **Bubble All Nodes** (`bubble: ""`, or an omitted `bubble` property): Collect these outputs from *all* sub-jobs.
+
+Intermediate outputs remain available on the jobs that produced them and continue to pass to downstream nodes, including through Join controllers, in either mode.  [Workflow Options](#workflow-options) can further control how the workflow handles output and failures.
+
+In leaf mode, leaf status is evaluated for each completed sub-job using its result and outgoing wire conditions:
+
+- A job with no matching outgoing wire to an Event, Job, or Controller is a leaf.
+- A matching wire to an Event, Job, or Controller makes the job intermediate.  Action and Limit attachments do not affect leaf status.
+- An outgoing **On Continue** wire to an Event, Job, or Controller always makes the job intermediate, even if the controller's Continue Percentage prevents continuation.
+- A job resumed with a redirect to another node is intermediate.
+- Superseded retry attempts do not contribute output.
+
+For example, suppose a Split launches 20 jobs on one node, with an **On Any Error** wire to an error handler and no **On Continue** wire.  Successful jobs are leaves and can bubble their output.  Failed jobs pass their output to the error handler instead.  Each error-handler job is evaluated using its own result and outgoing wires.  Adding an **On Continue** wire to a downstream Event, Job, or Controller makes every job on the controlled node intermediate, regardless of its result or whether continuation occurs.
+
+In either mode, eligible output data is shallow-merged into the workflow's output, with top-level arrays concatenated.  Matching properties otherwise replace earlier values, so use distinct property names or a final formatting job when combining multiple results.  Files are concatenated, user tags are combined without duplicates, and the latest eligible table or HTML of each type is displayed.  Superseded retry attempts are excluded, and [isolation options](#data-isolation) can further suppress these outputs.
+
+Each sub-workflow uses its own bubbling setting, independently of its parent.  For example, an outer workflow can use leaf mode while an inner workflow uses all mode.  The inner workflow collects its outputs using its own mode, then its parent receives those outputs as normal node output and can pass them to subsequent jobs or Joins.  The parent's mode determines whether that sub-workflow job contributes to the parent's collected output.
+
+Shared [workflowData](#sharing-data-between-all-nodes) continues to work for all jobs.  It is included in the top-level workflow's final output and kept separate from ordinary sub-workflow output.  Leaf status also does not change the workflow's overall result: intermediate job failures still count.
+
+### Backwards Compatibility
+
+New workflows created in the UI default to **Bubble Leaf Nodes**.  Existing workflows with no `bubble` property retain **Bubble All Nodes**, including when you edit or clone them.  To use leaf mode when creating or importing a workflow through the API, include `"bubble": "leaf"` in its event data.
+
+To default new workflows in the UI to **Bubble All Nodes**, add `"bubble": ""` to your existing [client.new_event_template](config.md#clientnew_event_template) configuration object.  This changes the creation default only; saved workflows keep their own settings.  The workflow editor uses leaf mode when the template omits `bubble`.
 
 ## Sharing Data Between All Nodes
 
@@ -298,20 +331,39 @@ Event nodes can reference events of type `workflow`. To run as a sub-workflow:
 - Limits and actions on the parent workflow do not automatically apply to the sub-workflow unless explicitly attached to the node.
 
 
-## Data Isolation
+## Workflow Options
 
-By default, sub-job output data, files, user tags and custom content bubble up to the parent workflow.  To keep selected output at the sub-job level, choose one or more **Isolation Options** in the workflow editor:
+Use the **Workflow Options** multi-select in the workflow editor to choose optional behavior for that workflow.  Selected options are stored in the event's `opts` array and copied to the workflow job when it launches.  An empty or omitted array enables no options.  For example:
 
-- **Isolate Data:** Exclude sub-job output `data` from the workflow's combined output data.
-- **Isolate Files:** Exclude sub-job output files from the workflow's output files.
-- **Isolate Tags:** Prevent sub-job user tags from being added to the workflow's tags.
-- **Isolate Content:** Prevent sub-job tables and HTML from being displayed as the workflow's custom content.
+```json
+{
+	"bubble": "leaf",
+	"opts": ["first_abort", "isolate_files"]
+}
+```
+
+Each workflow has its own options, including when it runs as a sub-workflow.  Options are not inherited from the parent or merged with its options.  For example, enabling **First Fail Aborts** on an outer workflow does not enable it inside an inner workflow.  The outer workflow applies its policy when the inner workflow completes and reports its result.  Workflow options are preserved when a workflow is retried or run again.
+
+### First Fail Aborts
+
+Select **First Fail Aborts** (`first_abort`) to abort the workflow when one of its sub-jobs completes with a nonzero result.  This includes warnings, critical errors, aborts, and other failure codes.  xyOps requests cancellation of the remaining running jobs, cancels queued work, and stops active controllers.  The workflow completes with an abort status once its remaining jobs have finished cancelling.
+
+This option prevents the failed job's normal downstream paths, including error-handler jobs and controller continuations, from launching.  Completion actions attached to the sub-job still follow that job's normal lifecycle.  A superseded attempt that is being retried does not trigger the workflow abort; a final failed attempt does.
+
+### Data Isolation
+
+[Workflow output rules](#workflow-output) determine which sub-job outputs are eligible to bubble up.  To further suppress selected output, choose one or more isolation settings from **Workflow Options**:
+
+- **Isolate Data** (`isolate_data`): Exclude sub-job output `data` from the workflow's combined output data.
+- **Isolate Files** (`isolate_files`): Exclude sub-job output files from the workflow's output files.
+- **Isolate Tags** (`isolate_tags`): Prevent sub-job user tags from being added to the workflow's tags.
+- **Isolate Content** (`isolate_content`): Prevent sub-job tables and HTML from being displayed as the workflow's custom content.
 
 Within a workflow, data and files are still passed between its nodes, including through Join controllers.  Tag conditions on a sub-job still use that sub-job's own tags.  The original outputs remain available on the jobs that produced them.
 
 **Isolate Data** applies to ordinary output `data`.  The shared [workflowData](#sharing-data-between-all-nodes) object continues to work normally, including being included in the top-level workflow's final output data.
 
-Sub-workflows inherit the parent workflow's isolation options in addition to their own, with duplicates removed.  For example, if the parent selects **Isolate Data** and a sub-workflow selects **Isolate Files**, the sub-workflow applies both.  These options are retained when a workflow is retried.
+Isolation applies only to the workflow where it is selected.  For example, if the parent selects **Isolate Data** and a sub-workflow selects **Isolate Files**, the sub-workflow still collects its own output data, while the parent excludes that data from its collected output.  The sub-workflow excludes its own sub-job files from its output.
 
 
 ## Tips

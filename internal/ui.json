@@ -564,6 +564,36 @@
 				"label": "Workflow Actions:",
 				"caption": "Optionally select custom actions to perform for each workflow.  These apply only to the workflow itself (not sub-jobs within), and they are added to any actions set at the category and/or universal level."
 			},
+			
+			"d_wf_bubble": {
+				"label": "Workflow Bubbling:",
+				"caption": "Choose which workflow nodes should bubble up output data and files to the parent. [Learn More](#Docs/workflows/workflow-output)"
+			},
+			"fe_wf_bubble": {
+				"title": "Select bubble mode",
+				"options": [
+					{ "id": "", "icon": "chart-bubble", "title": "Bubble All Nodes" },
+					{ "id": "leaf", "icon": "leaf", "title": "Bubble Leaf Nodes" }
+				],
+				"placeholder": ""
+			},
+			
+			"d_wf_opts": {
+				"label": "Workflow Options:",
+				"caption": "Choose various options for the workflow. [Learn More](#Docs/workflows/workflow-options)"
+			},
+			"fe_wf_opts": {
+				"title": "Select Options",
+				"options": [
+					{ "id": "first_abort", "icon": "bus-alert", "title": "First Fail Aborts" },
+					{ "id": "isolate_data", "icon": "code-json", "title": "Isolate Data" },
+					{ "id": "isolate_files", "icon": "file-cabinet", "title": "Isolate Files" },
+					{ "id": "isolate_tags", "icon": "tag-hidden", "title": "Isolate Tags" },
+					{ "id": "isolate_content", "icon": "table-border", "title": "Isolate Content" }
+				],
+				"placeholder": "(None)"
+			},
+			
 			"d_wf_notes": {
 				"label": "Notes:",
 				"caption": "Optionally enter notes for the event, which will be included in all email notifications."

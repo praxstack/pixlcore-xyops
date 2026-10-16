@@ -62,6 +62,9 @@ Page.Workflows = class Workflows extends Page.Events {
 				connections: []
 			};
 			
+			// new bubble prop
+			if (!('bubble' in this.event)) this.event.bubble = 'leaf';
+			
 			// construct minimal example workflow
 			var trigger_node_id = gen_workflow_id('n');
 			var job_node_id = gen_workflow_id('n');
@@ -156,7 +159,7 @@ Page.Workflows = class Workflows extends Page.Events {
 		this.div.html( html ).buttonize();
 		
 		MultiSelect.init( this.div.find('select[multiple]') );
-		SingleSelect.init( this.div.find('#fe_wf_icon, #fe_wf_cat, #fe_wf_algo') );
+		SingleSelect.init( this.div.find('#fe_wf_icon, #fe_wf_cat, #fe_wf_algo, #fe_wf_bubble') );
 		// this.renderPluginParamEditor();
 		this.renderParamEditor();
 		// this.updateAddRemoveMe('#fe_wf_email');
@@ -265,7 +268,7 @@ Page.Workflows = class Workflows extends Page.Events {
 		this.div.html( html ).buttonize();
 		
 		MultiSelect.init( this.div.find('select[multiple]') );
-		SingleSelect.init( this.div.find('#fe_wf_icon, #fe_wf_cat, #fe_wf_algo') );
+		SingleSelect.init( this.div.find('#fe_wf_icon, #fe_wf_cat, #fe_wf_algo, #fe_wf_bubble') );
 		// this.renderPluginParamEditor();
 		this.renderParamEditor();
 		// this.updateAddRemoveMe('#fe_wf_email');
@@ -3030,25 +3033,25 @@ Page.Workflows = class Workflows extends Page.Events {
 			content: '<div id="d_ee_jobact_table">' + this.getJobActionTable() + '</div>'
 		});
 		
-		// isolation
+		// bubble
+		html += this.getFormRow({
+			id: 'd_wf_bubble',
+			content: this.getFormMenuSingle({
+				id: 'fe_wf_bubble',
+				value: event.bubble || ''
+				// 'data-shrinkwrap': 1
+			})
+		});
+		
+		// opts
 		html += this.getFormRow({
 			id: 'd_wf_opts',
-			label: 'Isolation Options:',
 			content: this.getFormMenuMulti({
 				id: 'fe_wf_opts',
-				title: 'Select Options',
-				options: [
-					{ id: 'isolate_data', icon: 'code-json', title: "Isolate Data" },
-					{ id: 'isolate_files', icon: 'file-cabinet', title: "Isolate Files" },
-					{ id: 'isolate_tags', icon: 'tag-hidden', title: "Isolate Tags" },
-					{ id: 'isolate_content', icon: 'table-border', title: "Isolate Content" }
-				],
 				values: event.opts || [],
-				placeholder: '(None)',
 				'data-hold': 1
 				// 'data-shrinkwrap': 1
-			}),
-			caption: 'Choose isolation options for the workflow.  These will prevent job output data, files, tags and/or custom content from bubbling up to the parent workflow. [Learn More](#Docs/workflows/data-isolation)'
+			})
 		});
 		
 		// notes
@@ -3161,6 +3164,7 @@ Page.Workflows = class Workflows extends Page.Events {
 		event.icon = $('#fe_wf_icon').val();
 		event.category = $('#fe_wf_cat').val();
 		event.tags = $('#fe_wf_tags').val();
+		event.bubble = $('#fe_wf_bubble').val();
 		event.opts = $('#fe_wf_opts').val();
 		event.notes = $('#fe_wf_notes').val();
 		

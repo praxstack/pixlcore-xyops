@@ -546,6 +546,35 @@ An array of [Trigger](#trigger) items to schedule future job runs and set rules,
 
 If the event is a workflow, this contains detailed information about the nodes and connections.  See the [Workflow](#workflow) section for details.
 
+### Event.opts
+
+An optional array of option IDs for workflow events only, selected using **Workflow Options** in the workflow editor.  For example: `["first_abort", "isolate_files"]`.  An empty or omitted array enables no options.
+
+| Option | Description |
+|--------|-------------|
+| `first_abort` | Abort the workflow when a sub-job completes with a failure, including warning, critical, and abort results.  Superseded retry attempts do not trigger this; a final failed attempt does. |
+| `isolate_data` | Exclude sub-job output data from the workflow's collected output data. |
+| `isolate_files` | Exclude sub-job output files from the workflow's output files. |
+| `isolate_tags` | Prevent sub-job user tags from being added to the workflow's tags. |
+| `isolate_content` | Prevent sub-job tables and HTML from being displayed as the workflow's custom content. |
+
+These options are copied to the workflow job when it launches and preserved when it is retried or run again.  They are not inherited by sub-workflows; each workflow uses its own options.  See [Workflow Options](workflows.md#workflow-options) for details.
+
+### Event.bubble
+
+An optional string for workflow events only, selected using **Workflow Bubbling** in the workflow editor.  This controls which sub-job outputs are collected by that workflow:
+
+| Value | Behavior |
+|-------|----------|
+| `"leaf"` | **Bubble Leaf Nodes:** Collect output data, files, user tags, and custom tables or HTML from leaf sub-jobs only. |
+| `""` or omitted | **Bubble All Nodes:** Collect outputs from all sub-jobs. |
+
+Leaf status is determined for each completed sub-job using its result and outgoing wire conditions.  An **On Continue** wire to an Event, Job, or Controller always prevents that node's jobs from being leaves, even when the controller's Continue Percentage is not met.  Action and Limit attachments do not affect leaf status.
+
+New workflows created in the UI default to `"leaf"` bubbling, unless overridden by [client.new_event_template](config.md#clientnew_event_template).  Existing workflows and API-created workflows that omit this property retain all-node bubbling.  Each sub-workflow uses its own bubbling mode, independently of its parent.  The selected mode is preserved when the workflow is retried or run again.
+
+Isolation options can further suppress collected output.  Data and files still pass to downstream nodes and Join controllers in either mode.  See [Workflow Output](workflows.md#workflow-output) for details.
+
 ### Event.username
 
 The user or API Key who created the event.

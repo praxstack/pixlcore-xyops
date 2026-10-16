@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const fs = require('fs');
+const vm = require('node:vm');
 const Tools = require('pixl-tools');
 const Workflows = require('../../lib/workflow');
 const Jobs = require('../../lib/job');
@@ -53,11 +54,368 @@ function getWorkflow(name) {
 	return data.items[0].data;
 }
 
+// helper: exercise real completion and aggregation without storage or a satellite.
+// Capture launches so each test can complete the downstream jobs explicitly.
+function getWorkflowEngine(job, details) {
+	return Object.assign(new Workflows(), {
+		activeJobs: { [job.id]: job }, jobDetails: { [job.id]: details }, calls: [],
+		getCompletedJobConditions: Jobs.prototype.getCompletedJobConditions,
+		mergeConcatInto: Util.prototype.mergeConcatInto,
+		logWorkflow() {},
+		runWorkflowNode(opts) { this.calls.push(opts); },
+		finishJob(completed) { this.finished = Tools.mergeHashes(completed, this.jobDetails[completed.id]); }
+	});
+}
+
 exports.tests = [
+	
+	async function test_workflow_bubbling_ui_defaults(test) {
+		// Exercise the real new-workflow handler through form construction. This
+		// verifies defaults and cloning without requiring a browser or DOM.
+		const stop = new Error('Form construction reached');
+		const context = {
+			Page: { PageUtils: class {} }, config: { ui: { titles: {}, links: {} } },
+			app: {
+				config: { new_event_template: { fields: [], actions: [], limits: [] } },
+				categories: [{ id: 'general' }], plugins: [{ id: 'shellplug', params: [] }], groups: [{ id: 'main' }],
+				setHeaderNav() {}, setWindowTitle() {}, highlightTab() {}, showMessage() {}
+			},
+			deep_copy_object: value => Tools.copyHash(value, true),
+			find_object: (rows, criteria) => Tools.findObject(rows, criteria),
+			gen_workflow_id: prefix => prefix + Tools.generateShortID()
+		};
+		vm.runInNewContext(fs.readFileSync('htdocs/js/pages/Events.class.js', 'utf8'), context);
+		vm.runInNewContext(fs.readFileSync('htdocs/js/pages/Workflows.class.js', 'utf8'), context);
+		
+		for (const bubble of [undefined, '', 'leaf']) {
+			const template = context.app.config.new_event_template;
+			delete template.bubble;
+			if (bubble !== undefined) template.bubble = bubble;
+			const page = new context.Page.Workflows();
+			page.get_wf_form_html = function() { throw stop; };
+			assert.throws(() => page.gosub_new({}), err => err === stop);
+			assert.equal(page.event.bubble, bubble === undefined ? 'leaf' : bubble, 'new workflow honors template or leaf default');
+			assert.equal(template.bubble, bubble, 'creating a workflow leaves the template unchanged');
+		}
+		
+		// A clone is an existing definition, so missing bubble must retain legacy
+		// behavior even when the template selects leaf bubbling for new workflows.
+		for (const bubble of [undefined, '', 'leaf']) {
+			const page = new context.Page.Workflows();
+			page.clone = { fields: [], actions: [], limits: [], category: 'general', workflow: { nodes: [], connections: [] } };
+			if (bubble !== undefined) page.clone.bubble = bubble;
+			page.get_wf_form_html = function() { throw stop; };
+			assert.throws(() => page.gosub_new({}), err => err === stop);
+			assert.equal(page.event.bubble, bubble, 'cloning preserves the source workflow bubbling mode');
+		}
+		
+		// The workflow-only template override must not be copied onto plain events.
+		const event_page = new context.Page.Events();
+		event_page.get_event_edit_html = function() { throw stop; };
+		assert.throws(() => event_page.gosub_new({}), err => err === stop);
+		assert.ok(!Object.hasOwn(event_page.event, 'bubble'), 'plain events discard the workflow bubbling default');
+	},
+	
+	async function test_workflow_first_abort(test) {
+		// Drive the real workflow abort lifecycle. A final failure cancels sibling
+		// work and controllers before normal error wires or continuations can run.
+		// Successful jobs and superseded retry attempts must not abort the workflow.
+		for (const bubble of ['', 'leaf']) {
+			for (const enabled of [false, true]) {
+				for (const retried of [false, true]) {
+					for (const code of [0, 1, 'warning', 'critical', 'abort']) {
+						const label = 'bubble=' + bubble + ', enabled=' + enabled + ', retried=' + retried + ', code=' + code;
+						const parent = { id: 'parent', type: 'workflow', state: 'active', bubble, opts: enabled ? ['first_abort'] : [],
+							workflow: {
+								nodes: [{ id: 'worker', type: 'job' }, { id: 'handler', type: 'job' }, { id: 'controller', type: 'controller' }],
+								connections: [{ source: 'worker', dest: 'handler', condition: 'error' }],
+								state: { controller: { active: true } }, jobs: { worker: [], handler: [] }
+							} };
+						const sibling = { id: 'sibling', type: 'adhoc', state: 'queued', workflow: { job: 'parent', node: 'worker' } };
+						const details = { wfJobData: {}, workflowData: {} };
+						const engine = getWorkflowEngine(parent, details);
+						engine.activeJobs.sibling = sibling;
+						engine.appendMetaLog = function() {};
+						engine.logJob = function() {};
+						engine.abortJob = Jobs.prototype.abortJob;
+						engine.finishJob = function(job) {
+							delete this.activeJobs[job.id];
+							if (job.workflow.job) this.finishWorkflowJob(job);
+							else this.finished = Tools.mergeHashes(job, details);
+						};
+						engine.finishWorkflowJob({ id: 'completed', code, retried, workflow: { job: 'parent', node: 'worker' },
+							data: { result: 'completed' } });
+						
+						if (enabled && code && !retried) {
+							assert.ok(parent.workflow.aborted, label + ': failure begins workflow abort');
+							assert.ok(!engine.activeJobs.sibling, label + ': queued sibling is cancelled');
+							assert.equal(parent.workflow.state.controller.active, false, label + ': controllers stop');
+							assert.equal(engine.calls.length, 0, label + ': error handler does not launch');
+							assert.equal(parent.workflow.jobs.worker[1].code, 'abort', label + ': sibling cancellation is recorded');
+							
+							// The periodic monitor performs this tick after cancellation.
+							engine.tickWorkflow(parent);
+							assert.equal(engine.finished.code, 'abort', label + ': workflow finishes with abort status');
+						}
+						else {
+							assert.ok(!parent.workflow.aborted, label + ': workflow remains active');
+							assert.ok(engine.activeJobs.sibling, label + ': sibling keeps running');
+							assert.equal(engine.calls.length, code && !retried ? 1 : 0, label + ': normal error routing is preserved');
+						}
+						await new Promise(resolve => setImmediate(resolve));
+					}
+				}
+			}
+		}
+	},
+	
+	async function test_workflow_leaf_conditions(test) {
+		// Expected eligibility follows each job's result, including when the same
+		// graph node is reused. Legacy workflows ignore these distinctions.
+		const cases = [
+			{ name: 'terminal success', leaf: true },
+			{ name: 'terminal failure', code: 1, leaf: true },
+			{ name: 'success continues', condition: 'success', leaf: false },
+			{ name: 'failure stops before success wire', code: 1, condition: 'success', leaf: true },
+			{ name: 'success stops before error handler', condition: 'error', leaf: true },
+			{ name: 'failure launches error handler', code: 1, condition: 'error', leaf: false },
+			{ name: 'complete on success', condition: 'complete', leaf: false },
+			{ name: 'complete on failure', code: 1, condition: 'complete', leaf: false },
+			{ name: 'warning matches', code: 'warning', condition: 'warning', leaf: false },
+			{ name: 'critical matches', code: 'critical', condition: 'critical', leaf: false },
+			{ name: 'abort matches', code: 'abort', condition: 'abort', leaf: false },
+			{ name: 'different error stops', code: 'critical', condition: 'warning', leaf: true },
+			{ name: 'custom tag matches', condition: 'tag:chosen', tags: ['chosen'], leaf: false },
+			{ name: 'custom tag missing', condition: 'tag:chosen', leaf: true },
+			{ name: 'event continues', condition: 'success', dest: 'event', leaf: false },
+			{ name: 'controller continues', condition: 'success', dest: 'controller', leaf: false },
+			{ name: 'action attachment', condition: 'success', dest: 'action', leaf: true },
+			{ name: 'limit attachment', condition: 'complete', dest: 'limit', leaf: true },
+			{ name: 'continue action attachment', condition: 'continue', dest: 'action', leaf: true },
+			{ name: 'continue reserves output', condition: 'continue', leaf: false },
+			{ name: 'continue after failure', code: 1, condition: 'continue', leaf: false },
+			{ name: 'continue to controller', condition: 'continue', dest: 'controller', leaf: false },
+			{ name: 'resume redirect', redirect: 'next', leaf: false }
+		];
+		
+		for (const mode of [undefined, '', 'leaf']) {
+			const job = { id: 'parent', bubble: mode };
+			const engine = getWorkflowEngine(job, {});
+			for (const item of cases) {
+				const node = { id: 'worker', type: 'job' };
+				const workflow = { nodes: [node, { id: 'next', type: item.dest || 'job' }],
+					connections: item.condition ? [{ source: 'worker', dest: 'next', condition: item.condition }] : [] };
+				const sub_job = { code: item.code || 0, tags: item.tags || [], workflow: {} };
+				if (item.redirect) sub_job.workflow.redirect = item.redirect;
+				
+				assert.equal(engine.isWorkflowLeafNode({ job, node, workflow, sub_job }), mode == 'leaf' ? item.leaf : true,
+					String(mode) + ': ' + item.name);
+			}
+		}
+	},
+	
+	async function test_workflow_leaf_split_results(test) {
+		// A single Split-controlled node runs 20 jobs. Only the failed jobs take
+		// the error-handler wire, so successful jobs and handler jobs are leaves.
+		for (const mode of [undefined, '', 'leaf']) {
+			const split = { id: 'split', type: 'controller', data: { controller: 'split', split: 'data.items' } };
+			const worker = { id: 'worker', type: 'job' };
+			const handler = { id: 'handler', type: 'job' };
+			const parent = { id: 'parent', bubble: mode, workflow: {
+				nodes: [split, worker, handler], state: { split: {} }, jobs: { worker: [], handler: [] },
+				connections: [
+					{ id: 'splitWorker', source: 'split', dest: 'worker' },
+					{ id: 'errorHandler', source: 'worker', dest: 'handler', condition: 'error' }
+				]
+			} };
+			const details = { workflowData: {}, wfJobData: {} };
+			const engine = getWorkflowEngine(parent, details);
+			engine.runWFController_split({ job: parent, node: split, overrides: { input: {
+				data: { items: Array.from({ length: 20 }, (_, idx) => idx) }
+			} } });
+			assert.equal(engine.calls.length, 20, 'Split launches all 20 workers');
+			
+			// Superseded attempts must neither advance the controller nor export
+			// their data, files, tags, or display content in either bubbling mode.
+			engine.finishWorkflowJob({ id: 'retry', code: 1, retried: true,
+				workflow: { job: 'parent', node: 'worker', launcher: 'split' },
+				data: { results: ['retry'] }, files: [{ filename: 'retry.txt' }],
+				tags: ['retry'], table: { title: 'Retry' }, html: { content: 'Retry' }
+			});
+			assert.equal(parent.workflow.state.split.count, 0, 'retry does not advance Split');
+			assert.equal(engine.calls.length, 20, 'retry does not launch the error handler');
+			assert.ok(!parent.table && !parent.html && !parent.tags, 'retry exports no tags or content');
+			
+			const worker_jobs = engine.calls.slice().map(function(call, idx) {
+				assert.equal(call.overrides.input.data.item, idx, 'worker receives its Split item');
+				return { id: 'worker' + idx, code: idx < 13 ? 0 : 1,
+					workflow: { job: 'parent', node: 'worker', launcher: 'split' },
+					data: { results: ['worker' + idx] }, files: [{ filename: 'worker' + idx + '.txt' }],
+					tags: ['worker' + idx, idx < 13 ? '_success' : '_error'],
+					table: { title: 'worker' + idx }, html: { content: 'worker' + idx },
+					workflowData: { last_worker: idx }
+				};
+			});
+			worker_jobs.forEach(job => engine.finishWorkflowJob(job));
+			assert.equal(parent.table.title, mode == 'leaf' ? 'worker12' : 'worker19', 'only eligible workers update table');
+			assert.equal(parent.html.content, mode == 'leaf' ? 'worker12' : 'worker19', 'only eligible workers update HTML');
+			assert.equal(details.workflowData.last_worker, 19, 'intermediate jobs still update shared data');
+			
+			const handlers = engine.calls.slice(20);
+			assert.equal(handlers.length, 7, 'only failed workers launch error handlers');
+			handlers.forEach(function(call, idx) {
+				assert.equal(call.node.id, 'handler', 'failed worker takes the handler wire');
+				assert.deepEqual(call.overrides.input, { data: worker_jobs[idx + 13].data, files: worker_jobs[idx + 13].files },
+					'non-leaf output still reaches its error handler');
+				engine.finishWorkflowJob({ id: 'handler' + idx, code: 0, workflow: { job: 'parent', node: 'handler' },
+					data: { results: ['handler' + idx] }, files: [{ filename: 'handler' + idx + '.txt' }],
+					tags: ['handler' + idx], table: { title: 'handler' + idx }, html: { content: 'handler' + idx }
+				});
+			});
+			
+			// Let the real completion ticks collect the results after all modeled
+			// downstream jobs have finished, without launching any external work.
+			await new Promise(resolve => setImmediate(resolve));
+			const ids = worker_jobs.slice(0, mode == 'leaf' ? 13 : 20).map(job => job.id)
+				.concat(Array.from({ length: 7 }, (_, idx) => 'handler' + idx));
+			assert.deepEqual(details.data, { results: ids, last_worker: 19 }, 'workflow exports only eligible results plus shared data');
+			assert.deepEqual(details.files, ids.map(id => ({ filename: id + '.txt' })), 'files follow the same eligibility');
+			assert.deepEqual(parent.tags, ids, 'user tags follow eligibility and system tags stay excluded');
+			assert.equal(parent.table.title, 'handler6', 'latest eligible table wins');
+			assert.equal(parent.html.content, 'handler6', 'latest eligible HTML wins');
+			assert.equal(parent.workflow.jobs.worker.filter(stub => !stub.retried && stub.leaf).length, mode == 'leaf' ? 13 : 20,
+				'eligibility is stored separately for each completed worker');
+			assert.equal(parent.code, 'warning', 'non-leaf failures still affect workflow status');
+		}
+	},
+	
+	async function test_workflow_leaf_continue(test) {
+		// Continue wires reserve every worker's output for downstream processing,
+		// including when a success threshold prevents the continuation entirely.
+		const cases = [
+			{ name: 'all successful', codes: [0, 0, 0], percentage: 100, continues: true },
+			{ name: 'partial success blocked', codes: [0, 1, 0], percentage: 100, continues: false },
+			{ name: 'partial success allowed', codes: [0, 1, 0], percentage: 0, continues: true },
+			{ name: 'all failed blocked', codes: [1, 1, 1], percentage: 100, continues: false },
+			{ name: 'all failed allowed', codes: [1, 1, 1], percentage: 0, continues: true }
+		];
+		
+		for (const type of ['split', 'repeat', 'multiplex']) {
+			for (const item of cases) {
+				const label = type + ': ' + item.name;
+				const controller = { id: 'controller', type: 'controller', data: { controller: type, continue: item.percentage } };
+				const worker = { id: 'worker', type: 'job' };
+				const join = { id: 'join', type: 'controller', data: { controller: 'join' } };
+				const parent = { id: 'parent', bubble: 'leaf', tags: ['parent'], workflow: {
+					nodes: [controller, worker, join, { id: 'final', type: 'job' }],
+					state: { controller: { active: true, max: 3, count: 0 }, join: {} }, jobs: { worker: [], final: [] },
+					connections: [
+						{ id: 'workerJoin', source: 'worker', dest: 'join', condition: 'continue' },
+						{ id: 'joinFinal', source: 'join', dest: 'final' }
+					]
+				} };
+				const details = { workflowData: {}, wfJobData: {} };
+				const engine = getWorkflowEngine(parent, details);
+				const outputs = item.codes.map((code, idx) => ({ results: [idx] }));
+				item.codes.forEach(function(code, idx) {
+					engine.finishWorkflowJob({ id: 'worker' + idx, code, workflow: { job: 'parent', node: 'worker', launcher: 'controller' },
+						data: outputs[idx], files: [{ filename: 'worker' + idx + '.txt' }], tags: ['worker' + idx],
+						table: { title: 'worker' + idx }, html: { content: 'worker' + idx }
+					});
+				});
+				assert.ok(parent.workflow.jobs.worker.every(stub => stub.leaf === false), label + ': no worker is a leaf');
+				assert.deepEqual(parent.tags, ['parent'], label + ': worker tags stay local');
+				assert.ok(!parent.table && !parent.html && !parent.redraw, label + ': worker display content stays local');
+				assert.equal(engine.calls.length, item.continues ? 1 : 0, label + ': continuation respects the threshold');
+				
+				if (item.continues) {
+					assert.equal(engine.calls[0].node.id, 'join', label + ': Continue launches Join once');
+					engine.runWFController_join({ job: parent, node: join });
+					const input = engine.calls[1].overrides.input;
+					assert.deepEqual(input.data.items, outputs, label + ': Join retains every non-leaf worker result');
+					assert.deepEqual(input.files, item.codes.map((code, idx) => ({ filename: 'worker' + idx + '.txt' })),
+						label + ': Join retains worker files');
+					assert.equal(input.data.percentage, item.codes.filter(code => !code).length / 3 * 100,
+						label + ': Join counts every worker outcome');
+					engine.finishWorkflowJob({ id: 'final', code: 0, workflow: { job: 'parent', node: 'final' },
+						data: { final: true }, files: [{ filename: 'final.txt' }], tags: ['final'],
+						table: { title: 'Final' }, html: { content: 'Final' }
+					});
+				}
+				
+				await new Promise(resolve => setImmediate(resolve));
+				assert.deepEqual(details.data, item.continues ? { final: true } : {}, label + ': workers never enter workflow output');
+				assert.deepEqual(details.files, item.continues ? [{ filename: 'final.txt' }] : [], label + ': workers never export files');
+				assert.deepEqual(parent.tags, item.continues ? ['parent', 'final'] : ['parent'], label + ': only final tags bubble');
+				assert.deepEqual(parent.table, item.continues ? { title: 'Final' } : undefined, label + ': only final table bubbles');
+				assert.deepEqual(parent.html, item.continues ? { content: 'Final' } : undefined, label + ': only final HTML bubbles');
+				assert.ok(engine.finished, label + ': workflow completes');
+			}
+		}
+	},
+	
+	async function test_workflow_leaf_legacy_stubs(test) {
+		// Workflows recovered during an upgrade may contain pre-feature stubs.
+		// Missing eligibility preserves their output without promoting false flags
+		// or superseded attempts, even alongside newly completed leaf jobs.
+		for (const mode of [undefined, '', 'leaf']) {
+			const parent = { id: 'parent', bubble: mode, workflow: { nodes: [], connections: [], state: {}, jobs: { worker: [
+				{ id: 'old', code: 0, files: [{ filename: 'old.txt' }] },
+				{ id: 'leaf', code: 0, leaf: true, files: [{ filename: 'leaf.txt' }] },
+				{ id: 'intermediate', code: 0, leaf: false, files: [{ filename: 'intermediate.txt' }] },
+				{ id: 'retry', code: 1, retried: true, files: [{ filename: 'retry.txt' }] }
+			] } } };
+			const details = { data: { results: ['parent'] }, files: [{ filename: 'parent.txt' }],
+				workflowData: { shared: true }, wfJobData: {
+					old: { results: ['old'] }, leaf: { results: ['leaf'] },
+					intermediate: { results: ['intermediate'] }, retry: { results: ['retry'] }
+				} };
+			const engine = getWorkflowEngine(parent, details);
+			engine.tickWorkflow(parent);
+			assert.deepEqual(details.data, { results: ['parent', 'old', 'leaf'], shared: true }, 'old results remain eligible');
+			assert.deepEqual(details.files, ['parent', 'old', 'leaf'].map(id => ({ filename: id + '.txt' })), 'old files remain eligible');
+			assert.equal(parent.workflow.jobs.worker[0].leaf, true, 'missing leaf defaults to true');
+			assert.equal(parent.workflow.jobs.worker[2].leaf, false, 'explicit false stays excluded');
+			assert.equal(parent.code, 0, 'superseded retry does not affect workflow result');
+		}
+	},
+	
+	async function test_workflow_leaf_isolation(test) {
+		// Existing isolation options remain additional filters on eligible leaf
+		// outputs. Non-leaf outputs never bypass either filter or lose forwarding.
+		const options = ['isolate_data', 'isolate_files', 'isolate_tags', 'isolate_content'];
+		for (const leaf of [true, false]) {
+			for (let mask = 0; mask < 16; mask++) {
+				const opts = options.filter((option, idx) => mask & (1 << idx));
+				const label = 'leaf=' + leaf + ': ' + opts.join(',');
+				const parent = { id: 'parent', bubble: 'leaf', opts, tags: ['parent'], table: { title: 'Parent' }, html: { content: 'Parent' },
+					workflow: { nodes: [{ id: 'child', type: 'job' }, { id: 'next', type: 'job' }], state: {}, jobs: { child: [] },
+						connections: leaf ? [] : [{ source: 'child', dest: 'next', condition: 'success' }] } };
+				const details = { workflowData: {}, wfJobData: {} };
+				const engine = getWorkflowEngine(parent, details);
+				const child = { id: 'child', code: 0, workflow: { job: 'parent', node: 'child' },
+					data: { child: true }, files: [{ filename: 'child.txt' }], tags: ['child', '_success'],
+					table: { title: 'Child' }, html: { content: 'Child' }, workflowData: { shared: true } };
+				engine.finishWorkflowJob(child);
+				assert.equal(engine.calls.length, leaf ? 0 : 1, label + ': normal forwarding still occurs');
+				if (!leaf) assert.deepEqual(engine.calls[0].overrides.input, { data: child.data, files: child.files },
+					label + ': intermediate output reaches the next node');
+				
+				await new Promise(resolve => setImmediate(resolve));
+				const data = { shared: true };
+				if (leaf && !opts.includes('isolate_data')) data.child = true;
+				assert.deepEqual(details.data, data, label + ': data obeys eligibility and isolation');
+				assert.deepEqual(details.files, leaf && !opts.includes('isolate_files') ? child.files : [], label + ': files obey both filters');
+				assert.deepEqual(parent.tags, leaf && !opts.includes('isolate_tags') ? ['parent', 'child'] : ['parent'], label + ': tags obey both filters');
+				assert.deepEqual(parent.table, leaf && !opts.includes('isolate_content') ? child.table : { title: 'Parent' }, label + ': table obeys both filters');
+				assert.deepEqual(parent.html, leaf && !opts.includes('isolate_content') ? child.html : { content: 'Parent' }, label + ': HTML obeys both filters');
+			}
+		}
+	},
 	
 	async function test_workflow_isolation_bubbling(test) {
 		// Exercise every combination, plus legacy workflows with no opts field.
-		// Isolation affects aggregation, while downstream input and Join stay intact.
+		// Keep all-node bubbling here to preserve legacy isolation coverage.
 		const options = ['isolate_data', 'isolate_files', 'isolate_tags', 'isolate_content'];
 		const selections = [undefined].concat( Array.from({ length: 16 }, function(value) {
 			return options.filter((option, idx) => value & (1 << idx));
@@ -144,51 +502,61 @@ exports.tests = [
 		}
 	},
 	
-	async function test_workflow_isolation_inheritance(test) {
-		// Either source may omit opts. Present arrays must be merged without
-		// duplicates or mutation, including when the result launches another workflow.
+	async function test_workflow_settings_independent(test) {
+		// Every workflow keeps its own options and bubbling mode. Exercise missing,
+		// empty, and populated settings across two nested generations without
+		// allowing a parent's isolation or first-abort policy to leak into a child.
 		const cases = [
-			{ name: 'both absent', expected: undefined },
-			{ name: 'parent absent', child: ['isolate_files'], expected: ['isolate_files'] },
-			{ name: 'child absent', parent: ['isolate_data'], expected: ['isolate_data'] },
-			{ name: 'both empty', parent: [], child: [], expected: [] },
-			{ name: 'parent empty', parent: [], child: ['isolate_files'], expected: ['isolate_files'] },
-			{ name: 'child empty', parent: ['isolate_data'], child: [], expected: ['isolate_data'] },
+			{ name: 'both absent' },
+			{ name: 'parent absent', child: ['isolate_files'] },
+			{ name: 'child absent', parent: ['isolate_data'] },
+			{ name: 'both empty', parent: [], child: [] },
+			{ name: 'parent empty', parent: [], child: ['isolate_files'] },
+			{ name: 'child empty', parent: ['isolate_data'], child: [] },
 			{ name: 'overlapping options', parent: ['isolate_data', 'isolate_tags', 'isolate_content'],
-				child: ['isolate_data', 'isolate_files'], expected: ['isolate_data', 'isolate_files', 'isolate_tags', 'isolate_content'] }
+				child: ['isolate_data', 'isolate_files'] },
+			{ name: 'parent abort policy', parent: ['first_abort'], child: [] },
+			{ name: 'child abort policy', parent: [], child: ['first_abort'] }
 		];
 		
-		for (const item of cases) {
-			const event = { id: 'nested', title: 'Nested', params: {}, actions: [], limits: [],
-				triggers: [{ id: 'manual', type: 'manual', enabled: true }], workflow: { nodes: [], connections: [] } };
-			const parent = { id: 'parent', workflow: { state: { nested: {} }, jobs: {}, connections: [] } };
-			if (item.child !== undefined) event.opts = Object.freeze(item.child.slice());
-			if (item.parent !== undefined) parent.opts = Object.freeze(item.parent.slice());
-			const children = [];
-			const engine = Object.assign(new Workflows(), {
-				events: [event], jobDetails: { parent: { workflowData: {} } },
-				config: { get() { return 1000; } }, countTotalWFJobs() { return 0; }, logWorkflow() {},
-				launchJob(job, callback) { children.push(job); callback(null, 'child' + children.length); }
-			});
-			engine.runWFNode_event({ job: parent, node: { id: 'nested', data: { event: 'nested' } } });
-			assert.deepEqual(children[0].opts, item.expected, item.name + ': correct inherited options');
-			assert.deepEqual(event.opts, item.child, item.name + ': saved options are unchanged');
-			assert.deepEqual(parent.opts, item.parent, item.name + ': parent options are unchanged');
-			if (item.expected) {
-				assert.notEqual(children[0].opts, event.opts, item.name + ': child has its own array');
-				assert.notEqual(children[0].opts, parent.opts, item.name + ': parent array is not shared');
+		for (const parent_bubble of [undefined, '', 'leaf']) {
+			for (const child_bubble of [undefined, '', 'leaf']) {
+				for (const item of cases) {
+					const label = item.name + ': parent=' + parent_bubble + ', child=' + child_bubble;
+					const event = { id: 'nested', title: 'Nested', bubble: child_bubble, params: {}, actions: [], limits: [],
+						triggers: [{ id: 'manual', type: 'manual', enabled: true }], workflow: { nodes: [], connections: [] } };
+					const parent = { id: 'parent', bubble: parent_bubble, workflow: { state: { nested: {} }, jobs: {}, connections: [] } };
+					if (item.child !== undefined) event.opts = Object.freeze(item.child.slice());
+					if (item.parent !== undefined) parent.opts = Object.freeze(item.parent.slice());
+					const children = [];
+					const engine = Object.assign(new Workflows(), {
+						events: [event], jobDetails: { parent: { workflowData: {} } },
+						config: { get() { return 1000; } }, countTotalWFJobs() { return 0; }, logWorkflow() {},
+						launchJob(job, callback) { children.push(job); callback(null, 'child' + children.length); }
+					});
+					engine.runWFNode_event({ job: parent, node: { id: 'nested', data: { event: 'nested' } } });
+					assert.deepEqual(children[0].opts, item.child, label + ': child keeps only its own options');
+					assert.equal(children[0].bubble, child_bubble, label + ': child keeps its own bubbling mode');
+					assert.deepEqual(event.opts, item.child, label + ': saved options are unchanged');
+					assert.deepEqual(parent.opts, item.parent, label + ': parent options are unchanged');
+					assert.equal(parent.bubble, parent_bubble, label + ': parent bubbling mode is unchanged');
+					if (item.child) assert.notEqual(children[0].opts, event.opts, label + ': child has an independent option array');
+					
+					// Reusing a workflow as a grandchild still starts from its saved
+					// settings. Ordinary event jobs also receive no parent options.
+					const nested = children[0];
+					Object.assign(nested, { id: 'child', workflow: { state: { nested: {}, ordinary: {} }, jobs: {}, connections: [] } });
+					engine.jobDetails.child = { workflowData: {} };
+					engine.runWFNode_event({ job: nested, node: { id: 'nested', data: { event: 'nested' } } });
+					assert.deepEqual(children[1].opts, item.child, label + ': grandchild keeps its own options');
+					assert.equal(children[1].bubble, child_bubble, label + ': grandchild keeps its own bubbling mode');
+					if (item.child) assert.notEqual(children[1].opts, nested.opts, label + ': generations do not share option arrays');
+					engine.events.push({ id: 'ordinary', title: 'Ordinary', params: {}, triggers: [], actions: [], limits: [] });
+					engine.runWFNode_event({ job: nested, node: { id: 'ordinary', data: { event: 'ordinary' } } });
+					assert.ok(!Object.hasOwn(children[2], 'opts'), label + ': ordinary events do not inherit workflow options');
+					assert.ok(!Object.hasOwn(children[2], 'bubble'), label + ': ordinary events do not inherit bubbling mode');
+				}
 			}
-			
-			// A second generation retains the complete union, including when neither
-			// workflow defined options. The normal event path must not inherit them.
-			const nested = children[0];
-			Object.assign(nested, { id: 'child', workflow: { state: { nested: {}, ordinary: {} }, jobs: {}, connections: [] } });
-			engine.jobDetails.child = { workflowData: {} };
-			engine.runWFNode_event({ job: nested, node: { id: 'nested', data: { event: 'nested' } } });
-			assert.deepEqual(children[1].opts, item.expected, item.name + ': second generation retains options');
-			engine.events.push({ id: 'ordinary', title: 'Ordinary', params: {}, triggers: [], actions: [], limits: [] });
-			engine.runWFNode_event({ job: nested, node: { id: 'ordinary', data: { event: 'ordinary' } } });
-			assert.ok(!Object.hasOwn(children[2], 'opts'), item.name + ': ordinary events do not inherit workflow options');
 		}
 	},
 	
@@ -198,10 +566,12 @@ exports.tests = [
 		// when an empty array is explicitly saved.
 		const workflow = getWorkflow('decision');
 		workflow.id = 'eisolationopts';
-		workflow.opts = ['isolate_data', 'isolate_files', 'isolate_tags', 'isolate_content'];
+		workflow.bubble = 'leaf';
+		workflow.opts = ['first_abort', 'isolate_data', 'isolate_files', 'isolate_tags', 'isolate_content'];
 		let { data: created } = await this.request.json(this.api_url + '/app/create_event/v1', workflow);
 		assert.equal(created.code, 0, 'workflow with isolation options is accepted');
 		assert.deepEqual(created.event.opts, workflow.opts, 'create preserves isolation options');
+		assert.equal(created.event.bubble, 'leaf', 'create preserves bubbling mode');
 		
 		try {
 			for (const opts of [{}, 'isolate_data', 1, true]) {
@@ -216,9 +586,15 @@ exports.tests = [
 			let { data: updated } = await this.request.json(this.api_url + '/app/update_event/v1', { id: workflow.id, notes: 'Sparse update' });
 			assert.equal(updated.code, 0, 'sparse update is accepted');
 			assert.deepEqual(updated.event.opts, workflow.opts, 'sparse update preserves stored options');
+			assert.equal(updated.event.bubble, 'leaf', 'sparse update preserves bubbling mode');
 			let { data: cleared } = await this.request.json(this.api_url + '/app/update_event/v1', { id: workflow.id, opts: [] });
 			assert.equal(cleared.code, 0, 'empty option array is accepted');
 			assert.deepEqual(cleared.event.opts, [], 'empty array clears isolation');
+			assert.equal(cleared.event.bubble, 'leaf', 'clearing options does not change bubbling mode');
+			let { data: all_mode } = await this.request.json(this.api_url + '/app/update_event/v1', { id: workflow.id, bubble: '' });
+			assert.equal(all_mode.code, 0, 'explicit all-node bubbling is accepted');
+			assert.equal(all_mode.event.bubble, '', 'empty string persists all-node bubbling');
+			assert.deepEqual(all_mode.event.opts, [], 'changing bubbling mode preserves options');
 		}
 		finally {
 			let { data } = await this.request.json(this.api_url + '/app/delete_event/v1', { id: workflow.id });
@@ -228,14 +604,14 @@ exports.tests = [
 	
 	async function test_workflow_subworkflow_output_data(test) {
 		// Two inner workflows share the parent's data, but their ordinary output
-		// must contain only their own job results when the parent collects a Join.
+		// must contain only their own leaf results when the parent collects a Join.
 		const shared = {
 			owner: 'parent', dealers: ['Dealer A', 'Dealer B'],
 			result: { code: 'PARENT_VALUE' }
 		};
 		const inner_node = { id: 'inner', type: 'event' };
 		const join_node = { id: 'join', type: 'controller', data: { controller: 'join' } };
-		const parent = { id: 'parent', workflow: {
+		const parent = { id: 'parent', bubble: 'leaf', workflow: {
 			nodes: [inner_node, join_node, { id: 'final', type: 'job' }],
 			state: { join: {} }, jobs: { inner: [] },
 			connections: [
@@ -267,12 +643,18 @@ exports.tests = [
 		const children = outputs.map( function(data, idx) {
 			const id = 'inner' + idx;
 			const leaf_id = 'leaf' + idx;
-			const child = { id, workflow: {
+			const intermediate_id = 'intermediate' + idx;
+			const child = { id, bubble: 'leaf', workflow: {
 				job: parent.id, node: inner_node.id, nodes: [], connections: [], state: {},
-				jobs: { leaf: [{ id: leaf_id, code: 0 }] }
+				jobs: {
+					intermediate: [{ id: intermediate_id, code: 0, leaf: false }],
+					leaf: [{ id: leaf_id, code: 0, leaf: true }]
+				}
 			} };
 			engine.activeJobs[id] = child;
-			engine.jobDetails[id] = { workflowData: shared, wfJobData: { [leaf_id]: data } };
+			engine.jobDetails[id] = { workflowData: shared, wfJobData: {
+				[intermediate_id]: { internal: 'keep inside sub-workflow' }, [leaf_id]: data
+			} };
 			return child;
 		} );
 		
@@ -286,6 +668,7 @@ exports.tests = [
 		assert.deepEqual(joined.items, outputs, 'each Join item contains only its corresponding inner output');
 		assert.equal(joined.percentage, 100, 'both inner runs succeeded');
 		assert.deepEqual(shared.dealers, ['Dealer A', 'Dealer B'], 'inner completions do not duplicate shared arrays');
+		assert.ok(parent.workflow.jobs.inner.every(stub => stub.leaf === false), 'parent Continue wire excludes inner jobs from its output');
 		
 		// The parent completion scheduled by finishWorkflowJob still exports
 		// shared data at the top level, including its existing key precedence.
@@ -293,6 +676,7 @@ exports.tests = [
 		assert.equal(finished.parent.data.owner, 'parent', 'top-level workflow promotes shared data');
 		assert.deepEqual(finished.parent.data.dealers, shared.dealers, 'top-level output contains the shared list once');
 		assert.deepEqual(finished.parent.data.result, shared.result, 'top-level promotion retains shared key precedence');
+		assert.deepEqual(finished.parent.data, shared, 'parent exports shared data without intermediate sub-workflow outputs');
 		assert.ok(!Object.hasOwn(finished.parent, 'workflowData'), 'top-level workflow removes promoted workflowData');
 	},
 	

@@ -183,10 +183,10 @@ exports.tests = [
 	},
 	
 	async function test_job_retry_preserves_workflow_isolation(test) {
-		// Retry construction must retain both saved and inherited isolation options.
+		// Retry construction must retain the workflow's own options and bubbling.
 		// Complete a child in each new attempt to verify behavior, not just the copy.
-		const opts = ['isolate_data', 'isolate_files', 'isolate_tags', 'isolate_content'];
-		let job = { id: 'original', type: 'workflow', opts, code: 1, actions: [], tags: [],
+		const opts = ['first_abort', 'isolate_data', 'isolate_files', 'isolate_tags', 'isolate_content'];
+		let job = { id: 'original', type: 'workflow', bubble: 'leaf', opts, code: 1, actions: [], tags: [],
 			workflow: { nodes: [{ id: 'leaf', type: 'job' }], connections: [], state: {}, jobs: {} },
 			limits: [{ type: 'retry', enabled: true, amount: 2 }]
 		};
@@ -200,6 +200,7 @@ exports.tests = [
 			jobs.checkRetryJob(job);
 			assert.ok(job.retried, 'previous attempt is marked as retried');
 			assert.deepEqual(retry.opts, opts, 'retry retains all isolation options');
+			assert.equal(retry.bubble, 'leaf', 'retry retains the workflow bubbling mode');
 			assert.notEqual(retry.opts, job.opts, 'retry receives an independent option array');
 			assert.equal(retry.retry_count, attempt, 'retry count advances');
 			retry.id = 'retry' + attempt;
@@ -223,6 +224,41 @@ exports.tests = [
 			assert.ok(!retry.table && !retry.html && !retry.redraw, 'retried workflow isolates child content');
 			job = retry;
 			job.code = 1;
+		}
+	},
+	
+	async function test_job_retry_preserves_workflow_bubbling(test) {
+		// Verify the output consequence of preserving the mode, including legacy
+		// jobs with no bubble field and an explicit empty string for all-node mode.
+		for (const bubble of [undefined, '', 'leaf']) {
+			let retry;
+			const jobs = Object.assign(new Jobs(), {
+				jobDetails: {}, appendMetaLog() {}, logJob() {},
+				launchJob(next, callback) { retry = next; callback(null, 'retry'); }
+			});
+			const original = { id: 'original', type: 'workflow', code: 1, actions: [], limits: [{ type: 'retry', enabled: true, amount: 1 }],
+				workflow: { nodes: [{ id: 'worker', type: 'job' }, { id: 'next', type: 'job' }], state: {}, jobs: {},
+					connections: [{ source: 'worker', dest: 'next', condition: 'success' }] } };
+			if (bubble !== undefined) original.bubble = bubble;
+			jobs.checkRetryJob(original);
+			assert.equal(retry.bubble, bubble, 'retry preserves the original mode');
+			assert.equal(Object.hasOwn(retry, 'bubble'), bubble !== undefined, 'legacy absence remains absent');
+			retry.id = 'retry';
+			retry.workflow.jobs = { worker: [] };
+			retry.workflow.state = {};
+			const details = { wfJobData: {}, workflowData: {} };
+			const calls = [];
+			const engine = Object.assign(new Workflows(), {
+				activeJobs: { retry }, jobDetails: { retry: details },
+				mergeConcatInto: Util.prototype.mergeConcatInto,
+				getCompletedJobConditions: Jobs.prototype.getCompletedJobConditions,
+				logWorkflow() {}, finishJob() {}, runWorkflowNode(opts) { calls.push(opts); }
+			});
+			engine.finishWorkflowJob({ id: 'worker', code: 0, workflow: { job: 'retry', node: 'worker' }, data: { intermediate: true } });
+			await new Promise(resolve => setImmediate(resolve));
+			assert.equal(calls.length, 1, 'retried workflow still forwards intermediate data');
+			assert.deepEqual(calls[0].overrides.input.data, { intermediate: true }, 'successor receives the intermediate output');
+			assert.deepEqual(details.data, bubble == 'leaf' ? {} : { intermediate: true }, 'retry output obeys the original bubbling mode');
 		}
 	},
 	
@@ -336,12 +372,12 @@ exports.tests = [
 	
 	async function test_job_run_again_keeps_test_conditions(test) {
 		// Exercise the real browser handler with a captured API request. A manual
-		// rerun keeps test conditions, isolation and the original Magic Link metadata.
+		// rerun keeps test conditions, workflow settings, and original Magic Link metadata.
 		var payload = null;
 		var context = {
 			Page: { PageUtils: class {} },
 			app: {
-				events: [{ id: 'etest', params: {}, actions: [], limits: [] }],
+				events: [{ id: 'etest', bubble: '', params: {}, actions: [], limits: [] }],
 				api: { post(name, data) { payload = data; } }
 			},
 			Dialog: { showProgress() {} },
@@ -354,9 +390,9 @@ exports.tests = [
 		
 		var page = new context.Page.Job();
 		var magic = { headers: { 'linear-signature': 'original' }, body: '{ "text": "café" }', params: {}, query: {} };
-		var opts = ['isolate_data', 'isolate_files', 'isolate_tags', 'isolate_content'];
+		var opts = ['first_abort', 'isolate_data', 'isolate_files', 'isolate_tags', 'isolate_content'];
 		page.job = {
-			id: 'jprevious', event: 'etest', type: 'workflow', test: true,
+			id: 'jprevious', event: 'etest', type: 'workflow', bubble: 'leaf', test: true,
 			test_conditions: ['complete'], params: {}, tags: [], code: 1, magic, opts,
 			workflow: { nodes: [], connections: [], start: 'manual', state: {}, jobs: {}, job: 'outer' }
 		};
@@ -369,7 +405,21 @@ exports.tests = [
 		assert.notEqual( payload.magic, magic, 'run-again sends an independent metadata snapshot');
 		assert.deepEqual( payload.opts, opts, 'run-again retains workflow isolation options');
 		assert.notEqual( payload.opts, opts, 'run-again sends an independent option array');
+		assert.equal(payload.bubble, 'leaf', 'run-again preserves leaf mode even when the saved event uses all-node mode');
 		assert.deepEqual( Object.keys(payload.workflow).sort(), ['connections', 'nodes', 'start'], 'run-again removes prior workflow runtime context');
+		
+		// Empty string is a deliberate all-node choice and must override a saved
+		// event that has since changed to leaf mode. Older absent settings remain
+		// absent when rerunning an unchanged legacy workflow.
+		page.job.bubble = '';
+		context.app.events[0].bubble = 'leaf';
+		page.do_run_again();
+		assert.equal(payload.bubble, '', 'run-again retains explicit all-node bubbling');
+		assert.equal(Tools.mergeHashes(context.app.events[0], payload).bubble, '', 'API merge preserves the explicit all-node choice');
+		delete page.job.bubble;
+		delete context.app.events[0].bubble;
+		page.do_run_again();
+		assert.ok(!Object.hasOwn(payload, 'bubble'), 'legacy job remains compatible without a bubbling property');
 	},
 	
 	async function test_job_plugin_param_defaults(test) {

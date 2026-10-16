@@ -73,6 +73,36 @@ function createMagicAPIFixture(type = 'event') {
 	};
 }
 
+// helper: validate workflow node params in isolation, without starting a server
+// or saving events.  Use the real validator and API error callback for each type.
+function createWorkflowNodeValidationFixture(type, fields) {
+	var api = new API();
+	api.events = [{ id: 'node_event', fields: fields }];
+	api.plugins = [{ id: 'node_plugin', params: fields }];
+	api.config = { getPath: function(path) {
+		if (path == 'ui.workflow_node_types') return [{ id: 'event' }, { id: 'job' }, { id: 'action' }];
+	} };
+	api.api = { logError: function() {} };
+	api.stringValue = Util.prototype.stringValue;
+	api.checkNumberRange = Util.prototype.checkNumberRange;
+	
+	return function(params) {
+		var data = (type == 'event') ? { event: 'node_event' } :
+			(type == 'job') ? { plugin: 'node_plugin' } : { type: 'plugin', plugin_id: 'node_plugin' };
+		if (params !== undefined) data.params = params;
+		var response = null;
+		var result = api.requireValidEventData({
+			type: 'workflow',
+			workflow: {
+				nodes: [{ id: 'test_node', type: type, x: 100, y: 100, data: data }],
+				connections: []
+			}
+		}, function(value) { response = value; });
+		
+		return { result, response, data };
+	};
+}
+
 exports.tests = [
 
 	async function test_api_get_events(test) {
@@ -166,6 +196,78 @@ exports.tests = [
 		assert.match( custom_window.error, /1, 60, 3600, or 86400/, "unsupported window returns the expected validation error" );
 	},
 
+	async function test_api_workflow_node_missing_required_params(test) {
+		// Reproduce the approval_note crash for event, job and action-plugin nodes.
+		// A field default does not satisfy required-value validation at this stage.
+		for (var type of ['event', 'job', 'action']) {
+			var validate = createWorkflowNodeValidationFixture(type, [
+				{ id: 'approval_note', required: true, value: 'Ready for review' }
+			]);
+			var kind = (type == 'event') ? 'event' : (type == 'job') ? 'plugin' : 'action plugin';
+			
+			for (var params of [undefined, null, {}]) {
+				var label = type + ': ' + JSON.stringify(params);
+				var check = validate(params);
+				assert.equal(check.result, false, label + ': missing required value fails validation');
+				assert.equal(check.response.code, 'api', label + ': returns an API error without throwing');
+				assert.equal(check.response.description,
+					"Malformed workflow node #test_node: Missing required " + kind + " parameter 'approval_note'.",
+					label + ': preserves the field-specific validation error');
+			}
+		}
+	},
+	
+	async function test_api_workflow_node_missing_optional_params(test) {
+		// Optional regex and range checks also read params. Missing values should
+		// pass these checks, including nodes with no parameter definitions at all.
+		for (var type of ['event', 'job', 'action']) {
+			for (var fields of [[], [{ id: 'note', regex: '^approved$' }], [{ id: 'count', range: '1-5/1' }]]) {
+				var validate = createWorkflowNodeValidationFixture(type, fields);
+				for (var params of [undefined, null, {}]) {
+					var check = validate(params);
+					assert.equal(check.result, true, type + ': omitted optional params pass validation');
+					assert.equal(check.response, null, type + ': no API error for optional params');
+					assert.deepEqual(check.data.params, {}, type + ': later node processing receives an object');
+				}
+			}
+		}
+	},
+	
+	async function test_api_workflow_node_invalid_params_type(test) {
+		// Empty schemas must not let malformed containers bypass the object guard.
+		for (var type of ['event', 'job', 'action']) {
+			var validate = createWorkflowNodeValidationFixture(type, []);
+			for (var params of [[], 'invalid', '', 42, 0, true, false]) {
+				var check = validate(params);
+				assert.equal(check.result, false, type + ': invalid params type fails validation');
+				assert.equal(check.response.code, 'api', type + ': invalid params returns an API error');
+				assert.match(check.response.description, /Node data\.params is not an object/, type + ': identifies malformed params');
+			}
+		}
+	},
+	
+	async function test_api_workflow_node_supplied_params(test) {
+		// Normal values and the existing required, regex, range and reserved-key
+		// checks must keep working after normalizing missing parameter objects.
+		for (var type of ['event', 'job', 'action']) {
+			var validate = createWorkflowNodeValidationFixture(type, [
+				{ id: 'count', required: true, regex: '^\\d+$', range: '1-5/1' }
+			]);
+			// A parameter named length is valid and does not make this an array.
+			var params = { count: '3', extra: 'preserved', length: 10 };
+			var check = validate(params);
+			assert.equal(check.result, true, type + ': supplied params pass validation');
+			assert.equal(check.response, null, type + ': valid params produce no API error');
+			assert.deepEqual(check.data.params, { count: '3', extra: 'preserved', length: 10 }, type + ': supplied values are preserved');
+			
+			for (var invalid of [{ count: '' }, { count: 'abc' }, { count: '9' }, { count: '3', _xy_override_plugin: 'other' }]) {
+				check = validate(invalid);
+				assert.equal(check.result, false, type + ': invalid supplied values still fail validation');
+				assert.equal(check.response.code, 'api', type + ': invalid supplied values return an API error');
+			}
+		}
+	},
+	
 	async function test_api_create_event_invalid_action(test) {
 		// invalid action (email requires users array or email string)
 		const category_id = this.category_final_id || 'general';
