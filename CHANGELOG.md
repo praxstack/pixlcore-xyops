@@ -1,5 +1,14 @@
 # xyOps Changelog
 
+## Version v1.1.8
+
+> October 16, 2026
+
+- [`bed693e9`](https://github.com/pixlcore/xyops/commit/bed693e99807e997169093c1352ed8c3dbb895bb): Version 1.1.8
+- [`112344bc`](https://github.com/pixlcore/xyops/commit/112344bc17b713639e0fe57a336de7fc941e11bf): Dep: Bump pixl-server-web to v3.0.6 for bug fixes.
+- [`c263315e`](https://github.com/pixlcore/xyops/commit/c263315ef034adaf9d21f9db0317fcdccb50b69e): Feature: Add per-workflow bubbling modes and First Fail Aborts
+- [`907e0688`](https://github.com/pixlcore/xyops/commit/907e068884357bc8191a7b54097f63ab17932820): Bug Fix: Workflow validation crash when node params are missing
+
 ## Version v1.1.7
 
 > October 13, 2026
