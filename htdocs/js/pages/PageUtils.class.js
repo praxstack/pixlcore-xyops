@@ -4159,8 +4159,13 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		var default_icon = (event.type == 'workflow') ? 'clipboard-flow-outline' : config.ui.data_types.event.icon;
 		var title = node.data.label || event.title;
 		var icon = event.icon || default_icon;
-		var replay = node.data.replay ? `<i class="mdi mdi-replay replay" title="Replay"></i>` : '';
 		var toggle = (this.ID == 'Workflows') ? `<i class="mdi mdi-unfold-more-horizontal toggle_compact clicky" title="Toggle Compact"></i>` : '';
+		
+		var replay = '';
+		if (node.data.replay) {
+			if (this.ID == 'Workflows') replay = `<div class="wf_event_title_pill replay icon" title="Replay"><i class="mdi mdi-replay"></i></div>`;
+			else replay = `<div class="wf_event_title_pill replay"><i class="mdi mdi-replay"></i>Replay</div>`;
+		}
 		
 		html += `<div id="d_wfn_${node.id}" class="${classes.join(' ')}" style="left:${pos.x}px; top:${pos.y}px;" aria-label="${encode_attrib_entities(title)}">
 			<div class="wf_event_title">
@@ -4238,8 +4243,13 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		var params = node.data.params;
 		var title = node.data.label || plugin.title;
 		var icon = plugin.icon || config.ui.data_types.plugin.icon;
-		var replay = node.data.replay ? `<i class="mdi mdi-replay replay" title="Replay"></i>` : '';
 		var toggle = (this.ID == 'Workflows') ? `<i class="mdi mdi-unfold-more-horizontal toggle_compact clicky" title="Toggle Compact"></i>` : '';
+		
+		var replay = '';
+		if (node.data.replay) {
+			if (this.ID == 'Workflows') replay = `<div class="wf_event_title_pill replay icon" title="Replay"><i class="mdi mdi-replay"></i></div>`;
+			else replay = `<div class="wf_event_title_pill replay"><i class="mdi mdi-replay"></i>Replay</div>`;
+		}
 		
 		html += `<div id="d_wfn_${node.id}" class="${classes.join(' ')}" style="left:${pos.x}px; top:${pos.y}px;" aria-label="${encode_attrib_entities(title)}">
 			<div class="wf_event_title">
@@ -6734,6 +6744,103 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		} );
 		
 		return args;
+	}
+	
+	killCurrentProcess(elem) {
+		// popup menu to select signal to send to process, via targeted temp job in new window
+		// with auto-self-deleting ephemeral event and the built-in shellplug
+		var self = this;
+		var $elem = $(elem);
+		var pid = $elem.data('pid');
+		var server_id = $elem.data('server') || this.server.id;
+		var server = app.servers[server_id];
+		var cat_def = find_object( app.categories, { id: 'general' } ) || app.categories[0];
+		
+		if (!server) return app.doError("Server not found in active list: " + server_id);
+		if (!String(pid).match(/^\d+$/)) return app.doError("Malformed PID: " + pid); // sanity
+		if (!cat_def) return app.doError("No categories found.  Please add a category before killing processes.");
+		if (!find_object(app.plugins, { id: 'shellplug' })) return app.doError("The built-in Shell Plugin was not found.");
+		
+		SingleSelect.popupQuickMenu({
+			elem: elem,
+			title: '<span style="color:var(--red)">Kill Process</span>',
+			items: [
+				{ "id": "TERM", "title": "Graceful Stop (SIGTERM)", "icon": "stop-circle-outline" },
+				{ "id": "INT",  "title": "Interrupt (SIGINT)",      "icon": "hand-back-right-outline" },
+				{ "id": "HUP",  "title": "Reload Config (SIGHUP)",  "icon": "reload" },
+				{ "id": "USR1", "title": "User Signal 1 (SIGUSR1)", "icon": "flask-outline" },
+				{ "id": "USR2", "title": "User Signal 2 (SIGUSR2)", "icon": "flask" },
+				{ "id": "KILL", "title": "Force Kill (SIGKILL)",    "icon": "skull" }
+			],
+			value: '',
+			nocheck: true,
+			
+			callback: function(sig) {
+				if (!sig) return;
+				
+				var script = '';
+				if (server.info.platform == 'win32') {
+					script = `#!powershell\nWrite-Output "Killing process ${pid} with ${sig}..."\nStop-Process -Id ${pid}`;
+					if (sig == 'KILL') script += ` -Force`;
+					script += `\nWrite-Output "Done."\n`;
+				}
+				else {
+					script = `#!/bin/sh\nset -e\necho "Killing process ${pid} with ${sig}..."\nkill -${sig} ${pid}\necho "Done."\n`;
+				}
+				
+				var event = {
+					enabled: true,
+					title: "Kill Process",
+					icon: 'target',
+					category: cat_def.id,
+					targets: [ server_id ],
+					algo: 'random',
+					plugin: 'shellplug',
+					params: {
+						script: script
+					},
+					triggers: [
+						{ type: "manual", enabled: true }
+					],
+					actions: [
+						{ type: "delete", enabled: true, condition: "complete" }
+					],
+					limits: [],
+					fields: [],
+					tags: [],
+					notes: ""
+				};
+				
+				var job = deep_copy_object(event);
+				job.label = "Kill Process";
+				
+				// pre-open new window/tab for job details
+				var win = window.open('', '_blank');
+				
+				app.api.post( 'app/create_event', event, function(resp) {
+					// now run the job
+					if (!self.active) return; // sanity
+					job.id = resp.event.id;
+					
+					app.api.post( 'app/run_event', job, function(resp) {
+						// Dialog.hideProgress();
+						if (!self.active) return; // sanity
+						
+						// jump immediately to live details page in new window
+						win.location.href = '#Job?id=' + resp.id;
+					}, 
+					function(err) {
+						// capture error so we can close the window we just opened
+						win.close();
+						app.doError("API Error: " + err.description);
+					}); // run_event error
+				},
+				function(err) {
+					win.close();
+					app.doError("API Error: " + err.description);
+				} ); // create_event error
+			} // callback
+		}); // popupQuickMenu
 	}
 	
 };

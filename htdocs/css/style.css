@@ -2549,3 +2549,24 @@ span.hot_key {
 	white-space: pre-wrap;
 	word-break: break-word;
 }
+
+/* Terminal Page */
+
+body.terminal {
+	overflow-x: hidden;
+	overflow-y: hidden;
+	
+	#d_logo_overlay { display: none; }
+	
+	div.header {
+		background-size: 110px auto;
+		padding-left: 160px;
+	}
+	div.header > div.header_title {
+		font-size: 23px;
+	}
+	div.page > div.box {
+		margin-left: 0; 
+		margin-right: 0;
+	}
+}

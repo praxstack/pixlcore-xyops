@@ -3433,7 +3433,12 @@ Nodes may have a `data` property which contains information specific to the node
 | `controller` | Will contain properties specific to the controller type.  See below. |
 | `note` | Will contain note display properties such as `body`, `wide` and `show`. |
 
-For `event` and `job` nodes, the optional `replay` property may contain a previous [Job.id](#job-id).  When this is set, the workflow node replays that previous job instead of launching a new sub-job.  The replayed job contributes its original output data, output files, `workflowData`, tags and completion result to the workflow, and downstream wire conditions are evaluated from that replayed result.
+For `event` and `job` nodes, the optional `replay` property may contain a previous [Job.id](#job-id) string or a non-empty array of previous job ID strings.  Omit it or use an empty string to launch new jobs normally.  When replay is enabled, the node reuses saved jobs instead of launching new sub-jobs.  The replayed job contributes its original output data, output files, `workflowData`, tags and completion result to the workflow, and downstream wire conditions are evaluated from that replayed result.
+
+- A string, such as `"jmhc0du7n8k"`, replays the same job every time the node is invoked.
+- An array, such as `["jmhc0du7n8k", "jmhc0du7n8m"]`, replays one job per invocation in array order.  When exhausted, it restarts at the first ID.  Fewer invocations leave surplus IDs unused.
+
+The engine consumes a separate copy in the node's runtime state, preserving `node.data.replay` for subsequent workflow retries.  Each new workflow attempt starts with the full list.  IDs are assigned in order without matching current inputs or targets.  Freezing nodes in the completed workflow's **Run Again** dialog builds these arrays from previous jobs, excluding attempts marked `retried`.  See [Replay Previous Jobs](workflows.md#replay-previous-jobs) for the selection modes and multi-job caveats.
 
 For controller nodes, see the following table for details on how the `data` property is used:
 

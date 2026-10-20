@@ -867,9 +867,10 @@ Page.Servers = class Servers extends Page.ServerUtils {
 				if (!online) html += '<span class="sm_hide">&nbsp;&mdash; As of ' + this.getShortDateTimeText(snapshot.date) + '</span>';
 				
 				if (app.isAdmin()) html += '<div class="button icon right danger" title="Delete Server..." onClick="$P().goDeleteServer()"><i class="mdi mdi-trash-can-outline"></i></div>';
-				html += '<div class="button icon right secondary sm_hide" title="Job History..." onClick="$P().goJobHistory()"><i class="mdi mdi-cloud-search-outline"></i></div>';
-				html += '<div class="button icon right secondary sm_hide" title="Alert History..." onClick="$P().goAlertHistory()"><i class="mdi mdi-restore-alert"></i></div>';
-				if (app.isAdmin()) html += '<div class="button icon right secondary" title="Server History..." onClick="$P().goServerHistory()"><i class="mdi mdi-history"></i></div>';
+				
+				html += '<div class="button icon right secondary" id="btn_server_popup_history" title="Server History..." onClick="$P().popupServerHistory()"><i class="mdi mdi-history"></i></div>';
+				
+				if (app.isAdmin() && this.online) html += '<div class="button icon right" title="Open Terminal..." onClick="$P().goServerTerminal()"><i class="mdi mdi-console"></i></div>';
 				
 				// if (!online) html += '<div class="box_title_note">As of ' + this.getShortDateTimeText(snapshot.date) + '</div>';
 				// html += '<div class="button right danger" onClick="$P().showDeleteSnapshotDialog()"><i class="mdi mdi-trash-can-outline">&nbsp;</i>Delete...</div>';
@@ -1390,6 +1391,34 @@ Page.Servers = class Servers extends Page.ServerUtils {
 				$('#fe_es_user_data').val( new_value );
 			}
 		});
+	}
+	
+	goServerTerminal() {
+		// open server terminal
+		window.open( app.base_api_url + '/app/term?server=' + this.server.id );
+	}
+	
+	popupServerHistory() {
+		// show quick menu for server history jump
+		var self = this;
+		var items = [
+			{ id: 'goAlertHistory', title: "Alert History", icon: 'restore-alert' },
+			{ id: 'goJobHistory', title: "Job History", icon: 'cloud-search-outline' }
+		];
+		if (app.isAdmin()) items.unshift({ id: 'goServerHistory', title: "Server History", icon: 'history' });
+		
+		SingleSelect.popupQuickMenu({
+			elem: '#btn_server_popup_history',
+			title: "Jump To...",
+			items: items,
+			value: '',
+			nocheck: true,
+			
+			callback: function(value) {
+				self[value]();
+			} // callback
+			
+		}); // popupQuickMenu
 	}
 	
 	goServerHistory() {

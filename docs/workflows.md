@@ -245,6 +245,30 @@ When the workflow reaches a replayed node:
 
 Actions attached directly to the replayed node, such as emails, web hooks, suspend actions, or disable/delete actions, are not run again.  They are considered part of the replayed job's original lifecycle, so replay mode only feeds the saved result back into workflow flow.
 
+### Run a Workflow Again
+
+On a completed workflow job, click **Run Again** to open the **Run Workflow Again** dialog and choose how the new run should use previous results.  This starts a new workflow job using the previous job's workflow map.  The original job history and saved workflow event are kept unchanged.
+
+In this dialog, **frozen nodes** replay their previous completed job results without executing those jobs again.  Unfrozen nodes launch fresh jobs when reached.  Frozen nodes show the **Replay** badge in the workflow graph.
+
+| Replay Mode | Behavior |
+|-------------|----------|
+| **Run All Jobs** | The default. Clears replay settings on this workflow's Event and Job nodes, so they launch fresh jobs when reached. |
+| **Freeze Successful Nodes** | Freezes nodes whose previous jobs all succeeded. Nodes with any failures, or no previous jobs, launch fresh jobs when reached. |
+| **Freeze Custom Nodes...** | Shows the **Nodes to Freeze** multi-select menu of Event and Job nodes with completed jobs. Selected nodes reuse their previous job results; unselected nodes launch fresh jobs when reached. |
+
+For example, if Job A succeeded, Job B failed, and Job C was never reached, choose **Freeze Successful Nodes** to reuse A's saved result and run B again.  If B succeeds, the workflow can proceed to C through its normal connections.
+
+Attempts superseded by a retry are excluded from replay selection.  For a node that ran several jobs (i.e. via a split, multiplex or repeat controller), **Freeze Successful Nodes** requires every remaining job to have succeeded; otherwise the entire node runs fresh jobs.  **Freeze Custom Nodes** can reuse failures too, including their error paths, so leave a failed node unfrozen when you want to try it again.  Each choice replaces the previous run's replay settings, including when you run a workflow with frozen nodes again.
+
+Previous jobs must still be stored and accessible to your account.  If a selected job cannot be loaded, the new workflow aborts with a message identifying that job.
+
+### Replaying Multi-Job Nodes
+
+Split, Multiplex and Repeat controllers can invoke the same Event or Job node several times.  A replay selected in the workflow editor uses one saved job for every invocation.  Freezing a node in **Run Again** instead supplies a list of that node's previous job IDs, and each invocation consumes the next ID from that list.
+
+Replay results are assigned in list order, without matching them to the current split items or multiplex servers.  If an upstream node runs again and produces different split input, or the multiplex servers change, review which nodes you freeze to make sure the saved results still fit the new run.  You can select **Run All Jobs**, or leave the affected nodes unfrozen in **Freeze Custom Nodes**, to process their current inputs afresh.
+
 
 ## Passing Data Between Nodes
 
@@ -384,7 +408,7 @@ Isolation applies only to the workflow where it is selected.  For example, if th
 Workflows are stored inside events. See [Data Structures](data.md) for complete schemas. Highlights:
 
 - [Workflow](data.md#workflow): `{ start?, nodes: [], connections: [] }`.
-- [Nodes](data.md#workflownode): `{ id, type: 'trigger'|'event'|'job'|'limit'|'action'|'controller', x, y, data? }`.  Event and Job node data may include `replay`, containing the previous job ID to replay.
+- [Nodes](data.md#workflownode): `{ id, type: 'trigger'|'event'|'job'|'limit'|'action'|'controller', x, y, data? }`.  Event and Job node data may include `replay`, containing one previous job ID or an array of job IDs to replay.
 - [Connections](data.md#workflowconnection): `{ id, source, dest, condition? }` where `condition` matches the wire condition list above.
 - Controller data:
   - Multiplex: `{ controller: 'multiplex', stagger?, continue? }`

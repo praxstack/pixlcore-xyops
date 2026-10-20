@@ -180,7 +180,7 @@ body.dark .wf_event_title {
 .wf_event_title_widget .clicky:hover {
 	color: var(--theme-color-highlight);
 }
-.wf_event_title_widget .replay {
+.wf_event_title_widget i.replay {
 	color: var(--cyan);
 }
 
@@ -203,6 +203,13 @@ body.dark .wf_event_title {
 }
 .wf_event_title_pill.replay {
 	background-color: var(--cyan);
+}
+.wf_event_title_pill.icon {
+	padding: 0 6px;
+	margin-right: 2px;
+}
+.wf_event_title_pill.icon > i {
+	padding-right: 0;
 }
 
 .wf_body {
@@ -738,6 +745,10 @@ body.dark .wf_footer_buttons.floater {
 
 .wf_event.wf_suspended {
 	outline: 2px dashed var(--orange);
+}
+
+.wf_event.wf_replayed {
+	border: 2px solid var(--cyan) !important;
 }
 
 /* Job Progress Indicators */

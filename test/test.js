@@ -61,6 +61,7 @@ module.exports = {
 			require('./suites/test-tickets.js').tests,
 			require('./suites/test-jobs.js').tests,
 			require('./suites/test-workflows.js').tests,
+			require('./suites/test-workflow-replay.js').tests,
 			require('./suites/test-alerts.js').tests,
 			require('./suites/test-search.js').tests,
 			require('./suites/test-scheduler.js').tests,

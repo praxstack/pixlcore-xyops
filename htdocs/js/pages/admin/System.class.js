@@ -58,7 +58,17 @@ Page.System = class System extends Page.PageUtils {
 		// websockets
 		html += '<div class="box" id="d_sys_sockets">';
 			html += '<div class="box_title">';
-				html += 'All Connected Users';
+				html += 'Connected Users';
+			html += '</div>';
+			html += '<div class="box_content table">';
+				// html += '<div class="loading_container"><div class="loading"></div></div>';
+			html += '</div>'; // box_content
+		html += '</div>'; // box
+		
+		// terminals
+		html += '<div class="box" id="d_sys_terminals">';
+			html += '<div class="box_title">';
+				html += 'Open Terminals';
 			html += '</div>';
 			html += '<div class="box_content table">';
 				// html += '<div class="loading_container"><div class="loading"></div></div>';
@@ -159,6 +169,7 @@ Page.System = class System extends Page.PageUtils {
 		this.renderSystemComponents();
 		this.renderInternalJobs();
 		this.renderWebSockets();
+		this.renderTerminals();
 		// this.addPageDescription();
 		
 		if (this.args.upgrade_server) {
@@ -375,13 +386,58 @@ Page.System = class System extends Page.PageUtils {
 				self.getNiceUser(socket.username, true),
 				'<span class="monospace">' + socket.id + '</span>',
 				'<span>' + self.getNiceIP(socket.ip) + '</span>',
-				socket.loc ? ('<a href="#' + socket.loc.loc + '">#' + socket.loc.loc + '</a>') : 'n/a',
+				socket.loc ? `#${socket.loc.loc}` : 'n/a',
 				get_text_from_seconds(app.epoch - socket.timeStart, true, true),
 				socket.ping + ' ms'
 			];
 		} );
 		
 		this.div.find('#d_sys_sockets > .box_content').removeClass('loading').html(html);
+	}
+	
+	renderTerminals() {
+		// render table of active server terminals
+		// term: id, username, server, client, started, lastActivity, connected, pid
+		var self = this;
+		var terminals = this.data.terminals;
+		var html = '';
+		var cols = [ 'Terminal ID', 'Socket ID', 'Username', 'Server', 'PID', 'Age', 'Last Activity', 'Actions' ];
+		
+		var rows = Object.values(terminals).sort( function(a, b) {
+			return (a.started < b.started) ? 1 : -1;
+		} );
+		
+		if (!rows.length) {
+			this.div.find('#d_sys_terminals').hide();
+			return;
+		}
+		
+		var opts = {
+			rows: rows,
+			cols: cols,
+			data_type: 'terminal',
+			attribs: {
+				class: 'data_grid sys_term_grid'
+			}
+		};
+		
+		html += this.getBasicGrid( opts, function(term, idx) {
+			var cols = [
+				`<span class="nowrap"><i class="mdi mdi-console"></i>${term.id}</span>`,
+				term.connected ? `<span class="monospace">${term.client}</span>` : `n/a`,
+				self.getNiceUser(term.username, true),
+				self.getNiceServer( term.server, true ),
+				'<span class="monospace">' + term.pid + '</span>',
+				get_text_from_seconds(app.epoch - term.started, true, true),
+				get_text_from_seconds(app.epoch - term.lastActivity, true, true) + ' ago',
+				`<span class="link danger" data-server="${term.server}" data-pid="${term.pid}" onClick="$P().killCurrentProcess(this)"><b>Kill Process...</b></span>`
+			];
+			if (!term.connected) cols.className = 'disabled';
+			return cols;
+		} );
+		
+		this.div.find('#d_sys_terminals').show();
+		this.div.find('#d_sys_terminals > .box_content').removeClass('loading').html(html);
 	}
 	
 	prompt_import_data() {
@@ -1397,6 +1453,7 @@ Page.System = class System extends Page.PageUtils {
 			self.data = resp.stats;
 			self.renderSystemComponents();
 			self.renderWebSockets();
+			self.renderTerminals();
 		});
 	}
 	

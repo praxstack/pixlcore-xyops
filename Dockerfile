@@ -58,7 +58,7 @@ COPY . .
 
 ENV XYOPS_foreground=true
 ENV XYOPS_color=true
-ENV XYOPS_echo="xyOps Transaction Error error API Unbase Action Comm Job Workflow Maint Multi Extension Scheduler SSO User Ticket Alert"
+ENV XYOPS_echo="xyOps Transaction Error error API Unbase Action Comm Job Workflow Maint Multi Extension Terminal Scheduler SSO User Ticket Alert"
 
 # Install dependencies and clear the npm cache before this layer is saved.
 # Fix useragent-ng permissions, build the assets, and create runtime directories.

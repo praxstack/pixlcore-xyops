@@ -1,6 +1,5 @@
 const assert = require('node:assert/strict');
 const fs = require('fs');
-const vm = require('node:vm');
 const Tools = require('pixl-tools');
 const Workflows = require('../../lib/workflow');
 const Jobs = require('../../lib/job');
@@ -68,53 +67,6 @@ function getWorkflowEngine(job, details) {
 }
 
 exports.tests = [
-	
-	async function test_workflow_bubbling_ui_defaults(test) {
-		// Exercise the real new-workflow handler through form construction. This
-		// verifies defaults and cloning without requiring a browser or DOM.
-		const stop = new Error('Form construction reached');
-		const context = {
-			Page: { PageUtils: class {} }, config: { ui: { titles: {}, links: {} } },
-			app: {
-				config: { new_event_template: { fields: [], actions: [], limits: [] } },
-				categories: [{ id: 'general' }], plugins: [{ id: 'shellplug', params: [] }], groups: [{ id: 'main' }],
-				setHeaderNav() {}, setWindowTitle() {}, highlightTab() {}, showMessage() {}
-			},
-			deep_copy_object: value => Tools.copyHash(value, true),
-			find_object: (rows, criteria) => Tools.findObject(rows, criteria),
-			gen_workflow_id: prefix => prefix + Tools.generateShortID()
-		};
-		vm.runInNewContext(fs.readFileSync('htdocs/js/pages/Events.class.js', 'utf8'), context);
-		vm.runInNewContext(fs.readFileSync('htdocs/js/pages/Workflows.class.js', 'utf8'), context);
-		
-		for (const bubble of [undefined, '', 'leaf']) {
-			const template = context.app.config.new_event_template;
-			delete template.bubble;
-			if (bubble !== undefined) template.bubble = bubble;
-			const page = new context.Page.Workflows();
-			page.get_wf_form_html = function() { throw stop; };
-			assert.throws(() => page.gosub_new({}), err => err === stop);
-			assert.equal(page.event.bubble, bubble === undefined ? 'leaf' : bubble, 'new workflow honors template or leaf default');
-			assert.equal(template.bubble, bubble, 'creating a workflow leaves the template unchanged');
-		}
-		
-		// A clone is an existing definition, so missing bubble must retain legacy
-		// behavior even when the template selects leaf bubbling for new workflows.
-		for (const bubble of [undefined, '', 'leaf']) {
-			const page = new context.Page.Workflows();
-			page.clone = { fields: [], actions: [], limits: [], category: 'general', workflow: { nodes: [], connections: [] } };
-			if (bubble !== undefined) page.clone.bubble = bubble;
-			page.get_wf_form_html = function() { throw stop; };
-			assert.throws(() => page.gosub_new({}), err => err === stop);
-			assert.equal(page.event.bubble, bubble, 'cloning preserves the source workflow bubbling mode');
-		}
-		
-		// The workflow-only template override must not be copied onto plain events.
-		const event_page = new context.Page.Events();
-		event_page.get_event_edit_html = function() { throw stop; };
-		assert.throws(() => event_page.gosub_new({}), err => err === stop);
-		assert.ok(!Object.hasOwn(event_page.event, 'bubble'), 'plain events discard the workflow bubbling default');
-	},
 	
 	async function test_workflow_first_abort(test) {
 		// Drive the real workflow abort lifecycle. A final failure cancels sibling

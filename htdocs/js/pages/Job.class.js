@@ -644,7 +644,7 @@ Page.Job = class Job extends Page.PageUtils {
 						var event = find_object( app.events, { id: node.data.event } ) || { title: `(Event #${node.data.event})` };
 						return {
 							id: node.id,
-							title: event.title,
+							title: node.data.label || event.title,
 							icon: event.icon || 'file-clock-outline'
 						};
 					}
@@ -1327,6 +1327,7 @@ Page.Job = class Job extends Page.PageUtils {
 				var num_sus = 0;
 				var num_completed = 0;
 				var num_success = 0;
+				var replayed = !!node.data.replay;
 				
 				wf_jobs.forEach( function(job) {
 					if (job.workflow.node == node.id) {
@@ -1365,7 +1366,8 @@ Page.Job = class Job extends Page.PageUtils {
 						if (!stub.code) num_success++;
 					} );
 					
-					$elem.toggleClass('wf_completed', !!(num_completed && (num_success == num_completed)) );
+					$elem.toggleClass('wf_replayed', !!(num_completed && (num_success == num_completed) && replayed) );
+					$elem.toggleClass('wf_completed', !!(num_completed && (num_success == num_completed) && !replayed) );
 					$elem.toggleClass('wf_error', !!(num_completed && (num_success < num_completed)) );
 				}
 				
@@ -3358,6 +3360,8 @@ Page.Job = class Job extends Page.PageUtils {
 			return app.doError("Sorry, this adhoc workflow job cannot run independently.  Please rerun the parent workflow job instead.");
 		}
 		
+		if (this.isWorkflow) return this.do_confirm_run_workflow_again();
+		
 		var text = "Are you sure you want to run the current job again?";
 		if (this.job.workflow && this.job.workflow.job) text += "  Please note that this job originally ran as part of a workflow.  If you run it manually like this, it will execute in isolation, outside of the workflow context.";
 		
@@ -3367,13 +3371,160 @@ Page.Job = class Job extends Page.PageUtils {
 		} ); // confirm
 	}
 	
-	do_run_again() {
+	do_confirm_run_workflow_again() {
+		// show dialog to present user with workflow run options
+		var self = this;
+		var job = this.job;
+		var workflow = this.workflow;
+		var title = "Run Workflow Again";
+		var btn = ['run-fast', 'Run Now'];
+		var html = '';
+		
+		// sanity checks
+		if (this.live || !job.final || !workflow || !workflow.nodes) return;
+		
+		html += `<div class="dialog_intro">Run the current workflow again. Frozen nodes will replay previous completed job results without actually executing them.`;
+		if (workflow.job) {
+			html += "  Please note that this workflow originally ran as part of a parent workflow.  If you run it manually like this, it will execute in isolation, outside of the parent workflow's context.";
+		}
+		html += `</div>`;
+		html += '<div class="dialog_box_content scroll maximize">';
+		
+		// replay options
+		html += this.getFormRow({
+			id: 'd_rja_replay_mode',
+			label: "Replay Mode:",
+			content: this.getFormMenuSingle({
+				id: 'fe_rja_replay_mode',
+				title: "Select Replay Mode",
+				options: [
+					{ id: '', title: "Run All Jobs", icon: 'clipboard-play-multiple-outline' },
+					{ id: 'success', title: "Freeze Successful Nodes", icon: 'format-list-checks' },
+					{ id: 'custom', title: "Freeze Custom Nodes...", icon: 'gesture-tap-button' }
+				],
+				value: ''
+			}),
+			caption: `Select the desired replay mode.  **Run All Jobs** will re-run every job with no replays.  **Freeze Successful Nodes** will reuse previous job results for successful nodes, and run new jobs for any failures.  **Freeze Custom Nodes** allows you to individually select which nodes should replay their previous jobs.`
+		});
+		
+		// custom set
+		var node_list = workflow.nodes.filter( node => {
+			// only event or job nodes
+			if (!node.type.match(/^(event|job)$/)) return false;
+			
+			// only include nodes that have completed jobs
+			if (!workflow.jobs[node.id] || !workflow.jobs[node.id].length) return false;
+			
+			return true;
+		} );
+		
+		var menu_items = node_list.map( function(node) {
+			// convert each node to a suitable menu item shape
+			if (node.type == 'event') {
+				var event = find_object( app.events, { id: node.data.event } ) || { title: `(Event #${node.data.event})` };
+				return {
+					id: node.id,
+					title: node.data.label || event.title,
+					icon: event.icon || 'file-clock-outline'
+				};
+			}
+			else {
+				var plugin = find_object( app.plugins, { id: node.data.plugin } ) || { title: `(Plugin #${node.data.plugin})` };
+				return {
+					id: node.id,
+					title: node.data.label || plugin.title,
+					icon: plugin.icon || 'power-plug-outline'
+				};
+			}
+		} );
+		
+		html += this.getFormRow({
+			id: 'd_rja_custom',
+			label: 'Nodes to Freeze:',
+			content: this.getFormMenuMulti({
+				id: 'fe_rja_custom',
+				title: 'Select Nodes to Freeze',
+				placeholder: 'None',
+				options: menu_items,
+				values: [],
+				'data-hold': 1
+				// 'data-shrinkwrap': 1
+			}),
+			caption: 'Selected nodes will reuse their previous job results, including failures.  Any unselected nodes will run fresh jobs when reached.'
+		});
+		
+		html += '</div>';
+		
+		Dialog.confirm( title, html, btn, function(result) {
+			if (!result) return;
+			app.clearError();
+			
+			var new_job = deep_copy_object(job);
+			var replay_mode = $('#fe_rja_replay_mode').val();
+			
+			// always clear all replay flags in case user is re-running a re-run of a re-run
+			new_job.workflow.nodes.filter( node => !!node.type.match(/^(event|job)$/) ).forEach( node => {
+				node.data.replay = '';
+			});
+			
+			switch (replay_mode) {
+				case 'success':
+					// replay successful nodes
+					new_job.workflow.nodes.filter( node => !!node.type.match(/^(event|job)$/) ).forEach( node => {
+						var jobs = workflow.jobs[node.id] || [];
+						
+						// filter out retries
+						jobs = jobs.filter( job => !job.retried );
+						
+						// if there are multiple jobs for the node, only replay if ALL were successes
+						var num_fails = jobs.filter( job => !!job.code ).length;
+						
+						// set replay to ARRAY of job ids
+						if (jobs.length && !num_fails) node.data.replay = jobs.map( job => job.id );
+					} );
+				break;
+				
+				case 'custom':
+					// replay custom nodes
+					var replay_nodes = $('#fe_rja_custom').val();
+					
+					replay_nodes.forEach( node_id => {
+						var node = find_object( new_job.workflow.nodes, { id: node_id } );
+						var jobs = workflow.jobs[node.id] || [];
+						
+						// filter out retries
+						jobs = jobs.filter( job => !job.retried );
+						
+						// set replay to ARRAY of job ids
+						if (jobs.length) node.data.replay = jobs.map( job => job.id );
+					} );
+				break;
+			} // switch replay_mode
+			
+			Dialog.hide();
+			self.do_run_again( new_job );
+			
+		}); // Dialog.confirm
+		
+		SingleSelect.init( $('#fe_rja_replay_mode') );
+		MultiSelect.init( $('#fe_rja_custom') );
+		
+		$('#fe_rja_replay_mode').on('change', function() {
+			$('#d_rja_custom').toggle( $(this).val() == 'custom' );
+			Dialog.autoResize();
+		});
+		
+		$('#d_rja_custom').hide();
+		Dialog.autoResize();
+	}
+	
+	do_run_again(new_job) {
 		// run current job again
 		var self = this;
 		var job = this.job;
+		if (!new_job) new_job = deep_copy_object(job);
 		
 		// clense new job of previous running context
-		var new_job = deep_copy_object(job);
 		for (var key in new_job) {
 			if (!key.match(/^(type|event|category|plugin|targets|algo|workflow|input|params|parent|source|username|api_key|icon|label|test|test_conditions|retry_count|tags|now|magic|opts|bubble)$/)) delete new_job[key];
 		}

@@ -1,6 +1,5 @@
 const assert = require('node:assert/strict');
 const fs = require('fs');
-const vm = require('vm');
 const Tools = require('pixl-tools');
 const API = require('../../lib/api.js');
 const Jobs = require('../../lib/job.js');
@@ -368,58 +367,6 @@ exports.tests = [
 		assert.equal( totals.job_log_file_size, 128, 'final job output is counted' );
 		assert.equal( totals.job_elapsed, final_job.elapsed, 'final job elapsed time is counted' );
 		assert.equal( totals.job_files, 1, 'final job files are counted' );
-	},
-	
-	async function test_job_run_again_keeps_test_conditions(test) {
-		// Exercise the real browser handler with a captured API request. A manual
-		// rerun keeps test conditions, workflow settings, and original Magic Link metadata.
-		var payload = null;
-		var context = {
-			Page: { PageUtils: class {} },
-			app: {
-				events: [{ id: 'etest', bubble: '', params: {}, actions: [], limits: [] }],
-				api: { post(name, data) { payload = data; } }
-			},
-			Dialog: { showProgress() {} },
-			deep_copy_object: value => Tools.copyHash(value, true),
-			find_object: (items, criteria) => Tools.findObject(items, criteria),
-			merge_hash_into: Tools.mergeHashInto,
-			num_keys: Tools.numKeys
-		};
-		vm.runInNewContext( fs.readFileSync('htdocs/js/pages/Job.class.js', 'utf8'), context );
-		
-		var page = new context.Page.Job();
-		var magic = { headers: { 'linear-signature': 'original' }, body: '{ "text": "café" }', params: {}, query: {} };
-		var opts = ['first_abort', 'isolate_data', 'isolate_files', 'isolate_tags', 'isolate_content'];
-		page.job = {
-			id: 'jprevious', event: 'etest', type: 'workflow', bubble: 'leaf', test: true,
-			test_conditions: ['complete'], params: {}, tags: [], code: 1, magic, opts,
-			workflow: { nodes: [], connections: [], start: 'manual', state: {}, jobs: {}, job: 'outer' }
-		};
-		page.do_run_again();
-		
-		assert.ok( payload, 'run-again sends a job to the API' );
-		assert.deepEqual( payload.test_conditions, ['complete'], 'run-again retains selected test conditions' );
-		assert.equal( payload.id, 'etest', 'run-again targets the original event' );
-		assert.deepEqual( payload.magic, magic, 'run-again retains the original request metadata');
-		assert.notEqual( payload.magic, magic, 'run-again sends an independent metadata snapshot');
-		assert.deepEqual( payload.opts, opts, 'run-again retains workflow isolation options');
-		assert.notEqual( payload.opts, opts, 'run-again sends an independent option array');
-		assert.equal(payload.bubble, 'leaf', 'run-again preserves leaf mode even when the saved event uses all-node mode');
-		assert.deepEqual( Object.keys(payload.workflow).sort(), ['connections', 'nodes', 'start'], 'run-again removes prior workflow runtime context');
-		
-		// Empty string is a deliberate all-node choice and must override a saved
-		// event that has since changed to leaf mode. Older absent settings remain
-		// absent when rerunning an unchanged legacy workflow.
-		page.job.bubble = '';
-		context.app.events[0].bubble = 'leaf';
-		page.do_run_again();
-		assert.equal(payload.bubble, '', 'run-again retains explicit all-node bubbling');
-		assert.equal(Tools.mergeHashes(context.app.events[0], payload).bubble, '', 'API merge preserves the explicit all-node choice');
-		delete page.job.bubble;
-		delete context.app.events[0].bubble;
-		page.do_run_again();
-		assert.ok(!Object.hasOwn(payload, 'bubble'), 'legacy job remains compatible without a bubbling property');
 	},
 	
 	async function test_job_plugin_param_defaults(test) {

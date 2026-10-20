@@ -337,24 +337,28 @@ See [pixl-logger](https://github.com/jhuckaby/pixl-logger) for more details.
 
 ## log_archive_path
 <!-- Title: Log Archive Path -->
+<!-- AllowEmpty: true -->
 
 This string sets the nightly log archive path pattern (default: `logs/archives/[yyyy]/[mm]/[dd]/[filename]-[yyyy]-[mm]-[dd].log.gz`); maintenance gzips and writes logs here.
 
 Accepts [date/time placeholders](https://github.com/jhuckaby/pixl-tools#getdateargs) to dynamically generate the log archive filenames.
 
+To disable filesystem log archiving, leave this field blank in the UI, or set `"log_archive_path": ""` in the JSON configuration.  Do not type quote characters into the UI field.  See [log_archive_storage](#log_archive_storage) to archive logs to storage instead.
+
 ## log_archive_keep
 <!-- Title: Log Archive Keep -->
+<!-- AllowEmpty: true -->
 
 This string specifies how long to keep log archives for, e.g. `30 days`.
 
 Older log archives found in [log_archive_path](#log_archive_path) are automatically deleted after the nightly logs are rotated.
 
-Set this to an empty string to disable the feature and keep log archives indefinitely.
+To keep log archives indefinitely, leave this field blank in the UI, or set `"log_archive_keep": ""` in the JSON configuration.  Do not type quote characters into the UI field.  This disables automatic deletion of old archives; log rotation and archiving continue as usual.
 
 ## log_archive_storage
 <!-- Title: Log Archive Storage -->
 
-Optionally archive logs to storage instead of local disk.  This is primarily designed for 3rd party storage engines like S3.  To use this feature, first *disable* [log_archive_path](#log_archive_path) (set to empty string), and then set this property accordingly.
+Optionally archive logs to storage instead of local disk.  This is primarily designed for 3rd party storage engines like S3.  To use this feature, first *disable* [log_archive_path](#log_archive_path) by setting it to an empty string as described above, and then set this property accordingly.
 
 Example:
 
@@ -910,6 +914,24 @@ The defaults are:
 }
 ```
 
+
+### client.xterm_defaults
+<!-- Title: Terminal UI Settings -->
+
+Client-side configuration for the terminal emulator.  These properties are passed directly to the [xterm.js](https://xtermjs.org/) component.
+
+The defaults are:
+
+```json
+"xterm_defaults": {
+	"minimumContrastRatio": 4.5,
+	"scrollOnEraseInDisplay": true,
+	"lineHeight": 1.2,
+	"scrollback": 10000,
+	"cursorStyle": "block",
+	"cursorBlink": false
+}
+```
 
 
 ## Storage

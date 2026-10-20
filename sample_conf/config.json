@@ -398,6 +398,15 @@
 			"hide_tags": false,
 			"hide_priority": false,
 			"hide_params": false
+		},
+		
+		"xterm_defaults": {
+			"minimumContrastRatio": 4.5,
+			"scrollOnEraseInDisplay": true,
+			"lineHeight": 1.2,
+			"scrollback": 10000,
+			"cursorStyle": "block",
+			"cursorBlink": false
 		}
 	},
 	

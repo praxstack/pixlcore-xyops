@@ -2105,7 +2105,7 @@
 		]
 	},
 	
-	"log_files": [ "Action", "API", "Comm", "Debug", "Error", "Extension", "Filesystem", "Hybrid", "Job", "Maint", "Monitor", "Multi", "Postgres", "Redis", "S3", "Scheduler", "Secret", "SQLite", "Storage", "Ticket", "Transaction", "Unbase", "User", "WebServer", "xyOps" ],
+	"log_files": [ "Action", "API", "Comm", "Debug", "Error", "Extension", "Filesystem", "Hybrid", "Job", "Maint", "Monitor", "Multi", "Postgres", "Redis", "S3", "Scheduler", "Secret", "SQLite", "Storage", "Terminal", "Ticket", "Transaction", "Unbase", "User", "WebServer", "xyOps" ],
 	
 	"log_column_titles": {
 		"hires_epoch": "Timestamp",

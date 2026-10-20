@@ -314,7 +314,8 @@ Page.Config = class Config extends Page.PageUtils {
 				case 'string':
 				case 'Menu':
 					var value = $('#' + row.elem_id).val();
-					if (!value.length) {
+					// Allow blank values for settings explicitly marked in the config documentation.
+					if (!value.length && row.AllowEmpty !== 'true') {
 						err = true;
 						return app.badField('#' + row.elem_id, row.Title + ": Value cannot be empty.");
 					}

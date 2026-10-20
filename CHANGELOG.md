@@ -1,5 +1,14 @@
 # xyOps Changelog
 
+## Version v1.1.9
+
+> October 19, 2026
+
+- [`62e49633`](https://github.com/pixlcore/xyops/commit/62e49633a2019367006850b9cbd845e855df02cc): Version 1.1.9
+- [`40cc5a90`](https://github.com/pixlcore/xyops/commit/40cc5a900ce35799fb09ed6d3f1ab07c80e1ae75): Bug Fix: Allow log_archive_path and log_archive_keep to be empty strings in the UI config editor.  Fixes #476
+- [`ca899ccb`](https://github.com/pixlcore/xyops/commit/ca899ccbb99cfa9b2becec44d93ef3df52f5aceb): Feature: Add remote server terminals to the web UI
+- [`dfbd218e`](https://github.com/pixlcore/xyops/commit/dfbd218e9fb89423b5fa690e64951af5af22c59d): Feature: Add advanced workflow replay options to Run Again
+
 ## Version v1.1.8
 
 > October 16, 2026
