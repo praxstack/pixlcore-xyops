@@ -185,6 +185,8 @@
 		"server_update": "Server Information Updated",
 		"server_watch": "Server Watch Set",
 		
+		"term_start": "Terminal Started",
+		
 		"master_primary": "Conductor Server Became Primary",
 		"peer_add": "Conductor Server Added",
 		"peer_disconnect": "Conductor Server Disconnected",
@@ -283,6 +285,8 @@
 		"server_update": "Server information was updated: [hostname]",
 		"server_watch": "A watch for [duration] was set on the server: [hostname]",
 		
+		"term_start": "Terminal opened on server: [server_title] ([terminal.id])",
+		
 		"master_primary": "Conductor server is now primary: [host]",
 		"peer_add": "Conductor server added to the network: [host]",
 		"peer_disconnect": "Conductor serfer disconnected from the network: [host]",
@@ -311,6 +315,7 @@
 		"users": "^(user_.+)$",
 		"roles": "^(role_.+)$",
 		"servers": "^(server_.+)$",
+		"terminals": "^(term_.+)$",
 		"peers": "^(peer_.+|master_primary)$",
 		"system": "^(state_update|internal_job|config_update)$"
 	},
@@ -331,6 +336,7 @@
 		"^critical": { "icon": "fire-alert", "label": "Critical" },
 		"^group": { "icon": "server-network", "label": "Group" },
 		"^server": { "icon": "router-network", "label": "Server" },
+		"^term_": { "icon": "console", "label": "Terminal" },
 		"^master": { "icon": "database", "label": "Conductor" },
 		"^peer": { "icon": "database", "label": "Conductor" },
 		"^monitor": { "icon": "chart-line", "label": "Monitor" },
@@ -748,7 +754,7 @@
 				"caption": "Enter the expression to evaluate using [XYEXP](#Docs/xyexp), e.g. `data.random > 0.5`.  If true, control will pass onto the next node."
 			},
 			"d_wfd_if_abort": {
-				"label": "Behavior:",
+				"label": "Options:",
 				"caption": "Optionally abort the entire workflow if the expression evaluates to false."
 			},
 			"fe_wfd_if_abort": {
@@ -1176,14 +1182,16 @@
 			"do_download_job_data": { "keys": ["KeyD"], "title": "Download Job JSON" },
 			"do_delete_job": { "keys": ["Backspace", "Delete"], "title": "Delete Job" },
 			"prevSlide": { "keys": ["ArrowLeft"], "title": "Previous Media Slide" },
-			"nextSlide": { "keys": ["ArrowRight"], "title": "Next Media Slide" }
+			"nextSlide": { "keys": ["ArrowRight"], "title": "Next Media Slide" },
+			"goServerTerminal": { "keys": ["KeyT"], "title": "Open Server Terminal" }
 		},
 		"Servers": {
 			"showEditServerDialog": { "sub": "view", "keys": ["KeyE"], "title": "Edit Server" },
 			"chooseHistoricalView": { "sub": "view", "keys": ["KeyH"], "title": "Historical View" },
 			"createSnapshot": { "sub": "view", "keys": ["Meta+KeyS", "Control+KeyS"], "title": "Take Snapshot" },
 			"openWatchDialog": { "sub": "view", "keys": ["KeyW"], "title": "Add Server Watch" },
-			"showAddServerDialog": { "sub": "list", "keys": ["KeyA"], "title": "Add New Server" }
+			"showAddServerDialog": { "sub": "list", "keys": ["KeyA"], "title": "Add New Server" },
+			"goServerTerminal": { "sub": "view", "keys": ["KeyT"], "title": "Open Server Terminal" }
 		},
 		"ServerHist": {
 			"histNavPrev": { "keys": ["ArrowLeft"], "title": "Previous Time Slice" },

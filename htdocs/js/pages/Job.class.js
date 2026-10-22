@@ -3181,7 +3181,7 @@ Page.Job = class Job extends Page.PageUtils {
 				'<i class="mdi mdi-floppy">&nbsp;</i>' + get_text_from_bytes( file.size || 0 ),
 				self.getRelativeDateTime(file.date),
 				nice_source,
-				self.getNiceJob(file.job || job.id, self.isWorkflow),
+				self.getNiceJob({ id: file.job || job.id }, self.isWorkflow),
 				self.getNiceServer(file.server, true),
 				actions.join(' | ')
 			];
@@ -3296,6 +3296,18 @@ Page.Job = class Job extends Page.PageUtils {
 		if (this.slideIdx >= this.slides.length) this.slideIdx = 0;
 		
 		this.renderCurrentSlide();
+	}
+	
+	goServerTerminal() {
+		// open server terminal
+		var server_id = this.job.server;
+		if (!server_id) return app.doError("Cannot open terminal: Job did not run on a server.");
+		
+		var server = find_object(app.servers, { id: server_id });
+		if (!server) return app.doError("Cannot open terminal: Server is not online.");
+		if (!server.info?.features?.terminal) return app.doError("Server does not support live terminal access.");
+		
+		window.open( app.base_api_url + '/app/term?server=' + server_id );
 	}
 	
 	do_delete_job() {

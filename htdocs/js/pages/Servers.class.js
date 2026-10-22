@@ -870,7 +870,9 @@ Page.Servers = class Servers extends Page.ServerUtils {
 				
 				html += '<div class="button icon right secondary" id="btn_server_popup_history" title="Server History..." onClick="$P().popupServerHistory()"><i class="mdi mdi-history"></i></div>';
 				
-				if (app.isAdmin() && this.online) html += '<div class="button icon right" title="Open Terminal..." onClick="$P().goServerTerminal()"><i class="mdi mdi-console"></i></div>';
+				if (app.isAdmin() && this.online && this.server.info?.features?.terminal) {
+					html += '<div class="button icon right" title="Open Terminal..." onClick="$P().goServerTerminal()"><i class="mdi mdi-console"></i></div>';
+				}
 				
 				// if (!online) html += '<div class="box_title_note">As of ' + this.getShortDateTimeText(snapshot.date) + '</div>';
 				// html += '<div class="button right danger" onClick="$P().showDeleteSnapshotDialog()"><i class="mdi mdi-trash-can-outline">&nbsp;</i>Delete...</div>';
@@ -1395,6 +1397,9 @@ Page.Servers = class Servers extends Page.ServerUtils {
 	
 	goServerTerminal() {
 		// open server terminal
+		if (!this.online) return app.doError("Cannot open terminal: server is not online.");
+		if (!this.server?.info?.features?.terminal) return app.doError("This server does not support live terminal access.");
+		
 		window.open( app.base_api_url + '/app/term?server=' + this.server.id );
 	}
 	

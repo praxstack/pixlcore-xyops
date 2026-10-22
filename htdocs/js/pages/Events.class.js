@@ -1956,9 +1956,10 @@ Page.Events = class Events extends Page.PageUtils {
 			}
 			
 			if (!this.event.plugin) {
-				if (find_object(app.plugins, { id: 'shellplug' })) this.event.plugin = 'shellplug';
-				else if (!app.plugins.length) return this.doFullPageError("You must create at least one Plugin to add events.");
-				else this.event.plugin = app.plugins[0].id;
+				var event_plugins = app.plugins.filter( function(plugin) { return plugin.type == 'event'; } );
+				if (find_object(event_plugins, { id: 'shellplug' })) this.event.plugin = 'shellplug';
+				else if (!event_plugins.length) return this.doFullPageError("You must create at least one Plugin to add events.");
+				else this.event.plugin = event_plugins[0].id;
 			}
 			
 			if (!this.event.targets || !this.event.targets.length) {

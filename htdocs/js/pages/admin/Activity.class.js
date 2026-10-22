@@ -38,6 +38,7 @@ Page.ActivityLog = class ActivityLog extends Page.PageUtils {
 			{ "id": "jobs", "title": "Jobs", "icon": "timer-outline" },
 			{ "id": "tickets", "title": "Tickets", "icon": "text-box-outline" },
 			{ "id": "servers", "title": "Servers", "icon": "router-network" },
+			{ "id": "terminals", "title": "Terminals", "icon": "console" },
 			{ "id": "peers", "title": "Conductors", "icon": "database" },
 			{ "id": "system", "title": "System", "icon": "desktop-classic" }
 		]);
@@ -457,6 +458,13 @@ Page.ActivityLog = class ActivityLog extends Page.PageUtils {
 					else actions.push(`<a href="#Servers?id=${item.server_id}"><b>Go to Server...</b></a>`);
 				break;
 				
+				case 'terminals':
+					// Server titles are plain text, including in the details report.
+					desc = item._desc = encode_entities(desc);
+					click = `$P().showActionReport(${idx},'terminal')`;
+					actions.push(`<button class="link" onClick="${click}"><b>Details...</b></button>`);
+				break;
+				
 			} // search_key
 			
 			switch (item.action) {
@@ -544,7 +552,8 @@ Page.ActivityLog = class ActivityLog extends Page.PageUtils {
 	
 	showActionReport(idx, obj_key) {
 		// pop dialog for any action
-		var item = this.items[idx];
+		// Keep privacy redaction local so reopening the dialog retains its data.
+		var item = deep_copy_object(this.items[idx]);
 		var template = config.ui.activity_descriptions[item.action];
 		if (!item.ips) item.ips = [];
 		
@@ -575,9 +584,21 @@ Page.ActivityLog = class ActivityLog extends Page.PageUtils {
 		}
 		if (item.server || item.hostname) {
 			md += "\n### Server Info\n\n";
+			if (item.server_title) md += '- **Server Title:** ' + encode_entities(item.server_title) + "\n";
 			md += '- **Server ID:** ' + (item.server || 'n/a') + "\n";
-			md += '- **Hostname:** ' + app.formatHostname(item.hostname || 'n/a') + "\n";
-			md += '- **IP Address:** ' + (item.ip || 'n/a') + "\n";
+			md += '- **Hostname:** ' + encode_entities(app.formatHostname(item.hostname || 'n/a')) + "\n";
+			// Terminal activity keeps the client IP separate from the server IP.
+			md += '- **IP Address:** ' + ((item.terminal ? item.server_ip : item.ip) || 'n/a') + "\n";
+			if (item.server_socket) md += '- **Server Socket ID:** `' + item.server_socket + "`\n";
+		}
+		
+		// Show the original terminal identifiers and precise start time
+		if (item.terminal && !app.privacyMode()) {
+			md += "\n### Terminal Info\n\n";
+			md += '- **Terminal ID:** `' + item.terminal.id + "`\n";
+			md += '- **Client ID:** `' + item.terminal.client + "`\n";
+			md += '- **Username:** ' + encode_entities(item.terminal.username) + "\n";
+			md += '- **Started:** ' + this.getNiceDateTimeText(item.terminal.started, true) + "\n";
 		}
 		
 		// headers

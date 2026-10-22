@@ -4472,7 +4472,10 @@ Page.PageUtils = class PageUtils extends Page.Base {
 		// get HTML for single workflow node of type trigger
 		var html = '';
 		var pos = this.getWFPos(node);
-		var trigger = find_object( this.event.triggers, { id: node.id } );
+		
+		var trigger = null;
+		if (this.event?.triggers) trigger = find_object( this.event.triggers, { id: node.id } );
+		else if (this.job?.triggers) trigger = find_object( this.job.triggers, { id: node.id } );
 		if (!trigger) return; // sanity
 		
 		var classes = ['wf_node', 'wf_entity'];

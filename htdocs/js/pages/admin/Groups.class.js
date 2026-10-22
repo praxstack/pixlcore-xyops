@@ -746,11 +746,19 @@ Page.Groups = class Groups extends Page.ServerUtils {
 			html += '<div class="box_title">';
 				html += 'Group Summary';
 				
-				if (app.hasPrivilege('delete_groups')) html += '<div class="button icon right danger" title="Delete Group..." onClick="$P().show_delete_group_dialog()"><i class="mdi mdi-trash-can-outline"></i></div>';
-				html += '<div class="button icon right secondary sm_hide" title="Job History..." onClick="$P().goJobHistory()"><i class="mdi mdi-cloud-search-outline"></i></div>';
-				html += '<div class="button icon right secondary sm_hide" title="Alert History..." onClick="$P().goAlertHistory()"><i class="mdi mdi-restore-alert"></i></div>';
-				if (app.isAdmin()) html += '<div class="button icon right secondary sm_hide" title="Group History..." onClick="$P().goGroupHistory()"><i class="mdi mdi-history"></i></div>';
-				if (app.hasPrivilege('add_servers')) html += '<div class="button icon right" title="Add Server..." onClick="$P().addServerToGroup()"><i class="mdi mdi-server-plus-outline"></i></div>';
+				if (app.hasPrivilege('delete_groups')) {
+					html += '<div class="button icon right danger" title="Delete Group..." onClick="$P().show_delete_group_dialog()"><i class="mdi mdi-trash-can-outline"></i></div>';
+				}
+				
+				html += '<div class="button icon right secondary" id="btn_grp_popup_history" title="Group History..." onClick="$P().popupGroupHistory()"><i class="mdi mdi-history"></i></div>';
+				
+				if (app.hasPrivilege('create_events') && app.hasPrivilege('delete_events') && app.hasPrivilege('run_jobs')) {
+					html += '<div class="button icon right secondary" title="Quick Run..." onClick="$P().quickRun()"><i class="mdi mdi-run-fast"></i></div>';
+				}
+				
+				if (app.hasPrivilege('add_servers')) {
+					html += '<div class="button icon right" title="Add Server..." onClick="$P().addServerToGroup()"><i class="mdi mdi-server-plus-outline"></i></div>';
+				}
 				
 				html += '<div class="clear"></div>';
 			html += '</div>'; // title
@@ -989,6 +997,351 @@ Page.Groups = class Groups extends Page.ServerUtils {
 		if (!app.reducedMotion() && this.quickmonEnabled && (this.servers.length <= animate_max_servers)) this.animate();
 		
 		return true;
+	}
+	
+	quickRun() {
+		// show dialog to run a quick multiplex workflow across entire group
+		var self = this;
+		var title = "Quick Multiplex Run";
+		var intro = `Use this to quickly run a multiplexed workflow with a custom job executing exactly once on every server in the group.  Configure the workflow and job below.`;
+		var btn = ['run-fast', 'Run Now'];
+		
+		app.clearError();
+		
+		// privilege check
+		if (!app.requirePrivilege('create_events')) return;
+		if (!app.requirePrivilege('delete_events')) return;
+		if (!app.requirePrivilege('run_jobs')) return;
+		
+		// make sure group has online servers
+		if (!find_objects(this.servers, { offline: false }).length) {
+			return app.doError("Cannot quick run: Group has no online servers.");
+		}
+		
+		// find default category
+		if (!app.categories.length) return app.doError("No categories found.  Please add a category before using quick run.");
+		var cat_def = find_object( app.categories, { id: 'general' } ) || app.categories[0];
+		
+		// find default event plugin
+		var event_plugins = app.plugins.filter( function(plugin) { return plugin.type == 'event'; } );
+		if (!event_plugins.length) return app.doError("No event plugins found.  Please add an event plugin before using quick run.");
+		var plug_def = find_object( event_plugins, { id: 'shellplug' } ) || event_plugins[0];
+		
+		// start creating event
+		var event = deep_copy_object( app.config.new_event_template );
+		delete event.plugin;
+		event.targets = [];
+		event.title = "Quick Run";
+		event.type = 'workflow';
+		event.icon = 'run-fast';
+		
+		// self-delete action
+		event.actions.push( { type: "delete", enabled: true, condition: "complete" } );
+		
+		// new bubble prop
+		if (!('bubble' in event)) event.bubble = 'leaf';
+		
+		var trigger_node_id = gen_workflow_id('n');
+		var multiplex_node_id = gen_workflow_id('n');
+		var job_node_id = gen_workflow_id('n');
+		var job_limit_node_id = gen_workflow_id('n');
+		var job_queue_node_id = gen_workflow_id('n');
+		
+		event.triggers = [{
+			"enabled": true,
+			"type": "manual",
+			"id": trigger_node_id
+		}];
+		
+		var workflow = event.workflow = {
+			"nodes": [
+				{
+					"id": trigger_node_id,
+					"type": "trigger",
+					"x": -35,
+					"y": 344
+				},
+				{
+					"id": job_node_id,
+					"type": "job",
+					"data": {
+						"params": {},
+						"targets": [ this.group.id ],
+						"algo": "random",
+						"label": "Quick Job",
+						"category": "",
+						"plugin": "",
+						"icon": ""
+					},
+					"x": 327,
+					"y": 233
+				},
+				{
+					"id": multiplex_node_id,
+					"type": "controller",
+					"data": {
+						"controller": "multiplex",
+						"stagger": 0,
+						"continue": 100
+					},
+					"x": 114,
+					"y": 343
+				},
+				{
+					"id": job_limit_node_id,
+					"type": "limit",
+					"data": {
+						"type": "job",
+						"enabled": true,
+						"amount": 1,
+						"weight": 1,
+						"rate": 0,
+						"window": 1
+					},
+					"x": 367,
+					"y": 569
+				},
+				{
+					"id": job_queue_node_id,
+					"type": "limit",
+					"data": {
+						"type": "queue",
+						"enabled": true,
+						"amount": 9999
+					},
+					"x": 493,
+					"y": 568
+				}
+			],
+			"connections": [
+				{
+					"id": gen_workflow_id('c'),
+					"source": trigger_node_id,
+					"dest": multiplex_node_id
+				},
+				{
+					"id": gen_workflow_id('c'),
+					"source": multiplex_node_id,
+					"dest": job_node_id
+				},
+				{
+					"id": gen_workflow_id('c'),
+					"source": job_node_id,
+					"dest": job_limit_node_id
+				},
+				{
+					"id": gen_workflow_id('c'),
+					"source": job_node_id,
+					"dest": job_queue_node_id
+				}
+			]
+		};
+		
+		var job_node = find_object( workflow.nodes, { id: job_node_id } );
+		var job_limit_node = find_object( workflow.nodes, { id: job_limit_node_id } );
+		
+		var html = '';
+		html += `<div class="dialog_intro">${intro}</div>`;
+		html += '<div class="dialog_box_content scroll maximize">';
+		
+		// category
+		html += this.getFormRow({
+			label: "Category:",
+			content: this.getFormMenuSingle({
+				id: 'fe_gvd_cat',
+				title: "Select category for job",
+				options: this.getCategoriesForMenu(),
+				value: cat_def.id || '',
+				default_icon: 'folder-open-outline',
+				// 'data-shrinkwrap': 1
+			}),
+			caption: "Select a category for the multiplex workflow and job (category limits and actions will apply)."
+		});
+		
+		// tags
+		html += this.getFormRow({
+			label: "Tags:",
+			content: this.getFormMenuMulti({
+				id: 'fe_gvd_tags',
+				title: "Select tags for workflow",
+				placeholder: "Select tags for workflow...",
+				options: app.tags,
+				values: event.tags || [],
+				default_icon: 'tag-outline',
+				// 'data-shrinkwrap': 1
+			}),
+			caption: "Optionally select tags to apply to the workflow job."
+		});
+		
+		// plugin
+		html += this.getFormRow({
+			label: "Plugin:",
+			content: this.getFormMenuSingle({
+				id: 'fe_gvd_plugin',
+				title: "Select Plugin for job",
+				options: event_plugins,
+				value: plug_def.id || '',
+				default_icon: 'power-plug-outline'
+				// 'data-shrinkwrap': 1
+			}),
+			caption: "Select the desired Plugin for the job.  Plugin parameters will appear below."
+		});
+		
+		// params
+		html += this.getFormRow({
+			id: 'd_gvd_user_params',
+			label: "Plugin Parameters:",
+			content: '<div id="d_wfdj_param_editor" class="plugin_param_editor_cont"></div>',
+			caption: "Enter values for all the Plugin-defined parameters here."
+		});
+		
+		// files
+		html += this.getFormRow({
+			label: 'User Files:',
+			content: this.getDialogFileUploader(),
+			caption: 'Optionally upload and attach files to the workflow.'
+		});
+		
+		// concurrency
+		html += this.getFormRow({
+			label: "Job Concurrency:",
+			content: this.getFormText({
+				id: 'fe_gvd_concurrency',
+				type: 'number',
+				spellcheck: 'false',
+				maxlength: 5,
+				min: 1,
+				value: 1
+			}),
+			caption: "Select the desired concurrently for the multiplexed jobs.  Set to `1` to run them in series."
+		});
+		
+		// first_abort
+		html += this.getFormRow({
+			label: 'Workflow Options:',
+			content: this.getFormCheckbox({
+				id: 'fe_gvd_first_abort',
+				label: 'First Fail Aborts',
+				checked: false
+			}),
+			caption: 'This will abort the workflow when one of its sub-jobs completes with a nonzero result.'
+		});
+		
+		html += '</div>';
+		
+		Dialog.confirm( title, html, btn, function(result) {
+			if (!result) return;
+			app.clearError();
+			
+			// gather results from dialog form
+			event.category = job_node.data.category = $('#fe_gvd_cat').val();
+			event.tags = $('#fe_gvd_tags').val();
+			event.opts = $('#fe_gvd_first_abort').is(':checked') ? ['first_abort'] : [];
+			
+			job_node.data.plugin = $('#fe_gvd_plugin').val();
+			job_limit_node.data.amount = Math.max( 1, parseInt( $('#fe_gvd_concurrency').val() ) || 1 );
+			
+			job_node.data.params = self.getPluginParamValues( job_node.data.plugin );
+			if (!job_node.data.params) return; // invalid
+			
+			var job = deep_copy_object(event);
+			job.label = "Quick Run";
+			job.icon = 'run-fast';
+			
+			// add files if user uploaded
+			if (self.dialogFiles && self.dialogFiles.length) {
+				if (!job.input) job.input = {};
+				job.input.files = self.dialogFiles;
+				delete self.dialogFiles; // destructive
+			}
+			
+			// pre-open new window/tab for job details
+			var win = window.open('', '_blank');
+			
+			app.api.post( 'app/create_event', event, function(resp) {
+				// now run the job
+				var event_id = job.id = resp.event.id;
+				
+				app.api.post( 'app/run_event', job, function(resp) {
+					// jump immediately to live details page in new window
+					win.location.href = '#Job?id=' + resp.id;
+				}, 
+				function(err) {
+					// capture error so we can close the window we just opened
+					win.close();
+					app.doError("API Error: " + err.description);
+					app.api.post( 'app/delete_event', { id: event_id }, function(resp) {} );
+				}); // run_event error
+			},
+			function(err) {
+				win.close();
+				app.doError("API Error: " + err.description);
+			} ); // create_event error
+			
+			Dialog.hide();
+		}); // Dialog.confirm
+		
+		Dialog.onDragDrop = function(files) {
+			// files dropped on dialog
+			ZeroUpload.upload( files, {}, app.csrf_token ? { csrf_token: app.csrf_token } : {} );
+		};
+		
+		Dialog.onHide = function() {
+			// cleanup
+			// FUTURE: If self.dialogFiles still exists here, delete in background (user canceled job)
+			delete self.dialogFiles;
+		};
+		
+		MultiSelect.init( $('#fe_gvd_tags') );
+		SingleSelect.init( $('#fe_gvd_cat, #fe_gvd_plugin') );
+		
+		// handle plugin change
+		var initial_plugin_id = $('#fe_gvd_plugin').val();
+		var old_plugin_id = '';
+		var plugin_param_cache = {};
+		plugin_param_cache[ initial_plugin_id ] = job_node.data.params || {};
+		
+		var do_change_plugin = function() {
+			// refresh plugin param editor
+			if (old_plugin_id) {
+				var old_params = self.getPluginParamValues( old_plugin_id, true );
+				if (old_params) plugin_param_cache[old_plugin_id] = old_params;
+			}
+			
+			var plugin_id = $('#fe_gvd_plugin').val();
+			var new_params = plugin_param_cache[plugin_id] || {};
+			
+			$('#d_wfdj_param_editor').html( self.getPluginParamEditor( plugin_id, new_params, true ) ).buttonize();
+			Dialog.autoResize();
+			
+			old_plugin_id = plugin_id;
+		} // do_change_plugin
+		
+		$('#fe_gvd_plugin').on('change', do_change_plugin);
+		do_change_plugin();
+	}
+	
+	popupGroupHistory() {
+		// show quick menu for group history jump
+		var self = this;
+		var items = [
+			{ id: 'goAlertHistory', title: "Alert History", icon: 'restore-alert' },
+			{ id: 'goJobHistory', title: "Job History", icon: 'cloud-search-outline' }
+		];
+		if (app.isAdmin()) items.unshift({ id: 'goGroupHistory', title: "Group History", icon: 'history' });
+		
+		SingleSelect.popupQuickMenu({
+			elem: '#btn_grp_popup_history',
+			title: "Jump To...",
+			items: items,
+			value: '',
+			nocheck: true,
+			
+			callback: function(value) {
+				self[value]();
+			} // callback
+			
+		}); // popupQuickMenu
 	}
 	
 	setupUpcomingJobs() {

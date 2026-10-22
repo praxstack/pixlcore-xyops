@@ -593,7 +593,7 @@ Page.Base = class Base extends Page {
 		var html = '<span class="nowrap" title="' + encode_attrib_entities(text) + '">';
 		var icon = '<i class="mdi mdi-' + (item.offline ? 'close-network-outline' : (sicon || 'router-network')) + '"></i>';
 		if (link) {
-			html += '<a href="#Servers?id=' + item.id + '">' + icon + '<span data-private>' + text + '</span></a>';
+			html += '<a href="#Servers?id=' + item.id + '" data-server="' + item.id + '" onClick="return $P().clickServer(this,event)">' + icon + '<span data-private>' + text + '</span></a>';
 		}
 		else {
 			html += icon + '<span data-private>' + text + '</span>';
@@ -601,6 +601,27 @@ Page.Base = class Base extends Page {
 		
 		html += '</span>';
 		return html;
+	}
+	
+	clickServer(elem, event) {
+		// open terminal if alt-left-clicked
+		if (event.button === 0 && event.altKey) {
+			// Left-click + Alt/Option
+			var server_id = $(elem).data('server');
+			var server = find_object(app.servers, { id: server_id });
+			if (!server) {
+				app.doError("Cannot open terminal: Server is not online.");
+				return false;
+			}
+			if (!server.info?.features?.terminal) {
+				app.doError("Server does not support live terminal access.");
+				return false;
+			}
+			window.open( app.base_api_url + '/app/term?server=' + server_id );
+			return false; // Prevent navigation
+		}
+		
+		return true; // Allow normal browser behavior
 	}
 	
 	getNiceServerText(item) {
