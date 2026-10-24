@@ -1,5 +1,21 @@
 # xyOps Changelog
 
+## Version v1.1.10
+
+> October 23, 2026
+
+- [`6b129290`](https://github.com/pixlcore/xyops/commit/6b1292908eea4e08f43faec819ca8bb7ab6a0731): Version 1.1.10
+- [`57c79330`](https://github.com/pixlcore/xyops/commit/57c7933066ac4ef07a8dbe693c3e5e570d2d141b): Dep: Bump sanitize-html to v2.18.1 for vuln and bug fixes.
+- [`2e0291e9`](https://github.com/pixlcore/xyops/commit/2e0291e96793909d23c32a58c8eeff5baedfa73f): Feature: Add workflow job output reports
+- [`ce51e116`](https://github.com/pixlcore/xyops/commit/ce51e116d275ad275601c235aaf1c7fceaa7daf6): Feature: Log terminal starts in the Activity Log
+- [`18481e01`](https://github.com/pixlcore/xyops/commit/18481e017778c5fa79a5bdbcb75dbc4aedddf10f): Feature: New "Quick Run" on server groups page.
+- [`28109af4`](https://github.com/pixlcore/xyops/commit/28109af458f7fce20a29ccda781088c136533e87): Bug FIx: A few misc UI cleanup items...
+- [`849e76e8`](https://github.com/pixlcore/xyops/commit/849e76e855eeeb582d320c5119e37aee4c8ff6d9): Bug Fix: Cosmetic: Workflow job details screen fails to render completely if original workflow event was deleted.
+- [`fe60b3fb`](https://github.com/pixlcore/xyops/commit/fe60b3fb70bf7c3db5f261c92918d3f50d376852): Bug Fix: Cosmetic: Job file table can sometimes show the wrong icon for some jobs (race condition on finish).
+- [`98079afc`](https://github.com/pixlcore/xyops/commit/98079afc0d0f452456f1a8a87d8e8da47a4ad860): Feature: Add "T" default keyboard shortcut to open server terminal.
+- [`3b382105`](https://github.com/pixlcore/xyops/commit/3b382105f38f4be862cf02491f524940f7798778): Feature: Alt/Opt-click on any server to open a terminal window.
+- [`8a282730`](https://github.com/pixlcore/xyops/commit/8a282730d3ddef143e4ce25c1dc37093624bfc93): Bug Fix: Only show "Open Terminal" button for servers that actually support the feature.
+
 ## Version v1.1.9
 
 > October 19, 2026

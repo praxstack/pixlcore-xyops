@@ -478,6 +478,20 @@ Page.Job = class Job extends Page.PageUtils {
 			}
 		}
 		
+		if (is_workflow && job.final) {
+			// multi-job output and download
+			html += '<div class="box" id="d_job_wf_log">';
+				html += '<div class="box_title">';
+					html += 'Workflow Job Outputs';
+					html += '<div class="button right" onClick="$P().do_download_wf_log()"><i class="mdi mdi-cloud-download-outline">&nbsp;</i>Download...</div>';
+					html += '<div class="clear"></div>';
+				html += '</div>';
+				html += '<div class="box_content table">';
+					html += '<div class="loading_container"><div class="loading"></div></div>';
+				html += '</div>'; // box_content
+			html += '</div>'; // box
+		}
+		
 		if (!is_workflow) {
 			// job log
 			html += '<div class="box">';
@@ -552,6 +566,7 @@ Page.Job = class Job extends Page.PageUtils {
 			this.getJobSnapshots();
 			this.renderJobTags();
 			this.renderMediaSlideshow();
+			if (is_workflow) this.checkLoadWorkflowLog();
 		}
 		
 		this.renderPluginParams('#d_job_params');
@@ -572,6 +587,35 @@ Page.Job = class Job extends Page.PageUtils {
 		// jump straight into dialogs if requested on URL
 		if (this.args.resume) this.doResumeJob();
 		else if (job.final && this.args.action) this.viewJobActionDetails(0);
+	}
+	
+	checkLoadWorkflowLog() {
+		// see if workflow log needs to be loaded
+		if (!this.job?.final || !this.isWorkflow) return;
+		
+		var $elem = this.div.find('#d_job_wf_log');
+		if ($elem.data('loaded')) return;
+		if (!$elem.visible()) return;
+		
+		this.getWorkflowLog();
+		
+		$elem.data('loaded', true);
+	}
+	
+	getWorkflowLog() {
+		// show logs from all jobs inline
+		var self = this;
+		app.api.get( 'app/download_workflow_job_logs', { id: this.job.id, t: this.token, inline: 1 }, function(resp) {
+			var html = '<div class="markdown-body">' + marked.parse( resp.text, config.ui.marked_config) + '</div>';
+			self.div.find('#d_job_wf_log > div.box_content').html( html ).buttonize();
+			self.highlightCodeBlocks('#d_job_wf_log div.markdown-body');
+		} );
+	}
+	
+	do_download_wf_log() {
+		// download workflow log report (markdown)
+		var job = this.job;
+		window.location = app.base_api_url + '/app/download_workflow_job_logs?id=' + job.id + '&t=' + this.token;
 	}
 	
 	updateSuspensionStatus() {
@@ -3865,6 +3909,12 @@ Page.Job = class Job extends Page.PageUtils {
 	onResize() {
 		// called when page is resized
 		if (this.isWorkflow && this.wfZoom) this.renderWFConnections();
+		if (this.isWorkflow) this.checkLoadWorkflowLog();
+	}
+	
+	onScrollDelay() {
+		// called when page is scrolled (250ms debounce)
+		if (this.isWorkflow) this.checkLoadWorkflowLog();
 	}
 	
 	onDeactivate() {

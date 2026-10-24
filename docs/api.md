@@ -2239,7 +2239,7 @@ Example response:
 }
 ```
 
-In addition to the [Standard Response Format](#standard-response-format), this will include a `job` object containing the requested job, and a `token` string used for viewing/downloading the job log (see [view_job_log](#view_job_log) and [download_job_log](#download_job_log)).
+In addition to the [Standard Response Format](#standard-response-format), this will include a `job` object containing the requested job, and a `token` string used for viewing/downloading the job log (see [view_job_log](#view_job_log) and [download_job_log](#download_job_log)).  For completed workflow jobs, use this same token with [download_workflow_job_logs](#download_workflow_job_logs) to retrieve a report of the sub-job outputs.
 
 See [Job](data.md#job) for details on the job object.
 
@@ -2343,6 +2343,46 @@ Response:
 
 - Returns HTTP `200 OK` with `Content-Type: text/plain; charset=utf-8` and a `Content-Disposition` suggesting a filename. For archived logs it may include `Content-Encoding: gzip`.
 - Returns `404 Not Found` if no log is available, or `403 Forbidden` if the token is invalid.
+
+### download_workflow_job_logs
+
+```
+GET /api/app/download_workflow_job_logs/v1?id=JOB_ID&t=TOKEN
+```
+
+Download a completed workflow job's sub-job outputs as a Markdown report.  Obtain the `t` token from the workflow's [get_job](#get_job) response.  A valid download token is sufficient authentication; no user session or API Key is required for this request, so the URL can be included in emails or other notifications.
+
+Parameters (query):
+
+| Property Name | Type | Description |
+|---------------|------|-------------|
+| `id` | String | **(Required)** The completed workflow's [Job.id](data.md#job-id). |
+| `t` | String | **(Required)** The download token from [get_job](#get_job) for this workflow job. |
+| `inline` | Number | Optional. Set to `1` to return the Markdown in a JSON response. Omit this parameter to download the report as a file. |
+
+The report includes each direct sub-job's node title, node ID, job ID, elapsed time, available text output, and output data formatted as JSON.  Text output is placed in fenced code blocks with ANSI escape sequences removed.  Large logs that are not stored inline receive a [download_job_log](#download_job_log) link instead, and nested workflows receive a link to their own output report.  These links include the corresponding download tokens.
+
+If a sub-job record is unavailable, its entry includes the retrieval error and the rest of the report is still returned.  Workflows with no sub-jobs return a report stating that no sub-jobs executed.
+
+Response:
+
+- By default, returns HTTP `200 OK` with `Content-Type: text/markdown; charset=utf-8` and a `Content-Disposition` attachment filename of `xyOps-Workflow-Job-Outputs-JOB_ID.md`. The report begins with a workflow summary.
+- With `inline=1`, returns the [Standard Response Format](#standard-response-format) with a `text` string containing the Markdown. This version omits the workflow summary and end-of-report footer, and is used by the UI.
+
+Example inline request:
+
+```
+GET /api/app/download_workflow_job_logs/v1?id=JOB_ID&t=TOKEN&inline=1
+```
+
+Example inline response:
+
+```json
+{
+	"code": 0,
+	"text": "\n(No sub-jobs executed.)\n"
+}
+```
 
 ### tail_live_job_log
 
