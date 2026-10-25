@@ -199,6 +199,19 @@ body.coloracc .sel_dialog_item:hover {
 	text-decoration: underline !important;
 }
 
+/* Flat Appearance */
+
+body.flatacc div.sidebar,
+body.flatacc div.dialog,
+body.flatacc div.arrow_box,
+body.flatacc div.dash_unit_box,
+body.flatacc div.maint_unit,
+body.flatacc div.box,
+body.flatacc div.button:hover,
+body.flatacc div.box_buttons.floater {
+	box-shadow: none !important;
+}
+
 /* Privacy Mode */
 
 body.privacy [data-private] {

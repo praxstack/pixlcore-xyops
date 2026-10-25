@@ -1855,6 +1855,7 @@ A user account is a representation of an individual user within the system.  The
 		"came65s9ttj4"
 	],
 	"color_acc": false,
+	"flat_acc": false,
 	"contrast": "auto",
 	"created": 1754798286,
 	"effects": true,
@@ -1972,6 +1973,10 @@ The preferred timezone of the user, e.g. `America/New_York`.  If not set, will b
 ### User.color_acc
 
 A boolean, which indicates the user uses "color accessibility mode".  This adjusts the UI colors for better visibility.
+
+### User.flat_acc
+
+A boolean, which enables "Flat Appearance" when true.  This removes box shadows from the sidebar, dialogs (including the code editor), popup menus, top-level page boxes, hovered buttons, and floating button bars.  Other interface shadows are preserved.  Defaults to `false`; an omitted value also leaves the normal appearance unchanged.
 
 ### User.privacy_mode
 

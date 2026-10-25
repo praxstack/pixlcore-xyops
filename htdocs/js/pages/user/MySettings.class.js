@@ -224,6 +224,18 @@ Page.MySettings = class MySettings extends Page.Base {
 			caption: 'Enable or disable color assistance, which uses indicators other than color for differentiation.'
 		});
 		
+		// flat appearance preference
+		html += this.getFormRow({
+			label: 'Appearance:',
+			content: this.getFormCheckbox({
+				id: 'fe_ms_flatacc',
+				label: 'Flat Appearance',
+				checked: !!user.flat_acc,
+				onChange: '$P().previewFlatMode(this)'
+			}),
+			caption: 'Remove shadows from major interface elements for a simpler, flatter appearance.'
+		});
+		
 		// wide tables
 		html += this.getFormRow({
 			label: 'Tables:',
@@ -489,6 +501,13 @@ Page.MySettings = class MySettings extends Page.Base {
 		this.saveChanges();
 	}
 	
+	previewFlatMode(elem) {
+		// preview the appearance immediately, then persist the preference
+		app.user.flat_acc = $(elem).is(':checked');
+		app.updateAccessibility();
+		this.saveChanges();
+	}
+	
 	previewPrivacyMode(elem) {
 		// set local mode on change
 		app.user.privacy_mode = $(elem).is(':checked');
@@ -730,6 +749,7 @@ Page.MySettings = class MySettings extends Page.Base {
 		user.motion = defaults.motion;
 		user.contrast = defaults.contrast;
 		user.color_acc = defaults.color_acc;
+		user.flat_acc = !!defaults.flat_acc;
 		user.privacy_mode = defaults.privacy_mode;
 		user.page_info = defaults.page_info;
 		user.notifications = defaults.notifications;
@@ -777,6 +797,7 @@ Page.MySettings = class MySettings extends Page.Base {
 			motion: this.div.find('#fe_ms_motionacc').val(),
 			contrast: this.div.find('#fe_ms_contrastacc').val(),
 			color_acc: this.div.find('#fe_ms_coloracc').is(':checked'),
+			flat_acc: this.div.find('#fe_ms_flatacc').is(':checked'),
 			wide_tables: this.div.find('#fe_ms_widetables').is(':checked'),
 			privacy_mode: this.div.find('#fe_ms_privacy').is(':checked'),
 			page_info: this.div.find('#fe_ms_pageinfo').is(':checked'),

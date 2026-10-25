@@ -446,6 +446,74 @@ exports.tests = [
 		}
 	},
 	
+	async function test_job_rate_minute_window_dst_alignment(test) {
+		// Minute windows must expire in the future, including immediately before
+		// fall-back and throughout the repeated hour.  No live jobs are involved.
+		const xy = new Jobs();
+		const original_time_now = Tools.timeNow;
+		const original_timezone = process.env.TZ;
+		
+		try {
+			process.env.TZ = 'Europe/Berlin';
+			
+			for (const day of ['2026-10-25', '2026-03-29']) {
+				const start = Date.parse(day + 'T00:00:00Z') / 1000;
+				
+				for (let minute = start; minute <= start + 7200; minute += 60) {
+					for (const seconds of [0, 30, 59]) {
+						Tools.timeNow = function() { return minute + seconds; };
+						assert.equal(xy.getRateWindowExpiration({ window: 60 }), minute + 60, 'minute window expires at the next actual minute: ' + new Date((minute + seconds) * 1000).toISOString());
+					}
+				}
+			}
+		}
+		finally {
+			Tools.timeNow = original_time_now;
+			if (original_timezone === undefined) delete process.env.TZ;
+			else process.env.TZ = original_timezone;
+		}
+	},
+	
+	async function test_job_minute_timeline_dst_epochs(test) {
+		// Feed actual job updates through both 02:00 hours.  Each real minute
+		// gets one snapshot and broadcast, even when its local clock label repeats.
+		const original_time_now = Tools.timeNow;
+		const original_timezone = process.env.TZ;
+		const broadcasts = [];
+		const xy = Object.assign(new Jobs(), {
+			activeJobs: { dst: { id: 'dst', state: 'active' } },
+			jobDetails: { dst: {} },
+			config: { get() { return ''; } },
+			doPageRestrictedBroadcast(page, event, item) {
+				assert.equal(event, 'minute_append', 'update broadcasts a minute snapshot');
+				broadcasts.push(item.epoch);
+			}
+		});
+		
+		try {
+			process.env.TZ = 'Europe/Berlin';
+			const start = Date.parse('2026-10-25T00:00:00Z') / 1000;
+			const expected = [];
+			
+			for (let minute = start; minute <= start + 7200; minute += 60) {
+				// Multiple updates within a minute must still produce only one snapshot.
+				for (const seconds of [1.25, 40.75]) {
+					Tools.timeNow = function() { return minute + seconds; };
+					xy.updateJobData({ dst: { id: 'dst', procs: {} } });
+				}
+				expected.push(minute);
+			}
+			
+			assert.deepEqual(xy.jobDetails.dst.timelines.minute.map(item => item.epoch), expected, 'timeline retains distinct, ordered minute epochs across fall-back');
+			assert.deepEqual(broadcasts, expected, 'clients receive exactly one snapshot for each real minute');
+		}
+		finally {
+			Tools.timeNow = original_time_now;
+			if (original_timezone === undefined) delete process.env.TZ;
+			else process.env.TZ = original_timezone;
+		}
+	},
+	
 	async function test_job_rate_daily_window_dst_alignment(test) {
 		// Exercise the spring DST boundary in a known server timezone.  The clock
 		// and process timezone are restored synchronously, so no scheduler tick or

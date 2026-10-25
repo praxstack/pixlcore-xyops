@@ -1484,6 +1484,9 @@ app.extend({
 		// color accessibilty
 		if (this.user.color_acc) $body.addClass('coloracc'); else $body.removeClass('coloracc');
 		
+		// flat appearance (missing preferences preserve the default shadows)
+		if (this.user.flat_acc) $body.addClass('flatacc'); else $body.removeClass('flatacc');
+		
 		// privacy mode
 		if (this.user.privacy_mode) $body.addClass('privacy'); else $body.removeClass('privacy');
 		

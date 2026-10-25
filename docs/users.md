@@ -24,7 +24,7 @@ Each user represents one human account. The profile combines identity, authentic
 - **Roles**: `roles` array of role IDs; see Roles below.
 - **Privileges**: `privileges` object (keys grant capabilities). See [Privileges](privileges.md).
 - **Resource limits**: `categories` and `groups` arrays optionally restrict access to event categories and server groups.
-- **Preferences**: UI/locale options including `language`, `region`, `num_format`, `hour_cycle`, `timezone`, `color_acc`, `privacy_mode`, `effects`, `contrast`, `motion`, `volume`, and saved `searches`.
+- **Preferences**: UI/locale options including `language`, `region`, `num_format`, `hour_cycle`, `timezone`, `color_acc`, `flat_acc`, `privacy_mode`, `effects`, `contrast`, `motion`, `volume`, and saved `searches`.
 - **Avatar**: Optional profile image. Upload/replace in the UI.
 
 Notes:

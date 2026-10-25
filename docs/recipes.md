@@ -602,41 +602,126 @@ To notify when a server comes back online, or when a new server is added to the 
 
 ## Daylight Savings Time
 
-Run a job safely during the Daylight Savings Time changeover window without duplicates or missed runs.  During DST transitions, local clocks jump between 1:00 and 3:00 AM. Two effects occur in many regions:
+Local clock time can be surprisingly tricky for a job scheduler. In timezones that observe daylight saving time (DST), the clock changes seasonally, usually by one hour:
 
-- Spring ahead: the clock skips from 1:59 to 3:00 AM. Any time between 2:00–2:59 AM does not exist that day.
-- Fall back: the hour from 1:00–1:59 AM repeats twice. Times in that window occur twice.
+- **Fall back:** When returning to standard time, an entire hour is repeated. A clock reading such as 02:30 occurs twice, at two different instants.
+- **Spring forward:** When entering daylight saving time, an entire hour is skipped. A clock reading such as 02:30 may not exist at all that day.
 
-Classic Unix/Linux cron uses local time and does not de-duplicate or "catch up" around DST. On spring-ahead days, a 2:30 job is skipped. On fall-back days, a 1:30 job runs twice.
+For example, under the current rules for `Europe/Berlin`, the clock moves from 03:00 back to 02:00 in autumn, and from 02:00 forward to 03:00 in spring. A daily Schedule trigger for 02:30 therefore matches twice on the fall-back day and never on the spring-forward day. The [IANA timezone database](https://data.iana.org/time-zones/tzdb/europe) records these regional rules.
 
-### How It Works
+This is a scheduler's nightmare when the requirement is "run once every day at this local time." The date and clock reading alone cannot always identify one instant. We will call the repeated or skipped window the **danger hour**. Its exact hours, transition dates, and even the size of the clock change depend on the timezone, so check the rules for your location.
 
-Use the [Max Daily Limit](limits.md#max-daily-limit) feature to allow a maximum of one job completion per calendar day, then schedule two daily runs:
+Here are several ways to handle this, depending on what your job needs.
 
-- Add a Max Daily Limit to the event (or workflow) with condition set to "Complete" and max daily amount set to "1". This quietly blocks any second run after one job has completed that day. See [Action.condition](data.md#action-condition) for condition meanings.
-- Add two schedule triggers (or one with multiple hours selected): one at the desired time in your timezone, and a second one exactly +1 hour later.
+### Solution 1: Avoid the Danger Hour
 
-This arrangement covers all three cases:
+The simplest option is to schedule time-sensitive daily jobs outside the affected window. For example, 04:30 avoids both transitions in `Europe/Berlin` under its current rules. When entering a local date and time for a Single Shot, avoiding the danger hour also avoids choosing a nonexistent or ambiguous clock reading.
 
-- **Normal days**: the job runs at the desired time; the +1 hour run is silently blocked by the daily limit.
-- **Spring ahead**: the desired time may not exist (for example 2:30). The +1 hour run exists and executes; the daily limit still allows it because nothing ran yet.
-- **Fall back**: the desired time occurs twice; the first occurrence runs and completes, and both the repeated occurrence and the +1 hour run are blocked by the daily limit.
+An hourly job is a useful exception. If it needs to run every hour, a Schedule trigger with all hours allowed and a fixed minute, such as `15`, continues at hourly intervals across a one-hour DST change. The repeated hour gets two runs, and the skipped hour gets none, but the real elapsed time between runs remains one hour. This means 25 runs on the fall-back day and 23 on the spring-forward day, which is appropriate for a job that truly runs every hour. For a fixed elapsed interval regardless of the size of a timezone change, see [Solution 5](#solution-5-use-a-fixed-interval).
 
-Note: Manual runs skip the Max Daily Limit check, by design. If you manually re-run the job on a changeover day, it can exceed the daily count.
+### Solution 2: Use a Fixed-Offset Timezone
 
-### Example
+Select one of the `Etc/GMT+` or `Etc/GMT-` timezones in the Schedule trigger's **Timezone** menu. These provide a local clock at a fixed offset from UTC, without seasonal DST changes. You can also select `Etc/UTC` if your schedule can be expressed directly in UTC.
 
-The following event configuration runs at 2:30 AM local time, with a safe second attempt at 3:30 AM, and allows at most one completion per day.
+Note that the signs in these names are reversed from what you might expect:
 
-- **Schedule Trigger**:
-	- Hours: `2` and `3` selected
-	- Minutes: `30` selected
-	- Timezone: Set to yours
-- **Max Daily Limit**:
-	- Job Condition: "Complete"
-	- Max Daily Amount: 1
+| Timezone | Fixed UTC offset |
+|----------|------------------|
+| `Etc/GMT-8` | UTC+08:00 |
+| `Etc/GMT+8` | UTC-08:00 |
+| `Etc/GMT-1` | UTC+01:00 |
+| `Etc/UTC` | UTC+00:00 |
 
-You can apply the same pattern to [Workflows](workflows.md) since workflows support limits as well. If you prefer to centralize the cap, you can also define this as a category limit so multiple events inherit the one-per-day rule.
+This naming convention comes from POSIX; see the [IANA fixed-offset definitions](https://data.iana.org/time-zones/tzdb/etcetera).
+
+For example, scheduling 02:30 in `Etc/GMT-1` gives you a steady UTC+1 schedule. It runs at 02:30 in Berlin during standard time, and at 03:30 in Berlin during daylight saving time. There is no repeated or missing scheduled minute.
+
+The tradeoff is that a fixed offset matches your region's clock for one part of the year and is typically one hour off during the other part. Choose this when a stable offset matters more than following the seasonal local clock. Set the timezone on the trigger itself; changing the server's process timezone does not change the DST rules of a trigger explicitly set to `Europe/Berlin`.
+
+### Solution 3: Add a Backup Time and a Max Daily Limit
+
+For a short daily job that should run once even when its preferred time is skipped, combine two candidate times with a [Max Daily Limit](limits.md#max-daily-limit).  This limit will silently skip extra job runs rather than raise errors.
+
+For example, to run at 02:30 in Berlin with a backup at 03:30:
+
+1. Add a **Schedule** trigger with hours `2` and `3` selected, minute `30`, and timezone `Europe/Berlin`.
+2. Add a **Max Daily Limit** with Job Condition set to **Complete** and Max Daily Amount set to **1**.
+
+You can also use two separate Schedule triggers. For other timezones, choose a backup time outside the skipped window; one hour later works for this Berlin example.
+
+Provided the job finishes before the next candidate time, this handles all three cases:
+
+| Day | Behavior |
+|-----|----------|
+| Normal | The 02:30 job completes, so the 03:30 backup is blocked. |
+| Spring forward | There is no 02:30, so the 03:30 backup runs. |
+| Fall back | The first 02:30 job completes, so the repeated 02:30 and the 03:30 backup are blocked. |
+
+Keep these details in mind:
+
+- **Complete counts completions, including failures.** It does not reserve a slot when a job starts. If the first job is still running when another candidate time arrives, or Catch-Up submits several candidates together, this limit alone does not guarantee a single launch. See [condition meanings](data.md#action-condition).
+- **The daily counter follows the server's statistics reset.** By default this is midnight in the conductor process's timezone, not each trigger's timezone. Make sure the candidate runs and their completions fall within the intended statistics day.
+- **Manual runs bypass this limit.** Runs initiated manually by a user or API key can exceed the cap.
+
+The same pattern works for [Workflows](workflows.md). You can define the limit on a category so its events inherit the rule; the daily count is still tracked separately for each event.
+
+### Solution 4: Write a Custom Trigger Plugin
+
+A [Trigger Plugin](plugins.md#trigger-plugins) lets you define your own policy for ambiguous or missing local times. It is consulted at each scheduled opportunity and returns a launch decision. Give it a schedule that includes the candidate times your policy needs to consider.
+
+Here is a small Node.js example with a specific policy for `Europe/Berlin`:
+
+- Normally, run at 02:30.
+- On fall-back day, use the first 02:30 and skip the second.
+- On spring-forward day, use 03:30 because 02:30 does not exist.
+
+Create a **Trigger Plugin**, set its command to `node`, and paste this into its script field. On the event, add a Schedule trigger with hours `2` and `3` selected, minute `30`, and timezone `Europe/Berlin`, then add a Plugin modifier selecting your plugin. No additional Node.js packages are needed.
+
+This gives the plugin two candidates on a normal day, three on fall-back day (both occurrences of 02:30, plus 03:30), and one on spring-forward day (03:30). The plugin calculates the earlier clock reading from each candidate's timestamp, so it does not need to run during the intervening minutes. This also keeps the dashboard's **Upcoming Jobs** table focused on these candidate times. That table predicts the schedule without consulting Trigger Plugins, so it may still show candidates that the plugin will skip.
+
+```js
+const clock = new Intl.DateTimeFormat('en-GB', {
+	timeZone: 'Europe/Berlin',
+	hour: '2-digit',
+	minute: '2-digit',
+	hourCycle: 'h23'
+});
+
+async function main() {
+	// Read the batch of candidate launches from xyOps.
+	const chunks = [];
+	for await (const chunk of process.stdin) { chunks.push(chunk); }
+	const data = JSON.parse(chunks.join(''));
+	
+	const items = data.items.map(function(item) {
+		// Use the scheduled instant, which may be historical during Catch-Up.
+		const current = clock.format(new Date(item.now * 1000));
+		const previous = clock.format(new Date((item.now - 3600) * 1000));
+		
+		// A second 02:30 has another 02:30 exactly one real hour before it.
+		if (current == '02:30') return previous != '02:30';
+		
+		// On spring-forward day, one real hour before 03:30 was 01:30.
+		return (current == '03:30') && (previous == '01:30');
+	});
+	
+	// Return one decision per input item, preserving the original order.
+	process.stdout.write(JSON.stringify({ xy: 1, items }) + '\n');
+}
+
+main().catch(function(err) {
+	console.error(err);
+	process.exitCode = 1;
+});
+```
+
+This example is intentionally specific to Berlin's current one-hour transitions and a 02:30 target. Adapt the policy before using a different timezone or time. It needs no stored state because it distinguishes the two occurrences using their actual timestamps. It decides when to launch; it does not retry a failed job or ensure that the job completes successfully.
+
+### Solution 5: Use a Fixed Interval
+
+If the requirement is "every 60 minutes" or "every 24 hours," use an [Interval](triggers.md#interval) trigger. Intervals advance from an absolute starting timestamp by a fixed number of seconds, so DST does not change the spacing.
+
+For example, an interval of `3600` seconds runs every real hour. An interval of `86400` seconds runs every 24 hours, but its displayed local time shifts when DST changes. Choose a local Schedule trigger instead if the requirement is "at the same local clock time every day."
 
 ## More Recipes
 

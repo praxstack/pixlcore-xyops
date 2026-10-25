@@ -1,5 +1,6 @@
 const assert = require('node:assert/strict');
 const Tools = require('pixl-tools');
+const Scheduler = require('../../lib/schedule.js');
 
 // helper: sleep
 async function sleep(ms) {
@@ -47,6 +48,59 @@ async function testTriggers(ctx, triggers, epoch) {
 }
 
 exports.tests = [
+	
+	async function test_scheduler_dst_minute_epochs(test) {
+		// Exercise real scheduler ticks with an isolated event and intercepted launches.
+		// Both occurrences of a repeated local minute must keep their distinct epochs.
+		const original_timezone = process.env.TZ;
+		
+		try {
+			for (const timezone of ['Europe/Berlin', 'UTC']) {
+				process.env.TZ = timezone;
+				
+				for (const day of ['2026-10-25', '2026-03-29']) {
+					const start = Date.parse(day + 'T00:00:00Z') / 1000;
+					
+					for (const catch_up of [false, true]) {
+						const state = {};
+						const jobs = [];
+						const expected = [];
+						let tick;
+						const xy = Object.assign(new Scheduler(), {
+							master: true,
+							lastMonthDayCache: {},
+							config: { get() { return 'Europe/Berlin'; } },
+							categories: [{ id: 'dst', enabled: true }],
+							plugins: [],
+							events: [{ id: 'dst', category: 'dst', enabled: true, triggers: [
+								{ type: 'schedule', enabled: true, timezone: 'Europe/Berlin', minutes: [0, 15, 30, 45] },
+								{ type: 'catchup', enabled: catch_up }
+							] }],
+							getState(key) { return state[key]; },
+							putState(key, value) { state[key] = value; },
+							logScheduler() {},
+							enqueueLaunch(job) { jobs.push({ tick, now: job.now }); }
+						});
+						
+						// Include both sides of the transition and nonzero tick seconds.
+						// Quarter-hour runs stay evenly spaced across fall-back and spring-forward.
+						for (tick = start; tick <= start + 7200; tick += 60) {
+							xy.schedulerMinuteTick({ epoch: tick + 7 });
+							if ((tick - start) % 900 == 0) expected.push({ tick, now: tick });
+						}
+						
+						assert.deepEqual(jobs, expected, `${timezone}, ${day}, catch-up ${catch_up}: every slot launches on time with its actual epoch`);
+						if (catch_up) assert.equal(state['events/dst/cursor'], start + 7200, 'catch-up cursor advances through every real minute');
+					}
+				}
+			}
+		}
+		finally {
+			// Restore synchronously before the test runner or any server timer resumes.
+			if (original_timezone === undefined) delete process.env.TZ;
+			else process.env.TZ = original_timezone;
+		}
+	},
 	
 	async function test_create_event_for_scheduling(test) {
 		// create new event (non-workflow)

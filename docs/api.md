@@ -5422,7 +5422,7 @@ Parameters:
 
 | Property Name | Type | Description |
 |---------------|------|-------------|
-| (Other) | Various | Any non-critical [User](data.md#user) fields such as `language`, `region`, `num_format`, `hour_cycle`, `timezone`, `color_acc`, `privacy_mode`, `effects`, `page_info`, `contrast`, `motion`, `volume`, or `icon`. |
+| (Other) | Various | Any non-critical [User](data.md#user) fields such as `language`, `region`, `num_format`, `hour_cycle`, `timezone`, `color_acc`, `flat_acc`, `privacy_mode`, `effects`, `page_info`, `contrast`, `motion`, `volume`, or `icon`. |
 
 Example request:
 

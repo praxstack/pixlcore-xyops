@@ -190,6 +190,7 @@
 		"hour_cycle": "h12",
 		"timezone": "",
 		"color_acc": false,
+		"flat_acc": false,
 		"privacy_mode": false,
 		"notifications": false,
 		"effects": true,

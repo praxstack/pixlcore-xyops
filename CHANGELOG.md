@@ -1,5 +1,16 @@
 # xyOps Changelog
 
+## Version v1.1.11
+
+> October 25, 2026
+
+- [`f09dd1e0`](https://github.com/pixlcore/xyops/commit/f09dd1e05b1f29c9fdbd8a4b32e8e75e7e9f6bb3): Version 1.1.11
+- [`f8daf65a`](https://github.com/pixlcore/xyops/commit/f8daf65a112f29896a153c8251b9eb28401186ad): Dep: Bump pixl-mal to v1.1.12 for vuln fixes in nodemailer.
+- [`84e6b5a6`](https://github.com/pixlcore/xyops/commit/84e6b5a613e886a9ad1c60e59ff1a6d08250f960): Feature: Accessibility: "Flat Appearance" checkbox: disables all shadows accross the UI.
+- [`75e03015`](https://github.com/pixlcore/xyops/commit/75e0301531ce61c71e44000d0ff3fa9a16397199): Bug Fix: Fix DST fall-back handling in minute-based timestamps
+- [`70a9fd8a`](https://github.com/pixlcore/xyops/commit/70a9fd8a70c74cb55ab6f2d41b97e0d13b9c8443): Doc: Recipes: Expand the Daylight Savings Time recipe with more information and different solutions.
+- [`2d0eb09e`](https://github.com/pixlcore/xyops/commit/2d0eb09ee067686b4a483bc39ac1186d049b9792): Dep: Bump pixl-server-storage to v4.3.0 for new buffer copying defaults
+
 ## Version v1.1.10
 
 > October 23, 2026
