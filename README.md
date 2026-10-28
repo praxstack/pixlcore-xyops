@@ -83,6 +83,14 @@ npm install -g @pixlcore/xycli
 
 [Get started with xyCLI](https://github.com/pixlcore/xycli#getting-started) | [Screenshot gallery](https://github.com/pixlcore/xycli/blob/main/docs/screenshots.md)
 
+### Connect your AI assistant with MCP
+
+xyCLI also includes a **Model Context Protocol (MCP) server** that lets compatible AI assistants work directly with xyOps. Inspect failed jobs, run existing workflows, search alerts, capture monitoring snapshots, and create tickets with the findings.
+
+Connect over STDIO or HTTP, using your existing xyOps API key permissions and resource restrictions. An optional `--read-only` mode disables all mutation and execution tools. The `ghcr.io/pixlcore/xycli` Docker image includes Node.js and xyCLI, with the MCP HTTP server as its default startup command.
+
+[Explore the MCP tools and setup guide](https://github.com/pixlcore/xycli/blob/main/docs/mcp.md)
+
 ## Open source without feature gates
 
 The complete xyOps application is available under the [BSD 3-Clause license](LICENSE.md). There is no separate commercial build and no vendor cloud control plane required to operate it.
