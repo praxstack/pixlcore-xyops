@@ -1,5 +1,17 @@
 # xyOps Changelog
 
+## Version v1.1.12
+
+> October 29, 2026
+
+- [`03d7ee2e`](https://github.com/pixlcore/xyops/commit/03d7ee2eb6b4d8d7f665177277ba027ceac738b1): Version 1.1.12
+- [`d211e64b`](https://github.com/pixlcore/xyops/commit/d211e64b763947763bca96740a94595262109ba8): Feature: List all active extensions on the system UI screen, with links to view details and remove.
+- [`0591d38d`](https://github.com/pixlcore/xyops/commit/0591d38d78579e075eb7ff9b0ca2c5baad99363a): Doc: README and Hosting: Add blurbs about new MCP server extension.
+- [`68ae24b3`](https://github.com/pixlcore/xyops/commit/68ae24b3b9c3c5441449c4baee4e4eb645c5f115): Dep: action.js: Replace picomatch with native path.matchesGlob()
+- [`ac3cb4cf`](https://github.com/pixlcore/xyops/commit/ac3cb4cfbe9e7af42c2277f8489c4b8fc972aef3): Dep: Require Node.js 22.12.0 or newer
+- [`d2e4b8c0`](https://github.com/pixlcore/xyops/commit/d2e4b8c0b86ed3895b9679836ee56aa7f77d6b1b): Dep: Bump pixl-tools to v2.0.6 for removal of vulnerable picomatch library.
+- [`af06253a`](https://github.com/pixlcore/xyops/commit/af06253a33af35db89f0ef1e944a5b001ea01756): Doc: README: Add section on new MCP server feaure in xyCLI v1.2.0.
+
 ## Version v1.1.11
 
 > October 25, 2026

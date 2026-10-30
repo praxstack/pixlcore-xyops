@@ -55,10 +55,10 @@ Page.System = class System extends Page.PageUtils {
 			html += '</div>'; // box_content
 		html += '</div>'; // box
 		
-		// websockets
-		html += '<div class="box" id="d_sys_sockets">';
+		// extensions
+		html += '<div class="box" id="d_sys_exts">';
 			html += '<div class="box_title">';
-				html += 'Connected Users';
+				html += 'Active Extensions';
 			html += '</div>';
 			html += '<div class="box_content table">';
 				// html += '<div class="loading_container"><div class="loading"></div></div>';
@@ -69,6 +69,16 @@ Page.System = class System extends Page.PageUtils {
 		html += '<div class="box" id="d_sys_terminals">';
 			html += '<div class="box_title">';
 				html += 'Open Terminals';
+			html += '</div>';
+			html += '<div class="box_content table">';
+				// html += '<div class="loading_container"><div class="loading"></div></div>';
+			html += '</div>'; // box_content
+		html += '</div>'; // box
+		
+		// websockets
+		html += '<div class="box" id="d_sys_sockets">';
+			html += '<div class="box_title">';
+				html += 'Connected Users';
 			html += '</div>';
 			html += '<div class="box_content table">';
 				// html += '<div class="loading_container"><div class="loading"></div></div>';
@@ -170,6 +180,7 @@ Page.System = class System extends Page.PageUtils {
 		this.renderInternalJobs();
 		this.renderWebSockets();
 		this.renderTerminals();
+		this.renderExtensions();
 		// this.addPageDescription();
 		
 		if (this.args.upgrade_server) {
@@ -438,6 +449,68 @@ Page.System = class System extends Page.PageUtils {
 		
 		this.div.find('#d_sys_terminals').show();
 		this.div.find('#d_sys_terminals > .box_content').removeClass('loading').html(html);
+	}
+	
+	renderExtensions() {
+		// render table of active extensions
+		var self = this;
+		var exts = app.extensions || [];
+		var html = '';
+		var cols = [ 'Marketplace ID', 'Version', 'Author', 'License', 'Description', 'Actions' ];
+		var rows = sort_by( exts, 'id', { copy: true } );
+		
+		if (!rows.length) {
+			this.div.find('#d_sys_exts').hide();
+			return;
+		}
+		
+		var opts = {
+			rows: rows,
+			cols: cols,
+			data_type: 'extension',
+			attribs: {
+				class: 'data_grid sys_ext_grid'
+			}
+		};
+		
+		html += this.getBasicGrid( opts, function(ext, idx) {
+			var url = '#Marketplace?id=' + encodeURIComponent(ext.marketplace.id);
+			var icon = ext.pkg.icon || 'puzzle-outline';
+			var actions = [
+				`<a href="${url}"><b>View</b></a>`,
+				`<span class="link danger" data-id="${ext.id}" onClick="$P().removeExtension(this)"><b>Remove</b></span>`
+			];
+			var cols = [
+				`<span class="nowrap"><a href="${url}"><i class="mdi mdi-${icon}"></i><b>${ext.marketplace.id}</b></a></span>`,
+				strip_html( ext.pkg.version ),
+				strip_html( ext.pkg.author ),
+				strip_html( ext.pkg.license ),
+				strip_html( ext.pkg.description ),
+				actions.join(' | ')
+			];
+			return cols;
+		} );
+		
+		this.div.find('#d_sys_exts').show();
+		this.div.find('#d_sys_exts > .box_content').removeClass('loading').html(html);
+	}
+	
+	removeExtension(elem) {
+		// show confirmation to delete extension and optionally restart
+		var self = this;
+		var ext_id = $(elem).data('id');
+		var ext = find_object( app.extensions, { id: ext_id } );
+		
+		Dialog.confirmDanger( 'Remove Extension', "Are you sure you want to <b>permanently remove</b> the extension &ldquo;" + ext.marketplace.id + "&rdquo;?  Note that the xyOps service on the primary conductor will be <b>restarted</b> after the removal is complete.", ['trash-can', 'Remove'], function(result) {
+			if (!result) return;
+			Dialog.showProgress( 1.0, "Removing Extension..." );
+			
+			app.api.post( 'app/delete_extension', { id: ext.marketplace.id, restart: true }, function(resp) {
+				app.cacheBust = hires_time_now();
+				Dialog.hideProgress();
+				app.showMessage('success', "The extension &ldquo;" + ext.marketplace.id + "&rdquo; is being removed in the background.");
+			}); // api.post
+		} ); // Dialog.confirmDanger
 	}
 	
 	prompt_import_data() {

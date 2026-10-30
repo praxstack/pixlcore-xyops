@@ -186,6 +186,16 @@ The first command should resolve an address and the second should return a succe
 
 Fix DNS, routing, certificate, or firewall problems before running the installer.  A browser working on your laptop does not prove that a worker server can reach the same address.
 
+## MCP Server
+
+The [MCP Server extension](https://github.com/pixlcore/xyext-mcp) adds a Model Context Protocol endpoint at `/mcp` on your conductor's existing URL. Install it through the Marketplace to enable it. The extension includes xyCLI as a dependency and works with both Docker and manual xyOps installations, without a separate container or global CLI installation.
+
+Configure your MCP client to use **Streamable HTTP** at, for example, `https://xyops.example.com/mcp`, with `Authorization: Bearer YOUR_API_KEY`. Each client's xyOps API key is forwarded independently, and xyOps enforces that key's permissions and resource restrictions when tools call the API.
+
+The extension runs its child service on `127.0.0.1:5524` by default. No extra Docker port mapping is needed. To change the private port, configure `port` under `extensions.pixlcore-xyext-mcp` and restart the conductor. See the [extension setup guide](https://github.com/pixlcore/xyext-mcp#configuration) for configuration, network requirements, and troubleshooting.
+
+See the [MCP tools and client setup guide](https://github.com/pixlcore/xycli/blob/main/docs/mcp.md) for available tools, MCP Inspector instructions, and standalone STDIO or HTTP options.
+
 ## Satellite
 
 xyOps Satellite, or [xySat](https://github.com/pixlcore/xysat), is the worker agent.  It executes jobs, reports status, and collects monitoring data.  xySat is available for Linux, macOS, Windows, and Docker.

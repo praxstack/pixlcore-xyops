@@ -89,6 +89,8 @@ xyCLI also includes a **Model Context Protocol (MCP) server** that lets compatib
 
 Connect over STDIO or HTTP, using your existing xyOps API key permissions and resource restrictions. An optional `--read-only` mode disables all mutation and execution tools. The `ghcr.io/pixlcore/xycli` Docker image includes Node.js and xyCLI, with the MCP HTTP server as its default startup command.
 
+The [MCP Server extension](https://github.com/pixlcore/xyext-mcp) adds `/mcp` to your conductor's existing URL, with each client's xyOps API key passed through. It includes xyCLI as a dependency and works with both Docker and manual installations. See [Enabling the MCP server](docs/hosting.md#mcp-server).
+
 [Explore the MCP tools and setup guide](https://github.com/pixlcore/xycli/blob/main/docs/mcp.md)
 
 ## Open source without feature gates

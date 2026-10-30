@@ -141,6 +141,10 @@
 	.data_grid.sys_term_grid { grid-template-columns: auto 0px auto auto auto auto auto auto !important; }
 	.data_grid.sys_term_grid > ul > div:nth-child(2) { visibility: hidden; }
 	
+	/* 'Marketplace ID', 'Version', 'Author', 'License', 'Description', 'Actions' */
+	.data_grid.sys_ext_grid { grid-template-columns: auto auto auto auto 0px auto !important; }
+	.data_grid.sys_ext_grid > ul > div:nth-child(5) { visibility: hidden; }
+	
 	/* 'Container Name', 'ID', 'CPU', 'Mem Usage', 'Mem Total', 'Net In', 'Net Out', 'Disk Read', 'Disk Write', 'Actions' */
 	.data_grid.container_grid { grid-template-columns: auto auto auto auto auto auto auto 0px 0px auto !important; }
 	.data_grid.container_grid > ul > div:nth-child(8) { visibility: hidden; }
@@ -438,6 +442,11 @@
 	.data_grid.sys_term_grid { grid-template-columns: auto 0px auto auto 0px auto auto auto !important; }
 	.data_grid.sys_term_grid > ul > div:nth-child(2) { visibility: hidden; }
 	.data_grid.sys_term_grid > ul > div:nth-child(5) { visibility: hidden; }
+	
+	/* 'Marketplace ID', 'Version', 'Author', 'License', 'Description', 'Actions' */
+	.data_grid.sys_ext_grid { grid-template-columns: auto auto auto 0px 0px auto !important; }
+	.data_grid.sys_ext_grid > ul > div:nth-child(4) { visibility: hidden; }
+	.data_grid.sys_ext_grid > ul > div:nth-child(5) { visibility: hidden; }
 	
 	/* 'Revision', 'Description', 'User', 'Date/Time', 'Actions' */
 	.data_grid.event_revision_grid { grid-template-columns: auto auto 0px auto auto !important; }
@@ -930,6 +939,11 @@
 	.data_grid.sys_term_grid > ul > div:nth-child(2) { visibility: hidden; }
 	.data_grid.sys_term_grid > ul > div:nth-child(5) { visibility: hidden; }
 	.data_grid.sys_term_grid > ul > div:nth-child(6) { visibility: hidden; }
+	
+	/* 'Marketplace ID', 'Version', 'Author', 'License', 'Description', 'Actions' */
+	.data_grid.sys_ext_grid { grid-template-columns: auto auto auto 0px 0px auto !important; }
+	.data_grid.sys_ext_grid > ul > div:nth-child(4) { visibility: hidden; }
+	.data_grid.sys_ext_grid > ul > div:nth-child(5) { visibility: hidden; }
 	
 	/* 'Revision', 'Description', 'User', 'Date/Time', 'Actions' */
 	.data_grid.event_revision_grid { grid-template-columns: auto auto 0px 0px auto !important; }
@@ -1576,6 +1590,12 @@
 	.data_grid.sys_term_grid > ul > div:nth-child(5) { visibility: hidden; }
 	.data_grid.sys_term_grid > ul > div:nth-child(6) { visibility: hidden; }
 	
+	/* 'Marketplace ID', 'Version', 'Author', 'License', 'Description', 'Actions' */
+	.data_grid.sys_ext_grid { grid-template-columns: auto auto 0px 0px 0px auto !important; }
+	.data_grid.sys_ext_grid > ul > div:nth-child(3) { visibility: hidden; }
+	.data_grid.sys_ext_grid > ul > div:nth-child(4) { visibility: hidden; }
+	.data_grid.sys_ext_grid > ul > div:nth-child(5) { visibility: hidden; }
+	
 	/* 'Revision', 'Description', 'User', 'Date/Time', 'Actions' */
 	.data_grid.event_revision_grid { grid-template-columns: auto auto 0px 0px 0px !important; }
 	.data_grid.event_revision_grid > ul > div:nth-child(3) { visibility: hidden; }
@@ -2125,6 +2145,13 @@
 	.data_grid.sys_term_grid > ul > div:nth-child(5) { visibility: hidden; }
 	.data_grid.sys_term_grid > ul > div:nth-child(6) { visibility: hidden; }
 	.data_grid.sys_term_grid > ul > div:nth-child(7) { visibility: hidden; }
+	
+	/* 'Marketplace ID', 'Version', 'Author', 'License', 'Description', 'Actions' */
+	.data_grid.sys_ext_grid { grid-template-columns: auto 0px 0px 0px 0px auto !important; }
+	.data_grid.sys_ext_grid > ul > div:nth-child(2) { visibility: hidden; }
+	.data_grid.sys_ext_grid > ul > div:nth-child(3) { visibility: hidden; }
+	.data_grid.sys_ext_grid > ul > div:nth-child(4) { visibility: hidden; }
+	.data_grid.sys_ext_grid > ul > div:nth-child(5) { visibility: hidden; }
 	
 	/* 'Revision', 'Description', 'User', 'Date/Time', 'Actions' */
 	.data_grid.event_revision_grid { grid-template-columns: auto auto 0px 0px 0px !important; }
