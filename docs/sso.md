@@ -21,6 +21,20 @@ Here are the main paths we recommend:
 - [OAuth2-Proxy](#oauth2-proxy) is a popular and widely tested solution.  It has more deployment pieces, but it is likely to be compatible with more OIDC providers and handle more provider edge cases.
 - [Authentik](#authentik), [Authelia](#active-directory), [Tailscale](#tailscale), and other trusted-header systems can also work well, depending on your environment.
 
+## MCP Clients
+
+The [MCP Server extension](https://github.com/pixlcore/xyext-mcp) exposes `/mcp` on the conductor's existing URL. MCP clients authenticate with `Authorization: Bearer YOUR_XYOPS_API_KEY`, so external authentication proxies must let this exact path bypass browser login. xyOps still validates the key and enforces its permissions when tools call the API.
+
+Preserve the client's Authorization header unchanged, and allow streaming responses through without buffering or caching. Keep this exemption limited to `/mcp`; browser pages should continue to require SSO. The OAuth2-Proxy, Nginx, and Authentik examples below include the required routing changes.
+
+xyOps's built-in SSO capture applies to its home page, so the native OIDC Plugin and the documented Tailscale Serve setup need no additional path exclusion. Tailnet access controls still apply when using Tailscale.
+
+## Streaming Responses
+
+Both `/mcp` and the [stream_job API](api.md#stream_job) at `/api/app/stream_job/v1` use Server-Sent Events (SSE). Any reverse proxy in front of xyOps must allow these responses to stream without buffering or caching. The existing `/api` login exclusion already covers `stream_job`; no additional SSO exclusion is needed.
+
+The `stream_job` response includes `X-Accel-Buffering: no`, which tells Nginx to forward events immediately. Keep Nginx configured to honor this header. For other proxies, use their equivalent streaming settings. `Cache-Control: no-cache` alone does not disable response buffering. These streaming requirements also apply when using the OIDC Plugin behind a reverse proxy, even though the plugin itself needs no authentication changes.
+
 ## Configuration
 
 All the SSO settings for xyOps are contained in the `sso.json` file, which is typically installed to `/opt/xyops/conf/sso.json`, but may be mapped to a different host location if using Docker.  The default configuration looks like this:
@@ -429,14 +443,17 @@ services:
       OAUTH2_PROXY_HTTP_ADDRESS: "0.0.0.0:4180"
       OAUTH2_PROXY_COOKIE_SECURE: "false" # for dev testing
       OAUTH2_PROXY_PASS_USER_HEADERS: "true" # sends X-Forwarded-User/Email/etc
-      OAUTH2_PROXY_SET_AUTHORIZATION_HEADER: "true" # forwards Bearer in Authorization if present
+      OAUTH2_PROXY_PASS_BASIC_AUTH: "false" # preserve the client's Authorization header
+      OAUTH2_PROXY_PASS_AUTHORIZATION_HEADER: "false" # do not replace it with an OIDC token
       OAUTH2_PROXY_PASS_ACCESS_TOKEN: "true" # forward access token if present
       OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: "true" # skip splash screen
-      OAUTH2_PROXY_SKIP_AUTH_ROUTES: "^/(api|files|health|images|js|css|fonts|sounds|codemirror|manifest.webmanifest)(/|$)" # skip auth for static files
+      OAUTH2_PROXY_SKIP_AUTH_ROUTES: "^/(api|mcp|files|health|images|js|css|fonts|sounds|codemirror|manifest.webmanifest)(/|$)" # API, MCP, and public paths
 
   echo-server:
     image: ealen/echo-server
 ```
+
+Keep `PASS_BASIC_AUTH` and `PASS_AUTHORIZATION_HEADER` disabled in this direct-proxy setup so OAuth2-Proxy does not strip or replace their Bearer API keys. `PASS_USER_HEADERS` remains enabled for browser SSO. Keep the default `SKIP_AUTH_STRIP_HEADERS=true` so untrusted identity headers are still removed. See [OAuth2-Proxy header options](https://oauth2-proxy.github.io/oauth2-proxy/configuration/overview/#header-options).
 
 Notice how this docker compose starts *two* separate containers: OAuth2-Proxy itself, and also [echo-server](https://hub.docker.com/r/ealen/echo-server).  The echo server is a simple passthrough web server for testing, which echoes request metadata back to the browser in JSON format.  This is extremely useful for the initial SSO setup process, because you can test your auth implementation in isolation and see exactly which headers will be passed down to xyOps after authentication.
 
@@ -559,7 +576,7 @@ For the xyOps container, it needs several persistent volumes.  The `xy-data` Doc
 
 At the very least, make sure you set the [base_app_url](config.md#base_app_url) property to the domain that routes to the proxy (which sits in front), with a `https://` prefix.  You should also set the `XYOPS_hostname` to the same hostname (without the protocol prefix).  This is what xyOps uses to advertise itself to the server cluster, and generate URLs for new servers to connect.
 
-In this case, since we are only running a single conductor server, we can route *everything* through the proxy, making things simpler.  You don't even need to expose any ports on the xyOps container.  Users hit the root `/` URI path and are authenticated via SSO, and API calls and server connections both hit the `/api` prefix, which is routed directly through to xyOps, and that uses its own authentication layer (API keys, tokens, etc.).
+In this case, since we are only running a single conductor server, we can route *everything* through the proxy, making things simpler.  You don't even need to expose any ports on the xyOps container.  Users hit the root `/` URI path and are authenticated via SSO, and API calls and server connections both hit the `/api` prefix, which is routed directly through to xyOps, and that uses its own authentication layer (API keys, tokens, etc.). The MCP extension uses the separate `/mcp` endpoint, which also bypasses browser login and uses each client's xyOps API key.
 
 **Advanced**: For installations with a large amount of worker servers, it is better to expose the xyOps container under its own internal domain, and have worker servers connect directly to that, instead of going through OAuth2-Proxy.  Change the `XYOPS_hostname` environment variable to point to the dedicated xyOps domain to change how it advertises itself to the cluster.
 
@@ -644,6 +661,8 @@ Next is the OAuth2-Proxy setup (we use the official Docker image here).  Configu
 - `OAUTH2_PROXY_REVERSE_PROXY` is set to `true`.  This is required for running OAuth2-Proxy in auth_request mode.
 - `OAUTH2_PROXY_SET_XAUTHREQUEST` is set to `true`.  This returns the set of trusted headers in auth_request mode.
 - `OAUTH2_PROXY_SKIP_AUTH_ROUTES` has been removed, as OAuth2-Proxy doesn't actually do any routing in this configuration.
+
+The Nginx image automatically bypasses browser SSO for `/api` and `/mcp`, allowing xyOps to handle their authentication. It also preserves MCP clients’ Bearer tokens and supports streaming responses. If you’re adding the MCP extension to an existing deployment, update your Nginx image or mounted configuration and reload or restart Nginx.
 
 Once you have those two components running, we can fire up the xyOps backend.  This is listed separately as you'll usually want to run these on dedicated servers.  Before starting multiple conductors, configure xyOps to use shared external storage as described in the [Storage Setup Guide](storage.md).  Here is the multi-conductor configuration as a single Docker compose file.  For additional conductor servers you can duplicate this service, change the hostname, and point each conductor at the same shared storage configuration:
 
@@ -924,6 +943,7 @@ http://xyops1:5522
 11. In **Unauthenticated Paths**, add the xyOps paths that should bypass Authentik:
 
 ```regex
+^/mcp$
 ^/api(/|$)
 ^/files(/|$)
 ^/health(/|$)
@@ -936,7 +956,7 @@ http://xyops1:5522
 ^/manifest\.webmanifest$
 ```
 
-These are the Authentik equivalent of OAuth2-Proxy's `OAUTH2_PROXY_SKIP_AUTH_ROUTES`.  The `/api` path is especially important, because xyOps API keys, worker server tokens, and other non-browser requests are handled by xyOps itself.
+These are the Authentik equivalent of OAuth2-Proxy's `OAUTH2_PROXY_SKIP_AUTH_ROUTES`.  The `/api` path is especially important, because xyOps API keys, worker server tokens, and other non-browser requests are handled by xyOps itself. The exact `/mcp` path allows MCP clients to use their own xyOps API keys without a browser session. Preserve their Authorization header; do not configure an additional header mapping that replaces it with an Authentik token. If another reverse proxy sits in front of Authentik, allow unbuffered [streaming responses](#streaming-responses) for both `/mcp` and `/api/app/stream_job/v1` there as well.
 
 After saving the provider and application, make sure the application is assigned to an outpost:
 
@@ -1085,7 +1105,7 @@ If you require [SAML](https://en.wikipedia.org/wiki/Security_Assertion_Markup_La
 | `oidc_email_claim` | String | Which OIDC claim contains the user's email.  For most SAML IdPs this should be set to `sub`. |
 | `email_domains` | String | Lock this down for live production, i.e. limit it to your email domain only, but for testing it can be set to `*`. |
 | `pass_user_headers` | Boolean | Pass along the "trusted headers" that xyOps uses to log the user in.  Set to `true`. |
-| `set_authorization_header` | Boolean | This sets the `Authorization Bearer` response header (useful in Nginx auth_request mode). Set to `true`. |
+| `set_authorization_header` | Boolean | Sets an Authorization Bearer **response** header. Use `true` for the Nginx `auth_request` setup; leave disabled for direct proxying. This does not preserve client API-key headers. Follow the [OAuth2-Proxy](#oauth2-proxy) header and MCP skip-route settings for direct proxying. |
 | `skip_provider_button` | Boolean | Skip the OAuth2-Proxy splash screen, and instead log the user in immediately.  Set to `true`. |
 | `cookie_secret` | Base64 | Generate your own [base64-encoded cookie secret](https://oauth2-proxy.github.io/oauth2-proxy/configuration/overview/#generating-a-cookie-secret) for this. |
 | `http_address` | IP:Port | Network and port for OAuth2-Proxy to listen on.  Set to: `0.0.0.0:4180`. |

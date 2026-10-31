@@ -4,16 +4,29 @@
 
 **xyOps is the next generation of Cronicle:** a complete, self-hosted platform for job scheduling, visual workflow automation, server monitoring, alerting, and incident response.
 
-[Website](https://xyops.io/) | [Install](https://docs.xyops.io/hosting) | [Documentation](https://docs.xyops.io/) | [CLI](https://github.com/pixlcore/xycli) | [Cronicle migration](https://docs.xyops.io/cronicle) | [Plugin Marketplace](https://marketplace.xyops.io/) | [Support](https://docs.xyops.io/support)
+<p align="center">
+	<strong><a href="https://xyops.io/">Website</a> | <a href="https://docs.xyops.io/hosting">Install</a> | <a href="https://docs.xyops.io/">Documentation</a> | <a href="https://github.com/pixlcore/xycli">CLI</a> | <a href="https://docs.xyops.io/cronicle">Cronicle Migration</a> | <a href="https://marketplace.xyops.io/">Plugin Marketplace</a> | <a href="https://docs.xyops.io/support">Support</a></strong>
+</p>
 
 [![xyOps workflow editor](https://pixlcore.com/images/blog/xyops/workflow-edit.webp)](https://xyops.io/)
 
-**Fully open source. Self-hosted. No telemetry. No feature gates.**
+<p align="center">
+	<a href="https://github.com/pixlcore/xyops/stargazers"><img src="https://img.shields.io/github/stars/pixlcore/xyops?style=flat&amp;label=Stars" alt="GitHub stars"/></a>
+	<a href="https://github.com/pixlcore/xyops/forks"><img src="https://img.shields.io/github/forks/pixlcore/xyops?style=flat&amp;label=Forks" alt="GitHub forks"/></a>
+	<a href="https://github.com/pixlcore/xyops/releases/latest"><img src="https://img.shields.io/github/v/release/pixlcore/xyops?label=Release" alt="Latest release"/></a>
+	<a href="LICENSE.md"><img src="https://img.shields.io/github/license/pixlcore/xyops?label=License" alt="License: BSD-3-Clause"/></a>
+	<a href="https://discord.gg/FTzqmbGbdd"><img src="https://img.shields.io/discord/713159081422225548?label=Discord&amp;logo=discord&amp;logoColor=white" alt="PixlCore Discord members online"/></a>
+</p>
+
+<p align="center">
+	<a href="https://trendshift.io/repositories/17651?utm_source=trendshift-badge&amp;utm_medium=badge&amp;utm_campaign=badge-trendshift-17651" target="_blank" rel="noopener noreferrer"><img src="https://trendshift.io/api/badge/trendshift/repositories/17651/daily?language=JavaScript" alt="xyOps: #1 JavaScript Repository of the Day on Trendshift" width="250" height="55"/></a>
+</p>
+
+## Overview
+
+**xyOps is fully open source, self-hosted, with zero telemetry and no feature gates.**
 
 xyOps connects the work you run with the systems it runs on. Schedule jobs across a fleet, build visual workflows, watch jobs and infrastructure together, capture the exact state of a server when an alert fires, and respond without reconstructing the incident across five different tools.
-
-> [!IMPORTANT]
-> **Every xyOps application feature is free and open source, including [Single Sign-On (SSO)](https://docs.xyops.io/sso).** SSO, OIDC integration, group-to-role mapping, multi-conductor scaling, air-gapped operation, workflows, monitoring, alerting, and ticketing are not paid features. Professional and Enterprise plans purchase human support, faster response targets, and hands-on assistance. They do not unlock software.
 
 ## Why xyOps
 
