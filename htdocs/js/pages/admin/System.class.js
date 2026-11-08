@@ -477,7 +477,8 @@ Page.System = class System extends Page.PageUtils {
 			var url = '#Marketplace?id=' + encodeURIComponent(ext.marketplace.id);
 			var icon = ext.pkg.icon || 'puzzle-outline';
 			var actions = [
-				`<a href="${url}"><b>View</b></a>`,
+				// `<a href="${url}"><b>View</b></a>`,
+				`<span class="link" data-id="${ext.id}" onClick="$P().configureExtension(this)"><b>Configure</b></span>`,
 				`<span class="link danger" data-id="${ext.id}" onClick="$P().removeExtension(this)"><b>Remove</b></span>`
 			];
 			var cols = [
