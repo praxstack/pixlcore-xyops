@@ -54,13 +54,29 @@ Page.Base = class Base extends Page {
 		// get formatted group list
 		var self = this;
 		if (typeof(groups) == 'string') groups = groups.split(/\,\s*/);
+		
+		if (app.isUserLimited()) {
+			// prune groups user doesn't have access to
+			groups = groups.filter( group => {
+				if ((typeof(group) == 'string') && !find_object(app.groups, { id: group })) return false;
+				return true;
+			} );
+		}
+		
 		if (!groups || !groups.length) return none || '(None)';
 		return groups.map( function(group) { return self.getNiceGroup(group, false, icon_override); } ).join(', ');
 	}
 	
 	getNiceGroup(item, link, icon_override) {
 		// get formatted group with icon, plus optional link
-		if (typeof(item) == 'string') item = find_object(app.groups, { id: item });
+		if (typeof(item) == 'string') {
+			var group = find_object(app.groups, { id: item });
+			if (group) item = group;
+			else {
+				item = { id: item, title: item };
+				link = false;
+			}
+		}
 		if (!item) return '(None)';
 		
 		var html = '<span class="nowrap" title="' + encode_attrib_entities(item.title) + '">';
@@ -3017,8 +3033,9 @@ Page.Base = class Base extends Page {
 		};
 	}
 	
-	viewMarkdownAuto(title, text, btn) {
+	viewMarkdownAuto(title, text, btn, restricted = false) {
 		// popup dialog to show pretty-printed markdown
+		// User-authored previews can opt into escaping embedded HTML and filtering URLs.
 		var self = this;
 		this._temp_code = text;
 		var html = '';
@@ -3026,7 +3043,7 @@ Page.Base = class Base extends Page {
 		html += '<div class="code_viewer scroll_shadows">';
 		html += '<div class="markdown-body">';
 		
-		html += marked.parse(text, config.ui.marked_config);
+		html += restricted ? renderMarkdownText(text) : marked.parse(text, config.ui.marked_config);
 		
 		html += '</div>'; // markdown-body
 		html += '</div>'; // code_viewer
@@ -3049,7 +3066,8 @@ Page.Base = class Base extends Page {
 	copyMarkdownToClipboard() {
 		// copy markdown code from dialog to clipboard
 		if (this._temp_code) {
-			copyToClipboard( strip_html(this._temp_code) );
+			// Clipboard text is not HTML; retain code samples and angle brackets.
+			copyToClipboard(this._temp_code);
 			app.showMessage('info', "The markdown was copied to your clipboard.");
 		}
 	}
